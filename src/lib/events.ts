@@ -42,6 +42,7 @@ export type GuestDetails = {
   status: "pending" | "confirmed" | "declined";
   plus_one_count: number;
   last_contacted_at: string | null;
+  rsvp_token: string;
 };
 
 export type ShoppingListDetails = {
@@ -113,7 +114,7 @@ export const getEventContext = cache(async (eventId: string) => {
       .maybeSingle<PartyPlanDetails>(),
     supabase
       .from("guests")
-      .select("id, name, email, phone, status, plus_one_count, last_contacted_at")
+      .select("id, name, email, phone, status, plus_one_count, last_contacted_at, rsvp_token")
       .eq("event_id", eventId)
       .order("created_at", { ascending: true })
       .returns<GuestDetails[]>(),

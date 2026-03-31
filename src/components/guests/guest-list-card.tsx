@@ -1,5 +1,5 @@
 import { addGuestAction } from "@/app/events/actions";
-import { type GuestDetails } from "@/lib/events";
+import { type GuestDetails, type InviteDetails } from "@/lib/events";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,9 +8,11 @@ import { SubmitButton } from "@/components/ui/submit-button";
 export function GuestListCard({
   eventId,
   guests,
+  invite,
 }: {
   eventId: string;
   guests: GuestDetails[];
+  invite: InviteDetails | null;
 }) {
   const confirmedSeats = guests
     .filter((guest) => guest.status === "confirmed")
@@ -61,6 +63,7 @@ export function GuestListCard({
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Plus one</th>
                 <th className="px-4 py-3 font-medium">Contact</th>
+                <th className="px-4 py-3 font-medium">RSVP link</th>
               </tr>
             </thead>
             <tbody>
@@ -71,11 +74,20 @@ export function GuestListCard({
                     <td className="px-4 py-3 text-ink-muted">{guest.status}</td>
                     <td className="px-4 py-3 text-ink-muted">{guest.plus_one_count}</td>
                     <td className="px-4 py-3 text-ink-muted">{guest.email ?? guest.phone ?? "Not provided"}</td>
+                    <td className="px-4 py-3 text-ink-muted">
+                      {invite?.is_public ? (
+                        <span className="break-all text-xs text-brand">
+                          {`/rsvp/${invite.public_slug}?guest=${guest.rsvp_token}`}
+                        </span>
+                      ) : (
+                        "Enable public invite first"
+                      )}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-ink-muted">
+                  <td colSpan={5} className="px-4 py-6 text-center text-ink-muted">
                     No guests yet.
                   </td>
                 </tr>
@@ -105,7 +117,7 @@ export function GuestListCard({
           {[
             "Guests added here are immediately visible on the event overview and invite screen.",
             "RLS still restricts all rows to the signed-in event owner.",
-            "Public RSVP handling can layer on top of these guest rows next.",
+            "When the invite is public, each guest gets a live RSVP link tied to their token.",
           ].map((item) => (
             <div key={item} className="rounded-3xl border border-border bg-white/85 p-4 text-sm leading-6 text-ink-muted">
               {item}

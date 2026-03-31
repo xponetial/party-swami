@@ -8,11 +8,11 @@ export default async function EventGuestsPage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = await params;
-  const { guests } = await getEventContext(eventId);
+  const { guests, invite } = await getEventContext(eventId);
 
   return (
     <AppShell title="Guest management" description="Track guest status, add and import attendees, and keep RSVP communication organized.">
-      <GuestListCard eventId={eventId} guests={guests} />
+      <GuestListCard eventId={eventId} guests={guests} invite={invite} />
     </AppShell>
   );
 }
