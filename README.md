@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PartyGenie
+
+PartyGenie is a browser-based AI-powered party planning app built milestone by milestone from the PartyGenie Codex Build Brief.
+
+## Milestone 1
+
+This repository currently includes:
+
+- Next.js App Router + TypeScript + Tailwind v4 foundation
+- Marketing, auth, dashboard, event, and API route shells
+- Shared UI primitives and app shell layout
+- Supabase browser, server, and middleware helper scaffolding
+- Environment variable template for upcoming integrations
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy `.env.example` to `.env.local` and fill in required values as integrations are wired up.
+
+3. Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Run checks:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run lint
+npm run typecheck
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Upcoming Milestones
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Milestone 2: Supabase auth, schema, event persistence, and route protection
+- Milestone 3: Structured AI planning and editable outputs
+- Milestone 4: Invite flows, guests, and public RSVP
+- Milestone 5: Shopping, tasks, analytics, and dashboard depth
+- Milestone 6: Security hardening, QA, and beta launch readiness
