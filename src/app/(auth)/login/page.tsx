@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { AuthCard } from "@/components/auth/auth-card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { LoginForm } from "@/components/auth/login-form";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string }>;
+}) {
+  const { message } = await searchParams;
+
   return (
     <AuthCard
       title="Welcome back"
-      description="This Milestone 1 screen is a styled shell for the Supabase auth flow we will wire up in Milestone 2."
+      description="Sign in with your Supabase email and password to load your live event workspace."
       footer={
         <p className="text-sm text-ink-muted">
           Need an account?{" "}
@@ -18,19 +22,12 @@ export default function LoginPage() {
         </p>
       }
     >
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="host@example.com" disabled />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" placeholder="••••••••" disabled />
-        </div>
-        <Button className="w-full" disabled>
-          Login wiring lands in Milestone 2
-        </Button>
-      </div>
+      {message ? (
+        <p className="mb-4 rounded-2xl border border-[#cfe1da] bg-[#eff8f4] px-4 py-3 text-sm text-accent">
+          {message}
+        </p>
+      ) : null}
+      <LoginForm />
     </AuthCard>
   );
 }

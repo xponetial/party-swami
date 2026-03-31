@@ -10,6 +10,8 @@ import {
   TimerReset,
   Users,
 } from "lucide-react";
+import { LogoutButton } from "@/components/auth/logout-button";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 const sections = [
@@ -30,14 +32,21 @@ type AppShellProps = {
   actions?: ReactNode;
 };
 
-export function AppShell({ title, description, children, actions }: AppShellProps) {
+export async function AppShell({ title, description, children, actions }: AppShellProps) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
       <aside className="hidden w-72 shrink-0 flex-col rounded-[2rem] border border-white/60 bg-surface p-5 shadow-party backdrop-blur lg:flex">
         <Link href="/" className="rounded-3xl bg-white/70 px-4 py-4">
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">PartyGenie</p>
           <p className="mt-2 text-2xl font-semibold tracking-tight text-ink">Host workspace</p>
-          <p className="mt-2 text-sm leading-6 text-ink-muted">Browser-based planning, invites, guests, shopping, and tasks.</p>
+          <p className="mt-2 text-sm leading-6 text-ink-muted">
+            Browser-based planning, invites, guests, shopping, and tasks.
+          </p>
         </Link>
         <nav className="mt-6 space-y-2">
           {sections.map((section) => (
@@ -56,7 +65,10 @@ export function AppShell({ title, description, children, actions }: AppShellProp
         <div className="mt-auto rounded-3xl bg-brand px-4 py-5 text-white">
           <p className="text-sm uppercase tracking-[0.18em] text-white/70">Milestone 1</p>
           <p className="mt-2 text-lg font-semibold">Foundation first</p>
-          <p className="mt-2 text-sm leading-6 text-white/80">This shell is intentionally modular so auth, data, and AI features can slot in cleanly next.</p>
+          <p className="mt-2 text-sm leading-6 text-white/80">
+            This shell is intentionally modular so auth, data, and AI features can slot in cleanly
+            next.
+          </p>
         </div>
       </aside>
 
@@ -68,7 +80,10 @@ export function AppShell({ title, description, children, actions }: AppShellProp
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{title}</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">{description}</p>
             </div>
-            {actions ? <div className="shrink-0">{actions}</div> : null}
+            <div className="flex shrink-0 flex-wrap items-center gap-3">
+              {actions ? actions : null}
+              {user ? <LogoutButton /> : null}
+            </div>
           </div>
         </header>
         <main className="grid gap-4">{children}</main>

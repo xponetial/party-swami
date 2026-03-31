@@ -25,7 +25,21 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isAuthPage = pathname === "/login" || pathname === "/signup";
+  const isProtectedPage = pathname.startsWith("/dashboard") || pathname.startsWith("/events");
+
+  if (!user && isProtectedPage) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  if (user && isAuthPage) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
 
   return response;
 }
