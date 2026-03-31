@@ -1,14 +1,9 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import {
-  Bell,
   ChartNoAxesCombined,
   ClipboardList,
-  ShieldCheck,
-  ShoppingBasket,
   Sparkles,
-  TimerReset,
-  Users,
 } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -17,12 +12,7 @@ import { cn } from "@/lib/utils";
 const sections = [
   { href: "/dashboard", label: "Dashboard", icon: ChartNoAxesCombined },
   { href: "/events/new", label: "New Event", icon: ClipboardList },
-  { href: "/events/sample", label: "AI Plan", icon: Sparkles },
-  { href: "/events/sample/invite", label: "Invite", icon: Bell },
-  { href: "/events/sample/guests", label: "Guests", icon: Users },
-  { href: "/events/sample/shopping", label: "Shopping", icon: ShoppingBasket },
-  { href: "/events/sample/timeline", label: "Timeline", icon: TimerReset },
-  { href: "/events/sample/settings", label: "Settings", icon: ShieldCheck },
+  { href: "/", label: "Marketing", icon: Sparkles },
 ];
 
 type AppShellProps = {
