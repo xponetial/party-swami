@@ -1,18 +1,20 @@
 # PartyGenie
 
-PartyGenie is a browser-based AI-powered party planning app built milestone by milestone from the PartyGenie Codex Build Brief.
+PartyGenie is an AI-assisted event planning app for hosts who need one workspace for planning, invites, public RSVP, shopping, tasks, and event coordination.
 
-## Milestone 1
+## Current Product Surface
 
-This repository currently includes:
+The app currently includes:
 
-- Next.js App Router + TypeScript + Tailwind v4 foundation
-- Marketing, auth, dashboard, event, and API route shells
-- Shared UI primitives and app shell layout
-- Supabase browser, server, and middleware helper scaffolding
-- Environment variable template for upcoming integrations
+- Supabase-backed authentication, route protection, and per-host row-level security
+- Event creation and a live event workspace
+- Invite authoring, public RSVP links, and email delivery through Resend
+- Guest management, shopping lists, tasks, and timeline views
+- AI plan generation, lightweight AI rewrite flows, revision history, restore controls, and usage limits
+- Dashboard summaries, AI usage telemetry, and event-level plan APIs
+- Playwright smoke coverage plus CI validation
 
-## Getting Started
+## Local Setup
 
 1. Install dependencies:
 
@@ -20,9 +22,16 @@ This repository currently includes:
 npm install
 ```
 
-2. Copy `.env.example` to `.env.local` and fill in required values as integrations are wired up.
+2. Copy `.env.example` to `.env.local` and fill in the values you want to use locally.
 
-For real AI generation, add:
+Required for Supabase-backed auth and data:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+Optional for real AI generation:
 
 ```bash
 OPENAI_API_KEY=your_openai_api_key
@@ -31,34 +40,58 @@ OPENAI_MODEL_LIGHTWEIGHT=gpt-5.4-nano
 OPENAI_MODEL_PREMIUM=gpt-5.4
 ```
 
-If `OPENAI_API_KEY` is missing, PartyGenie falls back to the local structured planner so the app still works during development.
+If `OPENAI_API_KEY` is missing, PartyGenie falls back to local structured generation so the app still works in development.
 
-For invite email delivery, add:
+Optional for invite email delivery:
 
 ```bash
 RESEND_API_KEY=your_resend_api_key
 RESEND_FROM_EMAIL="PartyGenie <onboarding@resend.dev>"
 ```
 
-For production sending, replace `onboarding@resend.dev` with a verified domain sender in Resend.
+For production sending, replace `onboarding@resend.dev` with a verified sender in Resend.
 
-3. Start the development server:
+3. Start the app:
 
 ```bash
 npm run dev
 ```
 
-4. Run checks:
+4. Run verification:
 
 ```bash
 npm run lint
 npm run typecheck
+npm run build
+npm run test:e2e
 ```
 
-## Upcoming Milestones
+## Supabase
 
-- Milestone 2: Supabase auth, schema, event persistence, and route protection
-- Milestone 3: Structured AI planning and editable outputs
-- Milestone 4: Invite flows, guests, and public RSVP
-- Milestone 5: Shopping, tasks, analytics, and dashboard depth
-- Milestone 6: Security hardening, QA, and beta launch readiness
+This repo includes local Supabase migration files under [`supabase/migrations`](./supabase/migrations).
+
+Useful commands:
+
+```bash
+npm run supabase:start
+npm run supabase:stop
+npm run supabase:status
+npm run supabase:reset
+npm run supabase:push
+```
+
+## AI Routing
+
+PartyGenie follows the app's current tiered AI routing:
+
+- `gpt-5.4-mini` for full party-plan generation and revisions
+- `gpt-5.4-nano` for lighter invite and shopping transformations
+- `gpt-5.4` reserved for premium or concierge-grade workflows
+
+AI generation metadata, request fingerprints, version history, and monthly usage rollups are persisted in Supabase.
+
+## Testing Notes
+
+The automated suite focuses on deterministic smoke coverage for public routes, unauthenticated API protections, and general app health.
+
+Full automated browser-authenticated signup flows are intentionally limited because hosted auth confirmation and provider rate limits can make those flows flaky in unattended CI.
