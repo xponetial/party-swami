@@ -98,6 +98,8 @@ const generatedShoppingListSchema = z.object({
   shoppingCategories: z.array(generatedShoppingCategorySchema).min(2),
 });
 
+type AiTaskType = "plan" | "lightweight" | "premium";
+
 function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -108,8 +110,28 @@ function getOpenAIClient() {
   return new OpenAI({ apiKey });
 }
 
-function getOpenAIModel() {
-  return process.env.OPENAI_MODEL?.trim() || "gpt-5";
+function getOpenAIModel(taskType: AiTaskType) {
+  if (taskType === "plan") {
+    return (
+      process.env.OPENAI_MODEL_PLAN?.trim() ||
+      process.env.OPENAI_MODEL_MINI?.trim() ||
+      "gpt-5.4-mini"
+    );
+  }
+
+  if (taskType === "premium") {
+    return (
+      process.env.OPENAI_MODEL_PREMIUM?.trim() ||
+      process.env.OPENAI_MODEL_FULL?.trim() ||
+      "gpt-5.4"
+    );
+  }
+
+  return (
+    process.env.OPENAI_MODEL_LIGHTWEIGHT?.trim() ||
+    process.env.OPENAI_MODEL_NANO?.trim() ||
+    "gpt-5.4-nano"
+  );
 }
 
 function getBudgetLabel(event: EventSeed) {
@@ -267,10 +289,12 @@ function extractJsonObject(rawText: string) {
 }
 
 async function generateStructuredObject<T>({
+  taskType,
   systemPrompt,
   userPrompt,
   schema,
 }: {
+  taskType: AiTaskType;
   systemPrompt: string;
   userPrompt: string;
   schema: z.ZodSchema<T>;
@@ -281,7 +305,7 @@ async function generateStructuredObject<T>({
     return null;
   }
 
-  const model = getOpenAIModel();
+  const model = getOpenAIModel(taskType);
   const response = await client.responses.create({
     model,
     input: [
@@ -366,6 +390,7 @@ export function buildShoppingList(event: EventSeed) {
 export async function generatePartyPlan(event: EventSeed): Promise<GeneratedPartyPlan> {
   const fallback = buildPartyPlan(event);
   const generated = await generateStructuredObject({
+    taskType: "plan",
     systemPrompt:
       "You are PartyGenie, an event planning assistant. Create practical host-ready party plans that are realistic, concise, and easy to execute.",
     userPrompt: `Create a complete event plan for this brief.\n${eventBrief(event)}\n\nRequirements:
@@ -391,6 +416,7 @@ export async function generatePartyPlan(event: EventSeed): Promise<GeneratedPart
 export async function generateInviteCopy(event: EventSeed) {
   const fallback = buildInviteCopy(event);
   const generated = await generateStructuredObject({
+    taskType: "lightweight",
     systemPrompt:
       "You write polished invitation copy for event hosts. Keep the tone warm, specific, and ready to send.",
     userPrompt: `Write invitation copy for this event brief.\n${eventBrief(event)}\n\nRequirements:
@@ -420,6 +446,7 @@ export async function generateInviteCopy(event: EventSeed) {
 export async function generateShoppingList(event: EventSeed) {
   const fallback = buildShoppingList(event);
   const generated = await generateStructuredObject({
+    taskType: "lightweight",
     systemPrompt:
       "You build concise shopping lists for event hosts. Focus on realistic, high-signal items only.",
     userPrompt: `Create a shopping list for this event brief.\n${eventBrief(event)}\n\nRequirements:
