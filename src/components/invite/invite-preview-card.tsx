@@ -1,5 +1,10 @@
 import { saveInviteAction } from "@/app/events/actions";
-import { type EventDetails, type GuestDetails, type InviteDetails } from "@/lib/events";
+import {
+  type EventDetails,
+  type GuestDetails,
+  type GuestMessageDetails,
+  type InviteDetails,
+} from "@/lib/events";
 import { AiGenerateButton } from "@/components/ai/ai-generate-button";
 import { InviteSendButton } from "@/components/invite/invite-send-button";
 import { Badge } from "@/components/ui/badge";
@@ -11,10 +16,12 @@ export function InvitePreviewCard({
   event,
   invite,
   guests,
+  guestMessages,
 }: {
   event: EventDetails;
   invite: InviteDetails | null;
   guests: GuestDetails[];
+  guestMessages: GuestMessageDetails[];
 }) {
   const acceptedCount = guests.filter((guest) => guest.status === "confirmed").length;
   const pendingCount = guests.filter((guest) => guest.status === "pending").length;
@@ -119,7 +126,14 @@ export function InvitePreviewCard({
               <div key={guest.id} className="flex items-center justify-between rounded-3xl border border-border bg-white/85 px-4 py-3">
                 <div>
                   <p className="font-medium text-ink">{guest.name}</p>
-                  <p className="text-sm text-ink-muted">{guest.email ?? guest.phone ?? "No contact yet"}</p>
+                  <p className="text-sm text-ink-muted">
+                    {guest.email ?? guest.phone ?? "No contact yet"}
+                  </p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
+                    {guest.last_contacted_at
+                      ? `Last contacted ${new Date(guest.last_contacted_at).toLocaleString("en-US")}`
+                      : "No delivery logged yet"}
+                  </p>
                 </div>
                 <span className="text-sm font-medium text-brand">{guest.status}</span>
               </div>
@@ -131,6 +145,42 @@ export function InvitePreviewCard({
           )}
         </div>
         {invite ? <div className="mt-5"><InviteSendButton eventId={event.id} /></div> : null}
+        <div className="mt-6">
+          <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Recent delivery log</p>
+          <div className="mt-3 space-y-3">
+            {guestMessages.length ? (
+              guestMessages.map((message) => (
+                <div key={message.id} className="rounded-3xl border border-border bg-white/85 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-ink">
+                        {message.guest?.name ?? "Guest"}
+                      </p>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        {message.guest?.email ?? "No email saved"}
+                      </p>
+                    </div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
+                      {message.sent_at
+                        ? new Date(message.sent_at).toLocaleString("en-US")
+                        : "Draft"}
+                    </p>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-ink-muted">
+                    {message.subject ?? "Invite email sent"}
+                  </p>
+                  {message.metadata?.rsvp_url ? (
+                    <p className="mt-2 break-all text-xs text-brand">{message.metadata.rsvp_url}</p>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <div className="rounded-3xl border border-border bg-white/85 p-4 text-sm text-ink-muted">
+                No invite deliveries have been logged yet.
+              </div>
+            )}
+          </div>
+        </div>
       </Card>
     </div>
   );

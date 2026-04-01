@@ -8,11 +8,11 @@ export default async function EventInvitePage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = await params;
-  const { event, invite, guests } = await getEventContext(eventId);
+  const { event, invite, guests, guestMessages } = await getEventContext(eventId);
 
   return (
     <AppShell title="Invitation generator" description="Invite editing, guest messaging, RSVP tracking, and reminder controls in one place.">
-      <InvitePreviewCard event={event} invite={invite} guests={guests} />
+      <InvitePreviewCard event={event} invite={invite} guests={guests} guestMessages={guestMessages} />
     </AppShell>
   );
 }

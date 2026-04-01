@@ -89,6 +89,22 @@ export type PlanVersionDetails = {
   created_at: string;
 };
 
+export type GuestMessageDetails = {
+  id: string;
+  guest_id: string | null;
+  subject: string | null;
+  body: string | null;
+  sent_at: string | null;
+  metadata: {
+    resend_id?: string;
+    rsvp_url?: string;
+  } | null;
+  guest?: {
+    name: string;
+    email: string | null;
+  } | null;
+};
+
 export const getEventContext = cache(async (eventId: string) => {
   const supabase = await createSupabaseServerClient();
 
@@ -115,7 +131,7 @@ export const getEventContext = cache(async (eventId: string) => {
     { data: shoppingList },
     { data: tasks = [] },
     { data: timelineItems = [] },
-    { data: planVersions = [] },
+    { data: guestMessages = [] },
   ] = await Promise.all([
     supabase
       .from("invites")
@@ -151,12 +167,25 @@ export const getEventContext = cache(async (eventId: string) => {
       .order("sort_order", { ascending: true })
       .returns<TimelineItemDetails[]>(),
     supabase
-      .from("plan_versions")
-      .select("id, version_num, change_reason, created_at")
-      .order("created_at", { ascending: false })
-      .limit(5)
-      .returns<PlanVersionDetails[]>(),
+      .from("guest_messages")
+      .select("id, guest_id, subject, body, sent_at, metadata, guest:guests(name, email)")
+      .eq("event_id", eventId)
+      .order("sent_at", { ascending: false })
+      .limit(8)
+      .returns<GuestMessageDetails[]>(),
   ]);
+
+  const planVersions = plan
+    ? (
+        await supabase
+          .from("plan_versions")
+          .select("id, version_num, change_reason, created_at")
+          .eq("plan_id", plan.id)
+          .order("created_at", { ascending: false })
+          .limit(5)
+          .returns<PlanVersionDetails[]>()
+      ).data ?? []
+    : [];
 
   const shoppingItems = shoppingList
     ? (
@@ -180,5 +209,6 @@ export const getEventContext = cache(async (eventId: string) => {
     timelineItems: timelineItems ?? [],
     profile: profile ?? null,
     planVersions: planVersions ?? [],
+    guestMessages: guestMessages ?? [],
   };
 });
