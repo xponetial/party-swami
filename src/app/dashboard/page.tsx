@@ -405,6 +405,26 @@ export default async function DashboardPage() {
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Cache reuse</p>
               <p className="mt-2 text-2xl font-semibold text-ink">{usage.cacheReuseRate}%</p>
             </div>
+            <div className="rounded-3xl border border-border bg-white/75 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Plan tier</p>
+              <p className="mt-2 text-2xl font-semibold capitalize text-ink">{usage.planTier}</p>
+            </div>
+            <div className="rounded-3xl border border-border bg-white/75 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Requests left</p>
+              <p className="mt-2 text-2xl font-semibold text-ink">{usage.remaining.requests}</p>
+            </div>
+            <div className="rounded-3xl border border-border bg-white/75 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Budget left</p>
+              <p className="mt-2 text-2xl font-semibold text-ink">
+                {formatCost(usage.remaining.costUsd)}
+              </p>
+            </div>
+            <div className="rounded-3xl border border-border bg-white/75 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Monthly cap</p>
+              <p className="mt-2 text-2xl font-semibold text-ink">
+                {usage.limits.monthlyRequests}
+              </p>
+            </div>
           </div>
 
           <div className="space-y-3">

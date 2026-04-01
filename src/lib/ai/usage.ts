@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { getLimitsForTier, type PlanTier } from "@/lib/ai/limits";
 
 export type MonthlyUsageSummary = {
   usageMonth: string;
@@ -28,7 +29,12 @@ function currentMonthBucket() {
 export async function getAiUsageForUser(supabase: SupabaseClient, userId: string) {
   const usageMonth = currentMonthBucket();
 
-  const [{ data: monthly }, { data: recentGenerations = [] }] = await Promise.all([
+  const [{ data: profile }, { data: monthly }, { data: recentGenerations = [] }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("plan_tier")
+      .eq("id", userId)
+      .maybeSingle<{ plan_tier: PlanTier | null }>(),
     supabase
       .from("user_usage_monthly")
       .select(
@@ -62,6 +68,9 @@ export async function getAiUsageForUser(supabase: SupabaseClient, userId: string
       >(),
   ]);
 
+  const planTier = profile?.plan_tier ?? "free";
+  const limits = getLimitsForTier(planTier);
+
   const summary: MonthlyUsageSummary = {
     usageMonth,
     requestsCount: monthly?.requests_count ?? 0,
@@ -86,7 +95,13 @@ export async function getAiUsageForUser(supabase: SupabaseClient, userId: string
   }));
 
   return {
+    planTier,
+    limits,
     monthly: summary,
+    remaining: {
+      requests: Math.max(0, limits.monthlyRequests - summary.requestsCount),
+      costUsd: Math.max(0, Number((limits.monthlyCostUsd - summary.estimatedCostUsd).toFixed(6))),
+    },
     cacheReuseRate,
     recent,
   };

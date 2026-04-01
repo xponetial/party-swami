@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
-type PlanTier = "free" | "pro" | "admin";
+export type PlanTier = "free" | "pro" | "admin";
 type GenerationType = "party_plan" | "plan_revision" | "invitation_text" | "shopping_list_transform";
 
 type LimitDecision = {
@@ -8,7 +8,7 @@ type LimitDecision = {
   message?: string;
 };
 
-const DEFAULT_LIMITS: Record<
+export const DEFAULT_LIMITS: Record<
   PlanTier,
   { monthlyRequests: number; monthlyCostUsd: number; planRequestsPerEvent: number }
 > = {
@@ -22,6 +22,10 @@ function monthBucket() {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
     .toISOString()
     .slice(0, 10);
+}
+
+export function getLimitsForTier(tier: PlanTier) {
+  return DEFAULT_LIMITS[tier];
 }
 
 export async function enforceAiLimits(

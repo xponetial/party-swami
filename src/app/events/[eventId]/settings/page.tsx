@@ -1,10 +1,12 @@
 import { updateProfileAction } from "@/app/events/actions";
+import { getAiUsageForUser } from "@/lib/ai/usage";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { getEventContext } from "@/lib/events";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function EventSettingsPage({
   params,
@@ -13,6 +15,8 @@ export default async function EventSettingsPage({
 }) {
   const { eventId } = await params;
   const { event, profile, plan, planVersions } = await getEventContext(eventId);
+  const supabase = await createSupabaseServerClient();
+  const usage = profile?.id ? await getAiUsageForUser(supabase, profile.id) : null;
 
   return (
     <AppShell
@@ -91,6 +95,18 @@ export default async function EventSettingsPage({
             {plan?.summary ??
               "Generate or revise a plan to start tracking model, prompt version, and revision metadata here."}
           </div>
+          {usage ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-3xl border border-border bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Tier</p>
+                <p className="mt-2 text-lg font-semibold capitalize text-ink">{usage.planTier}</p>
+              </div>
+              <div className="rounded-3xl border border-border bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Requests left</p>
+                <p className="mt-2 text-lg font-semibold text-ink">{usage.remaining.requests}</p>
+              </div>
+            </div>
+          ) : null}
         </Card>
 
         <Card className="bg-[#fffaf2]">
