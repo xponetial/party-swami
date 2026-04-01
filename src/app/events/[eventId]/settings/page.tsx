@@ -1,4 +1,4 @@
-import { updateProfileAction } from "@/app/events/actions";
+import { restorePlanVersionAction, updateProfileAction } from "@/app/events/actions";
 import { getAiUsageForUser } from "@/lib/ai/usage";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card } from "@/components/ui/card";
@@ -10,10 +10,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function EventSettingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ eventId: string }>;
+  searchParams?: Promise<{ restoreError?: string; restoreSuccess?: string }>;
 }) {
   const { eventId } = await params;
+  const resolvedSearchParams = (await searchParams) ?? {};
   const { event, profile, plan, planVersions } = await getEventContext(eventId);
   const supabase = await createSupabaseServerClient();
   const usage = profile?.id ? await getAiUsageForUser(supabase, profile.id) : null;
@@ -111,6 +114,16 @@ export default async function EventSettingsPage({
 
         <Card className="bg-[#fffaf2]">
           <h2 className="text-xl font-semibold text-ink">Recent plan revisions</h2>
+          {resolvedSearchParams.restoreSuccess ? (
+            <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              Restored saved plan version {resolvedSearchParams.restoreSuccess}. The event workspace now reflects that snapshot.
+            </div>
+          ) : null}
+          {resolvedSearchParams.restoreError ? (
+            <div className="mt-4 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              {resolvedSearchParams.restoreError}
+            </div>
+          ) : null}
           <div className="mt-5 grid gap-3">
             {planVersions.length ? (
               planVersions.map((version) => (
@@ -124,6 +137,13 @@ export default async function EventSettingsPage({
                   <p className="mt-2 text-sm leading-6 text-ink-muted">
                     {version.change_reason ?? "Saved snapshot before a new AI-generated plan update."}
                   </p>
+                  <form action={restorePlanVersionAction} className="mt-4">
+                    <input type="hidden" name="eventId" value={eventId} />
+                    <input type="hidden" name="versionId" value={version.id} />
+                    <SubmitButton pendingLabel={`Restoring version ${version.version_num}...`} variant="secondary">
+                      Restore this version
+                    </SubmitButton>
+                  </form>
                 </div>
               ))
             ) : (

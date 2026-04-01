@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import {
   type AiGenerationType,
   type GeneratedPartyPlan,
@@ -56,8 +57,51 @@ type CachedPlanRecord = {
 };
 
 type PlanVersionRecord = {
+  id?: string;
+  plan_json?: unknown;
+  change_reason?: string | null;
+  created_at?: string;
   version_num: number;
 };
+
+const storedPlanSnapshotSchema = z.object({
+  theme: z.string().nullable().optional(),
+  inviteCopy: z.string().default(""),
+  menu: z.array(z.string()).default([]),
+  shoppingCategories: z
+    .array(
+      z.object({
+        category: z.string(),
+        items: z.array(
+          z.object({
+            name: z.string(),
+            quantity: z.number().int().min(1),
+          }),
+        ),
+      }),
+    )
+    .default([]),
+  tasks: z
+    .array(
+      z.object({
+        title: z.string(),
+        due_label: z.string().default(""),
+        phase: z.string().default(""),
+      }),
+    )
+    .default([]),
+  timeline: z
+    .array(
+      z.object({
+        label: z.string(),
+        detail: z.string(),
+        sort_order: z.number().int().optional(),
+      }),
+    )
+    .default([]),
+});
+
+type StoredPlanSnapshot = z.infer<typeof storedPlanSnapshotSchema>;
 
 function buildFingerprint(input: Record<string, unknown>) {
   const canonical = JSON.stringify(input, Object.keys(input).sort());
@@ -362,6 +406,40 @@ async function syncShoppingItems(
   };
 }
 
+async function replaceShoppingItems(
+  supabase: SupabaseClient,
+  shoppingListId: string,
+  items: Array<{
+    category: string;
+    name: string;
+    quantity: number;
+    estimated_price: number | null;
+    external_url: string | null;
+  }>,
+) {
+  await supabase.from("shopping_items").delete().eq("shopping_list_id", shoppingListId);
+
+  if (items.length) {
+    const { error } = await supabase.from("shopping_items").insert(
+      items.map((item, index) => ({
+        shopping_list_id: shoppingListId,
+        category: item.category,
+        name: item.name,
+        quantity: item.quantity,
+        estimated_price: item.estimated_price,
+        external_url: item.external_url,
+        sort_order: index + 1,
+      })),
+    );
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  await supabase.from("shopping_lists").update({ estimated_total: 0 }).eq("id", shoppingListId);
+}
+
 async function syncTasks(
   supabase: SupabaseClient,
   eventId: string,
@@ -393,6 +471,31 @@ async function syncTasks(
   }
 
   return missingTasks.length;
+}
+
+async function replaceTasks(
+  supabase: SupabaseClient,
+  eventId: string,
+  tasks: Array<{ title: string; due_label: string; phase: string }>,
+) {
+  await supabase.from("tasks").delete().eq("event_id", eventId);
+
+  if (!tasks.length) {
+    return;
+  }
+
+  const { error } = await supabase.from("tasks").insert(
+    tasks.map((task) => ({
+      event_id: eventId,
+      title: task.title,
+      due_label: task.due_label || null,
+      phase: task.phase || null,
+    })),
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 async function syncTimeline(
@@ -428,6 +531,49 @@ async function syncTimeline(
   }
 
   return missingItems.length;
+}
+
+async function replaceTimeline(
+  supabase: SupabaseClient,
+  eventId: string,
+  timeline: Array<{ label: string; detail: string; sort_order: number }>,
+) {
+  await supabase.from("timeline_items").delete().eq("event_id", eventId);
+
+  if (!timeline.length) {
+    return;
+  }
+
+  const { error } = await supabase.from("timeline_items").insert(
+    timeline.map((item, index) => ({
+      event_id: eventId,
+      label: item.label,
+      detail: item.detail,
+      sort_order: item.sort_order || index + 1,
+    })),
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+function normalizeStoredPlanSnapshot(value: unknown): StoredPlanSnapshot {
+  return storedPlanSnapshotSchema.parse(value);
+}
+
+function buildShoppingItemsFromCategories(
+  categories: StoredPlanSnapshot["shoppingCategories"],
+) {
+  return categories.flatMap((category) =>
+    category.items.map((item) => ({
+      category: category.category,
+      name: item.name,
+      quantity: item.quantity,
+      estimated_price: null,
+      external_url: null,
+    })),
+  );
 }
 
 export async function generatePlanForEvent(
@@ -698,6 +844,109 @@ export async function revisePlanForEvent(
       estimatedTotal: shoppingSummary.estimatedTotal,
       cacheHit: false,
     },
+  };
+}
+
+export async function restorePlanVersionForEvent(
+  supabase: SupabaseClient,
+  eventId: string,
+  versionId: string,
+) {
+  const event = await loadEventSeed(supabase, eventId);
+  const currentPlanRecord = await getCurrentPlanRecord(supabase, eventId);
+
+  if (!currentPlanRecord) {
+    throw new Error("No current plan exists to restore.");
+  }
+
+  const { data: versionRecord, error: versionError } = await supabase
+    .from("plan_versions")
+    .select("id, version_num, change_reason, created_at, plan_json")
+    .eq("id", versionId)
+    .eq("plan_id", currentPlanRecord.id)
+    .maybeSingle<PlanVersionRecord>();
+
+  if (versionError || !versionRecord?.plan_json) {
+    throw new Error(versionError?.message ?? "Saved plan version not found.");
+  }
+
+  const snapshot = normalizeStoredPlanSnapshot(versionRecord.plan_json);
+  const { data: latestVersion } = await supabase
+    .from("plan_versions")
+    .select("version_num")
+    .eq("plan_id", currentPlanRecord.id)
+    .order("version_num", { ascending: false })
+    .limit(1)
+    .maybeSingle<PlanVersionRecord>();
+
+  const currentSnapshot = normalizeStoredPlanSnapshot({
+    theme: currentPlanRecord.theme ?? getThemeFromEvent(event),
+    inviteCopy: currentPlanRecord.invite_copy ?? "",
+    menu: currentPlanRecord.menu ?? [],
+    shoppingCategories: currentPlanRecord.shopping_categories ?? [],
+    tasks: currentPlanRecord.tasks ?? [],
+    timeline: currentPlanRecord.timeline ?? [],
+  });
+
+  await supabase.from("plan_versions").insert({
+    plan_id: currentPlanRecord.id,
+    version_num: (latestVersion?.version_num ?? 0) + 1,
+    change_reason: `Restore checkpoint before reverting to version ${versionRecord.version_num}`,
+    plan_json: currentSnapshot,
+  });
+
+  await ensureInvite(supabase, eventId, snapshot.inviteCopy);
+
+  const shoppingList = await ensureShoppingList(supabase, eventId);
+  const restoredItems = buildShoppingItemsFromCategories(snapshot.shoppingCategories);
+
+  await Promise.all([
+    replaceShoppingItems(supabase, shoppingList.id, restoredItems),
+    replaceTasks(supabase, eventId, snapshot.tasks),
+    replaceTimeline(
+      supabase,
+      eventId,
+      snapshot.timeline.map((item, index) => ({
+        label: item.label,
+        detail: item.detail,
+        sort_order: item.sort_order ?? index + 1,
+      })),
+    ),
+  ]);
+
+  const restoredAt = new Date().toISOString();
+  const summary = `Restored plan version ${versionRecord.version_num} from ${new Date(
+    versionRecord.created_at ?? restoredAt,
+  ).toLocaleString("en-US")}.`;
+
+  const { error } = await supabase
+    .from("party_plans")
+    .update({
+      theme: snapshot.theme ?? getThemeFromEvent(event),
+      invite_copy: snapshot.inviteCopy,
+      menu: snapshot.menu,
+      shopping_categories: snapshot.shoppingCategories,
+      tasks: snapshot.tasks,
+      timeline: snapshot.timeline.map(({ label, detail }) => ({ label, detail })),
+      raw_response: {
+        provider: "plan-version-restore",
+        generatedAt: restoredAt,
+        summary,
+        restoredFromVersion: versionRecord.version_num,
+        sourceChangeReason: versionRecord.change_reason ?? null,
+      },
+      generated_at: restoredAt,
+      status: "ready",
+      summary,
+    })
+    .eq("id", currentPlanRecord.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    restoredVersion: versionRecord.version_num,
   };
 }
 

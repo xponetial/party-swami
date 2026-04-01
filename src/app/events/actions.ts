@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { restorePlanVersionForEvent } from "@/lib/ai/workflows";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const blankToNullNumber = z.preprocess((value) => {
@@ -107,6 +108,11 @@ const toggleTaskSchema = z.object({
 const profileSchema = z.object({
   eventId: z.string().uuid(),
   fullName: z.string().trim().min(2),
+});
+
+const restorePlanVersionSchema = z.object({
+  eventId: z.string().uuid(),
+  versionId: z.string().uuid(),
 });
 
 function parseDateTime(date?: string, time?: string) {
@@ -559,4 +565,45 @@ export async function updateProfileAction(formData: FormData) {
     .eq("id", user.id);
 
   revalidatePath(`/events/${parsed.data.eventId}/settings`);
+}
+
+export async function restorePlanVersionAction(formData: FormData) {
+  const { supabase } = await requireUser();
+  const parsed = restorePlanVersionSchema.safeParse({
+    eventId: formData.get("eventId"),
+    versionId: formData.get("versionId"),
+  });
+
+  if (!parsed.success) {
+    redirect(
+      `/events/${formData.get("eventId")}/settings?restoreError=${encodeURIComponent("Invalid plan version.")}`,
+    );
+  }
+
+  try {
+    const result = await restorePlanVersionForEvent(
+      supabase,
+      parsed.data.eventId,
+      parsed.data.versionId,
+    );
+
+    [
+      `/events/${parsed.data.eventId}`,
+      `/events/${parsed.data.eventId}/invite`,
+      `/events/${parsed.data.eventId}/shopping`,
+      `/events/${parsed.data.eventId}/timeline`,
+      `/events/${parsed.data.eventId}/settings`,
+      "/dashboard",
+    ].forEach((path) => revalidatePath(path));
+
+    redirect(
+      `/events/${parsed.data.eventId}/settings?restoreSuccess=${result.restoredVersion}`,
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to restore that saved plan version.";
+    redirect(
+      `/events/${parsed.data.eventId}/settings?restoreError=${encodeURIComponent(message)}`,
+    );
+  }
 }
