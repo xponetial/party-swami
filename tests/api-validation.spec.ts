@@ -56,3 +56,13 @@ test("AI usage API requires auth", async ({ request }) => {
   expect(body.ok).toBe(false);
   expect(body.message).toMatch(/signed in/i);
 });
+
+test("event plan API requires auth", async ({ request }) => {
+  const response = await request.get("/api/events/74bde7c8-48a2-43b0-95e7-8c69181b7a50/plan");
+
+  expect(response.status()).toBe(401);
+
+  const body = await response.json();
+  expect(body.ok).toBe(false);
+  expect(body.message).toMatch(/signed in/i);
+});
