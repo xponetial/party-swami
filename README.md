@@ -31,6 +31,15 @@ OPENAI_MODEL=gpt-5
 
 If `OPENAI_API_KEY` is missing, PartyGenie falls back to the local structured planner so the app still works during development.
 
+For invite email delivery, add:
+
+```bash
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL="PartyGenie <onboarding@resend.dev>"
+```
+
+For production sending, replace `onboarding@resend.dev` with a verified domain sender in Resend.
+
 3. Start the development server:
 
 ```bash

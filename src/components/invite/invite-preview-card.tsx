@@ -1,6 +1,7 @@
-import { markInviteSentAction, saveInviteAction } from "@/app/events/actions";
+import { saveInviteAction } from "@/app/events/actions";
 import { type EventDetails, type GuestDetails, type InviteDetails } from "@/lib/events";
 import { AiGenerateButton } from "@/components/ai/ai-generate-button";
+import { InviteSendButton } from "@/components/invite/invite-send-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -129,15 +130,7 @@ export function InvitePreviewCard({
             </div>
           )}
         </div>
-        {invite ? (
-          <form action={markInviteSentAction} className="mt-5">
-            <input type="hidden" name="eventId" value={event.id} />
-            <input type="hidden" name="inviteId" value={invite.id} />
-            <SubmitButton className="w-full" pendingLabel="Marking sent...">
-              Mark invite as sent
-            </SubmitButton>
-          </form>
-        ) : null}
+        {invite ? <div className="mt-5"><InviteSendButton eventId={event.id} /></div> : null}
       </Card>
     </div>
   );
