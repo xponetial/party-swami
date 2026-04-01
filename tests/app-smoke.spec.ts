@@ -18,6 +18,18 @@ test("login and signup pages render", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /welcome to partygenie/i })).toBeVisible();
 });
 
+test("pricing page reflects live tier limits", async ({ page }) => {
+  await page.goto("/pricing");
+
+  await expect(page.getByRole("heading", { name: /real plan tiers for the partygenie beta/i })).toBeVisible();
+  const freeCard = page.getByTestId("pricing-card-free");
+  const proCard = page.getByTestId("pricing-card-pro");
+
+  await expect(freeCard.getByText(/monthly ai requests/i).first()).toBeVisible();
+  await expect(freeCard.getByText("50", { exact: true })).toBeVisible();
+  await expect(proCard.getByText("500", { exact: true })).toBeVisible();
+});
+
 test("dashboard redirects unauthenticated users to login", async ({ page }) => {
   await page.goto("/dashboard");
 
