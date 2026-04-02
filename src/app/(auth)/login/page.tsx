@@ -23,7 +23,7 @@ export default async function LoginPage({
       }
     >
       {message ? (
-        <p className="mb-4 rounded-2xl border border-[#cfe1da] bg-[#eff8f4] px-4 py-3 text-sm text-accent">
+        <p className="mb-4 rounded-2xl border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">
           {message}
         </p>
       ) : null}

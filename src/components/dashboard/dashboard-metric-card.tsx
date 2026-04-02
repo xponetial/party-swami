@@ -10,7 +10,7 @@ type DashboardMetricCardProps = {
 
 export function DashboardMetricCard({ label, value, detail, icon: Icon }: DashboardMetricCardProps) {
   return (
-    <Card className="bg-white/75">
+    <Card className="bg-canvas">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">{label}</p>

@@ -250,7 +250,7 @@ export function EventFormCard({
           </div>
 
           {error ? (
-            <p className="mt-4 rounded-2xl border border-[#e7c2b7] bg-[#fff5f1] px-4 py-3 text-sm text-brand">
+            <p className="mt-4 rounded-2xl border border-brand/20 bg-brand/10 px-4 py-3 text-sm text-brand">
               {error}
             </p>
           ) : null}
@@ -281,7 +281,7 @@ export function EventFormCard({
       </Card>
 
       <div className="space-y-4">
-        <Card className="bg-[#fffaf2]">
+        <Card className="bg-[rgba(244,247,255,0.9)]">
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Live invitation direction</p>
           <h3 className="mt-3 text-2xl font-semibold text-ink">
             Your event setup now starts from the card family
@@ -323,7 +323,7 @@ export function EventFormCard({
             ].map((item) => (
               <div
                 key={item.title}
-                className="rounded-3xl border border-border bg-[#fffaf2] p-4"
+                className="rounded-3xl border border-border bg-[rgba(237,243,255,0.92)] p-4"
               >
                 <div className="flex items-center gap-3">
                   <item.icon className="size-4 text-brand" />

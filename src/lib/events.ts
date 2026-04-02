@@ -8,11 +8,12 @@ export type EventDetails = {
   title: string;
   event_type: string;
   event_date: string | null;
+  completed_at: string | null;
   location: string | null;
   guest_target: number | null;
   budget: number | null;
   theme: string | null;
-  status: "draft" | "planning" | "ready";
+  status: "draft" | "planning" | "ready" | "completed";
 };
 
 export type InviteDetails = {
@@ -94,12 +95,15 @@ export type PlanVersionDetails = {
 export type GuestMessageDetails = {
   id: string;
   guest_id: string | null;
+  message_type: "invite" | "reminder" | "follow_up" | "note";
   subject: string | null;
   body: string | null;
   sent_at: string | null;
   metadata: {
     resend_id?: string;
     rsvp_url?: string;
+    send_mode?: string;
+    delivery_type?: string;
   } | null;
   guest?: {
     name: string;
@@ -113,7 +117,7 @@ export const getEventContext = cache(async (eventId: string) => {
   const [{ data: event, error: eventError }, { data: profile }] = await Promise.all([
     supabase
       .from("events")
-      .select("id, title, event_type, event_date, location, guest_target, budget, theme, status")
+      .select("id, title, event_type, event_date, completed_at, location, guest_target, budget, theme, status")
       .eq("id", eventId)
       .single<EventDetails>(),
     supabase
@@ -170,7 +174,7 @@ export const getEventContext = cache(async (eventId: string) => {
       .returns<TimelineItemDetails[]>(),
     supabase
       .from("guest_messages")
-      .select("id, guest_id, subject, body, sent_at, metadata, guest:guests(name, email)")
+      .select("id, guest_id, message_type, subject, body, sent_at, metadata, guest:guests(name, email)")
       .eq("event_id", eventId)
       .order("sent_at", { ascending: false })
       .limit(8)

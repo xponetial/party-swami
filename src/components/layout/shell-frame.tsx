@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ReactNode } from "react";
-import { CalendarHeart, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { BrandLockup } from "@/components/layout/brand-lockup";
 
 type ShellFrameProps = {
   children: ReactNode;
@@ -12,21 +13,18 @@ type ShellFrameProps = {
 export function ShellFrame({ children, eyebrow, title, description }: ShellFrameProps) {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-      <header className="mb-10 flex flex-col gap-6 rounded-[2rem] border border-white/60 bg-surface px-6 py-5 shadow-party backdrop-blur xl:flex-row xl:items-center xl:justify-between">
+      <header className="mb-10 flex flex-col gap-6 rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(245,223,255,0.34)_0%,rgba(237,243,255,0.94)_56%,rgba(228,239,255,0.98)_100%)] px-6 py-5 shadow-party backdrop-blur xl:flex-row xl:items-center xl:justify-between">
         <div className="space-y-3">
-          <Link href="/" className="inline-flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-brand text-white shadow-lg">
-              <CalendarHeart className="size-5" />
-            </span>
-            <span>
-              <span className="block text-lg font-semibold tracking-tight text-ink">PartyGenie</span>
-              <span className="block text-sm text-ink-muted">AI-powered event operating system</span>
-            </span>
-          </Link>
+          <BrandLockup
+            imageWidth={190}
+            subtitle="AI-powered event operating system"
+            className="max-w-[280px]"
+            priority
+          />
           {(eyebrow || title || description) && (
             <div className="space-y-2">
               {eyebrow ? (
-                <p className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+                <p className="inline-flex items-center gap-2 rounded-full bg-white/60 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                   <Sparkles className="size-3.5 text-brand" />
                   {eyebrow}
                 </p>
@@ -47,7 +45,7 @@ export function ShellFrame({ children, eyebrow, title, description }: ShellFrame
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-full border border-border bg-white/70 px-4 py-2 text-ink-muted transition hover:border-brand/40 hover:text-ink"
+              className="rounded-full border border-white/70 bg-white/58 px-4 py-2 text-ink-muted transition hover:border-brand/40 hover:text-ink"
             >
               {item.label}
             </Link>

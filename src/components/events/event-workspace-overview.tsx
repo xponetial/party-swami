@@ -73,7 +73,7 @@ export function EventWorkspaceOverview({
                   "Your invite draft will appear here as soon as you save the messaging."}
               </p>
             </div>
-            <div className="rounded-[1.75rem] bg-[#fffaf2] p-5">
+            <div className="rounded-[1.75rem] bg-[rgba(244,247,255,0.9)] p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Recommended next actions</p>
               <div className="mt-4 space-y-3">
                 {[
@@ -97,7 +97,7 @@ export function EventWorkspaceOverview({
           </div>
         </Card>
 
-        <Card className="bg-[#fffaf2]">
+        <Card className="bg-[rgba(244,247,255,0.9)]">
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Quick links</p>
           <div className="mt-4 grid gap-3">
             {[

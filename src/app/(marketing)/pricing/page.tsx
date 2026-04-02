@@ -66,7 +66,7 @@ export default function PricingPage() {
       description="These tiers now mirror the AI request, budget, and per-event planning limits enforced inside the product so hosts know exactly what kind of runway they have."
     >
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="bg-gradient-to-br from-white via-[#fff8ee] to-[#f6fbff]">
+        <Card className="bg-gradient-to-br from-white via-[rgba(244,247,255,0.96)] to-[rgba(229,236,255,0.96)]">
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-ink">
               <Sparkles className="size-3.5 text-brand" />
@@ -131,7 +131,7 @@ export default function PricingPage() {
           </div>
         </Card>
 
-        <Card className="bg-[#fffaf2]">
+        <Card className="bg-[rgba(244,247,255,0.9)]">
           <h2 className="text-xl font-semibold text-ink">What changes between tiers</h2>
           <div className="mt-5 grid gap-3">
             {[

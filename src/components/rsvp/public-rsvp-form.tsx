@@ -99,13 +99,13 @@ export function PublicRsvpForm({
       </div>
 
       {successMessage ? (
-        <p className="rounded-2xl border border-[#cfe1da] bg-[#eff8f4] px-4 py-3 text-sm text-accent">
+        <p className="rounded-2xl border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">
           {successMessage}
         </p>
       ) : null}
 
       {state.error ? (
-        <p className="rounded-2xl border border-[#e7c2b7] bg-[#fff5f1] px-4 py-3 text-sm text-brand">
+        <p className="rounded-2xl border border-brand/20 bg-brand/10 px-4 py-3 text-sm text-brand">
           {state.error}
         </p>
       ) : null}

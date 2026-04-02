@@ -6,6 +6,7 @@ import { z } from "zod";
 import { restorePlanVersionForEvent } from "@/lib/ai/workflows";
 import { inviteDesignSchema } from "@/lib/invite-design";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
 const blankToNullNumber = z.preprocess((value) => {
   if (value === "" || value === null || value === undefined) {
@@ -52,6 +53,11 @@ const deleteGuestSchema = z.object({
 
 const deleteEventSchema = z.object({
   eventId: z.string().uuid(),
+});
+
+const updateEventStatusSchema = z.object({
+  eventId: z.string().uuid(),
+  nextStatus: z.enum(["draft", "planning", "ready", "completed"]),
 });
 
 const inviteSchema = z.object({
@@ -255,6 +261,29 @@ export async function createEventAction(formData: FormData) {
     supabase.from("timeline_items").insert(timeline.map((item) => ({ event_id: event.id, ...item }))),
   ]);
 
+  await Promise.all([
+    trackAnalyticsEvent(supabase, {
+      eventName: "event_created",
+      userId: user.id,
+      eventId: event.id,
+      metadata: {
+        event_type: parsed.data.eventType,
+        has_theme: Boolean(parsed.data.theme?.trim()),
+        guest_target: parsed.data.guestTarget ?? null,
+        budget: parsed.data.budget ?? null,
+      },
+    }),
+    createAuditLog(supabase, {
+      action: "event_created",
+      userId: user.id,
+      eventId: event.id,
+      metadata: {
+        event_type: parsed.data.eventType,
+        location: parsed.data.location?.trim() || null,
+      },
+    }),
+  ]);
+
   revalidatePath("/dashboard");
   redirect(`/events/${event.id}`);
 }
@@ -317,6 +346,42 @@ export async function deleteEventAction(formData: FormData) {
     .eq("owner_id", user.id);
 
   revalidatePath("/dashboard");
+}
+
+export async function updateEventStatusAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = updateEventStatusSchema.safeParse({
+    eventId: formData.get("eventId"),
+    nextStatus: formData.get("nextStatus"),
+  });
+
+  if (!parsed.success) return;
+
+  const completedAt =
+    parsed.data.nextStatus === "completed" ? new Date().toISOString() : null;
+
+  await supabase
+    .from("events")
+    .update({
+      status: parsed.data.nextStatus,
+      completed_at: completedAt,
+    })
+    .eq("id", parsed.data.eventId)
+    .eq("owner_id", user.id);
+
+  await createAuditLog(supabase, {
+    action:
+      parsed.data.nextStatus === "completed" ? "event_marked_completed" : "event_reopened",
+    userId: user.id,
+    eventId: parsed.data.eventId,
+    metadata: {
+      next_status: parsed.data.nextStatus,
+      completed_at: completedAt,
+    },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/events/${parsed.data.eventId}`);
 }
 
 export async function markInviteSentAction(formData: FormData) {
@@ -533,7 +598,7 @@ export async function addTaskAction(formData: FormData) {
 }
 
 export async function updateTaskAction(formData: FormData) {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   const parsed = updateTaskSchema.safeParse({
     eventId: formData.get("eventId"),
     taskId: formData.get("taskId"),
@@ -555,6 +620,29 @@ export async function updateTaskAction(formData: FormData) {
       completed_at: parsed.data.status === "completed" ? new Date().toISOString() : null,
     })
     .eq("id", parsed.data.taskId);
+
+  if (parsed.data.status === "completed") {
+    await Promise.all([
+      trackAnalyticsEvent(supabase, {
+        eventName: "task_completed",
+        userId: user.id,
+        eventId: parsed.data.eventId,
+        metadata: {
+          task_id: parsed.data.taskId,
+          completion_source: "edit",
+        },
+      }),
+      createAuditLog(supabase, {
+        action: "task_completed",
+        userId: user.id,
+        eventId: parsed.data.eventId,
+        metadata: {
+          task_id: parsed.data.taskId,
+          completion_source: "edit",
+        },
+      }),
+    ]);
+  }
 
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath(`/events/${parsed.data.eventId}/timeline`);
@@ -578,7 +666,7 @@ export async function deleteTaskAction(formData: FormData) {
 }
 
 export async function toggleTaskStatusAction(formData: FormData) {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   const parsed = toggleTaskSchema.safeParse({
     eventId: formData.get("eventId"),
     taskId: formData.get("taskId"),
@@ -594,6 +682,29 @@ export async function toggleTaskStatusAction(formData: FormData) {
       completed_at: parsed.data.nextStatus === "completed" ? new Date().toISOString() : null,
     })
     .eq("id", parsed.data.taskId);
+
+  if (parsed.data.nextStatus === "completed") {
+    await Promise.all([
+      trackAnalyticsEvent(supabase, {
+        eventName: "task_completed",
+        userId: user.id,
+        eventId: parsed.data.eventId,
+        metadata: {
+          task_id: parsed.data.taskId,
+          completion_source: "toggle",
+        },
+      }),
+      createAuditLog(supabase, {
+        action: "task_completed",
+        userId: user.id,
+        eventId: parsed.data.eventId,
+        metadata: {
+          task_id: parsed.data.taskId,
+          completion_source: "toggle",
+        },
+      }),
+    ]);
+  }
 
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath(`/events/${parsed.data.eventId}/timeline`);

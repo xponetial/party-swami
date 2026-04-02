@@ -120,7 +120,7 @@ export default async function PublicRsvpPage({
           </div>
         </Card>
 
-        <Card className="bg-[#fffaf2]">
+        <Card className="bg-[rgba(244,247,255,0.9)]">
           {guestRecord ? (
             <>
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Guest RSVP</p>
@@ -129,7 +129,7 @@ export default async function PublicRsvpPage({
                 Update your RSVP below. Your current status is <span className="font-medium text-ink">{guestRecord.status}</span>.
               </p>
               {wasSaved && savedStatusLabel && savedStatusDetail ? (
-                <div className="mt-5 rounded-[1.75rem] border border-[#cfe1da] bg-[#eff8f4] p-5">
+                <div className="mt-5 rounded-[1.75rem] border border-accent/20 bg-accent-soft p-5">
                   <p className="text-xs uppercase tracking-[0.2em] text-accent">Saved</p>
                   <h4 className="mt-2 text-xl font-semibold text-ink">{savedStatusLabel}</h4>
                   <p className="mt-2 text-sm leading-6 text-ink-muted">{savedStatusDetail}</p>

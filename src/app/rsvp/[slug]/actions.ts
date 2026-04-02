@@ -1,7 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { checkPublicRsvpRateLimit } from "@/lib/security/public-rate-limits";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const publicRsvpSchema = z.object({
@@ -20,6 +22,15 @@ export async function submitPublicRsvpAction(
   _prevState: PublicRsvpState,
   formData: FormData,
 ): Promise<PublicRsvpState> {
+  const headerStore = await headers();
+  const rateLimit = checkPublicRsvpRateLimit(headerStore, formData.get("slug")?.toString());
+
+  if (!rateLimit.allowed) {
+    return {
+      error: "Too many RSVP attempts. Please wait a few minutes and try again.",
+    };
+  }
+
   const parsed = publicRsvpSchema.safeParse({
     slug: formData.get("slug"),
     guestToken: formData.get("guestToken"),

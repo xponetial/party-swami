@@ -74,7 +74,10 @@ export function InviteCardCanvas({
       style={{ maxWidth }}
     >
       <Image alt={alt} className="object-cover" fill sizes={`${maxWidth}px`} src={template.assetPath} />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/25" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,10,30,0.12)_0%,rgba(14,19,60,0.06)_30%,rgba(8,12,36,0.34)_100%)]" />
+      <div className="absolute inset-x-5 top-5 rounded-full border border-white/15 bg-[#080c24]/70 px-4 py-2 text-center text-[0.58rem] font-semibold uppercase tracking-[0.34em] text-white/80 backdrop-blur-md">
+        Party Genie
+      </div>
 
       <div
         className={`absolute left-1/2 w-[76%] -translate-x-1/2 -translate-y-1/2 text-center ${getPosition(
@@ -87,7 +90,7 @@ export function InviteCardCanvas({
       </div>
 
       <div
-        className={`absolute left-1/2 top-[60%] w-[84%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[1.6rem] border border-white/20 bg-black/24 px-6 py-6 text-center text-[0.8rem] leading-[1.28rem] backdrop-blur-[2px] ${fonts.details}`}
+        className={`absolute left-1/2 top-[60%] w-[84%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[1.6rem] border border-white/16 bg-[#080c24]/46 px-6 py-6 text-center text-[0.8rem] leading-[1.28rem] shadow-[0_18px_45px_rgba(8,12,36,0.32)] backdrop-blur-[6px] ${fonts.details}`}
         style={{ color: accents[0] }}
       >
         <p
@@ -103,7 +106,7 @@ export function InviteCardCanvas({
       </div>
 
       <div
-        className={`absolute left-1/2 w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-white/10 px-4 py-3 text-center text-[0.68rem] font-semibold uppercase backdrop-blur-sm ${getPosition(
+        className={`absolute left-1/2 w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/24 bg-[linear-gradient(135deg,rgba(37,146,255,0.26),rgba(139,70,255,0.24))] px-4 py-3 text-center text-[0.68rem] font-semibold uppercase shadow-[0_14px_28px_rgba(17,28,84,0.26)] backdrop-blur-sm ${getPosition(
           template.textSafeAreas.cta,
         )} ${fonts.cta}`}
         style={{ color: accents[1] }}

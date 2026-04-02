@@ -3,14 +3,66 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function InviteSendButton({ eventId }: { eventId: string }) {
-  const [pending, setPending] = useState(false);
-  const [sendMode, setSendMode] = useState<"pending_only" | "all">("pending_only");
+type InviteSendButtonProps = {
+  eventId: string;
+  inviteEnabled: boolean;
+  pendingInviteCount: number;
+  remindableGuestCount: number;
+  emailableGuestCount: number;
+};
+
+type DeliveryAction = {
+  key: string;
+  label: string;
+  pendingLabel: string;
+  description: string;
+  deliveryType: "invite" | "reminder";
+  sendMode?: "pending_only" | "all";
+  disabled: boolean;
+};
+
+export function InviteSendButton({
+  eventId,
+  inviteEnabled,
+  pendingInviteCount,
+  remindableGuestCount,
+  emailableGuestCount,
+}: InviteSendButtonProps) {
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleClick() {
-    setPending(true);
+  const actions: DeliveryAction[] = [
+    {
+      key: "invite-pending",
+      label: "Send pending invites",
+      pendingLabel: "Sending invites...",
+      description: `${pendingInviteCount} guest${pendingInviteCount === 1 ? "" : "s"} have not been contacted yet.`,
+      deliveryType: "invite",
+      sendMode: "pending_only",
+      disabled: !inviteEnabled || pendingInviteCount === 0,
+    },
+    {
+      key: "invite-all",
+      label: "Resend all invites",
+      pendingLabel: "Resending invites...",
+      description: `${emailableGuestCount} emailable guest${emailableGuestCount === 1 ? "" : "s"} can receive a fresh send.`,
+      deliveryType: "invite",
+      sendMode: "all",
+      disabled: !inviteEnabled || emailableGuestCount === 0,
+    },
+    {
+      key: "reminder-pending",
+      label: "Send RSVP reminders",
+      pendingLabel: "Sending reminders...",
+      description: `${remindableGuestCount} pending guest${remindableGuestCount === 1 ? "" : "s"} already contacted can be nudged.`,
+      deliveryType: "reminder",
+      disabled: !inviteEnabled || remindableGuestCount === 0,
+    },
+  ];
+
+  async function handleClick(action: DeliveryAction) {
+    setPendingAction(action.key);
     setMessage(null);
     setError(null);
 
@@ -20,7 +72,11 @@ export function InviteSendButton({ eventId }: { eventId: string }) {
         headers: {
           "content-type": "application/json",
         },
-        body: JSON.stringify({ eventId, sendMode }),
+        body: JSON.stringify({
+          eventId,
+          deliveryType: action.deliveryType,
+          sendMode: action.sendMode,
+        }),
       });
 
       const payload = await response.json().catch(() => null);
@@ -31,39 +87,36 @@ export function InviteSendButton({ eventId }: { eventId: string }) {
       }
 
       setMessage(
-        `${sendMode === "all" ? "Resent" : "Sent"} ${payload.summary.sentCount} invite${payload.summary.sentCount === 1 ? "" : "s"}${payload.summary.skippedCount ? `, skipped ${payload.summary.skippedCount}` : ""}.`,
+        `${payload.summary.deliveryType === "reminder" ? "Sent" : payload.summary.sendMode === "all" ? "Resent" : "Sent"} ${payload.summary.sentCount} ${payload.summary.deliveryType === "reminder" ? "reminder" : "invite"}${payload.summary.sentCount === 1 ? "" : "s"}${payload.summary.skippedCount ? `, skipped ${payload.summary.skippedCount}` : ""}.`,
       );
       window.location.reload();
     } finally {
-      setPending(false);
+      setPendingAction(null);
     }
   }
 
   return (
-    <div className="space-y-2">
-      <div className="space-y-2">
-        <label className="text-xs uppercase tracking-[0.2em] text-ink-muted" htmlFor="send-mode">
-          Send mode
-        </label>
-        <select
-          id="send-mode"
-          value={sendMode}
-          onChange={(event) => setSendMode(event.target.value as "pending_only" | "all")}
-          className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
-        >
-          <option value="pending_only">Send only to guests not yet contacted</option>
-          <option value="all">Resend to all emailable guests</option>
-        </select>
-      </div>
-      <Button className="w-full" disabled={pending} onClick={handleClick} type="button">
-        {pending
-          ? sendMode === "all"
-            ? "Resending invites..."
-            : "Sending invites..."
-          : sendMode === "all"
-            ? "Resend invite emails"
-            : "Send pending invites"}
-      </Button>
+    <div className="space-y-3">
+      {!inviteEnabled ? (
+        <p className="rounded-2xl border border-border bg-white/70 px-4 py-3 text-sm text-ink-muted">
+          Turn on the public RSVP link in the invitation generator before sending invites or reminders.
+        </p>
+      ) : null}
+      {actions.map((action) => (
+        <div key={action.key} className="rounded-2xl border border-border bg-white/70 p-4">
+          <p className="text-sm font-medium text-ink">{action.label}</p>
+          <p className="mt-1 text-sm text-ink-muted">{action.description}</p>
+          <Button
+            className="mt-3 w-full"
+            disabled={action.disabled || pendingAction !== null}
+            onClick={() => handleClick(action)}
+            type="button"
+            variant={action.deliveryType === "reminder" ? "secondary" : "primary"}
+          >
+            {pendingAction === action.key ? action.pendingLabel : action.label}
+          </Button>
+        </div>
+      ))}
       {message ? <p className="text-xs text-accent">{message}</p> : null}
       {error ? <p className="text-xs text-brand">{error}</p> : null}
     </div>

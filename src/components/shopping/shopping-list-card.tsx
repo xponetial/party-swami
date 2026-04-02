@@ -186,7 +186,7 @@ export function ShoppingListCard({
         </div>
       </Card>
 
-      <Card className="bg-[#fffaf2]">
+      <Card className="bg-[rgba(244,247,255,0.9)]">
         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Checkout summary</p>
         {shoppingList ? (
           <form action={updateShoppingSettingsAction} className="mt-4">

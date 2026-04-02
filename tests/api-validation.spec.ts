@@ -2,6 +2,9 @@ import { expect, test } from "@playwright/test";
 
 test("public RSVP API rejects invalid payloads", async ({ request }) => {
   const response = await request.post("/api/rsvp", {
+    headers: {
+      "x-forwarded-for": "198.51.100.10",
+    },
     data: {
       slug: "",
       guestToken: "",
@@ -15,6 +18,43 @@ test("public RSVP API rejects invalid payloads", async ({ request }) => {
   const body = await response.json();
   expect(body.ok).toBe(false);
   expect(typeof body.message).toBe("string");
+});
+
+test("public RSVP API rate limits repeated attempts", async ({ request }) => {
+  const headers = {
+    "x-forwarded-for": "198.51.100.44",
+  };
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const response = await request.post("/api/rsvp", {
+      headers,
+      data: {
+        slug: "party-genie-rate-limit-test",
+        guestToken: "guest-token",
+        status: "confirmed",
+        plusOneCount: 0,
+      },
+    });
+
+    expect(response.status()).toBe(400);
+  }
+
+  const limitedResponse = await request.post("/api/rsvp", {
+    headers,
+    data: {
+      slug: "party-genie-rate-limit-test",
+      guestToken: "guest-token",
+      status: "confirmed",
+      plusOneCount: 0,
+    },
+  });
+
+  expect(limitedResponse.status()).toBe(429);
+  expect(limitedResponse.headers()["retry-after"]).toBeTruthy();
+
+  const body = await limitedResponse.json();
+  expect(body.ok).toBe(false);
+  expect(body.message).toMatch(/too many rsvp attempts/i);
 });
 
 test("AI generation APIs require auth", async ({ request }) => {
@@ -49,6 +89,22 @@ test("AI generation APIs require auth", async ({ request }) => {
 
 test("AI usage API requires auth", async ({ request }) => {
   const response = await request.get("/api/usage/me");
+
+  expect(response.status()).toBe(401);
+
+  const body = await response.json();
+  expect(body.ok).toBe(false);
+  expect(body.message).toMatch(/signed in/i);
+});
+
+test("invite send API requires auth before mail configuration", async ({ request }) => {
+  const response = await request.post("/api/invites/send", {
+    data: {
+      eventId: "74bde7c8-48a2-43b0-95e7-8c69181b7a50",
+      deliveryType: "invite",
+      sendMode: "pending_only",
+    },
+  });
 
   expect(response.status()).toBe(401);
 

@@ -18,7 +18,7 @@ export function LegalPage({
   return (
     <ShellFrame eyebrow="Legal" title={title} description={intro}>
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card className="bg-[#fffaf2]">
+        <Card className="bg-[rgba(244,247,255,0.9)]">
           <h2 className="text-xl font-semibold text-ink">What this covers</h2>
           <div className="mt-5 grid gap-3">
             {sections.map((section) => (

@@ -46,7 +46,7 @@ export function SignupForm() {
 
       {state.error ? (
         <p
-          className="mt-4 rounded-2xl border border-[#e7c2b7] bg-[#fff5f1] px-4 py-3 text-sm text-brand"
+          className="mt-4 rounded-2xl border border-brand/20 bg-brand/10 px-4 py-3 text-sm text-brand"
           aria-live="polite"
         >
           {state.error}

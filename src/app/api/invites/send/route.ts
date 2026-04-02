@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { buildInviteEmailHtml, buildInviteEmailSubject } from "@/lib/email/invite-template";
+import {
+  buildInviteEmailHtml,
+  buildInviteEmailSubject,
+  buildReminderEmailHtml,
+  buildReminderEmailSubject,
+} from "@/lib/email/invite-template";
 import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
 import { getInviteFromEmail, getResendClient } from "@/lib/email/resend";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
-  sendMode: z.enum(["pending_only", "all"]).default("pending_only"),
+  deliveryType: z.enum(["invite", "reminder"]).default("invite"),
+  sendMode: z.enum(["pending_only", "all"]).optional(),
 });
 
 type GuestInviteRecord = {
@@ -17,6 +24,7 @@ type GuestInviteRecord = {
   email: string | null;
   rsvp_token: string;
   last_contacted_at: string | null;
+  status: "pending" | "confirmed" | "declined";
 };
 
 function buildBaseUrl(originHeader: string | null) {
@@ -61,6 +69,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ ok: false, message: "You must be signed in." }, { status: 401 });
+  }
+
   const resend = getResendClient();
 
   if (!resend) {
@@ -73,16 +90,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ ok: false, message: "You must be signed in." }, { status: 401 });
-  }
-
   const eventId = parsed.data.eventId;
+  const deliveryType = parsed.data.deliveryType;
+  const sendMode =
+    deliveryType === "reminder" ? "pending_rsvp" : (parsed.data.sendMode ?? "pending_only");
   const [{ data: event, error: eventError }, { data: invite }, { data: guestsData }] = await Promise.all([
     supabase
       .from("events")
@@ -102,7 +113,7 @@ export async function POST(request: Request) {
       }>(),
     supabase
       .from("guests")
-      .select("id, name, email, rsvp_token, last_contacted_at")
+      .select("id, name, email, rsvp_token, last_contacted_at, status")
       .eq("event_id", eventId)
       .returns<GuestInviteRecord[]>(),
   ]);
@@ -128,9 +139,11 @@ export async function POST(request: Request) {
 
   const emailableGuests = guests.filter((guest) => Boolean(guest.email));
   const sendableGuests =
-    parsed.data.sendMode === "all"
-      ? emailableGuests
-      : emailableGuests.filter((guest) => !guest.last_contacted_at);
+    deliveryType === "reminder"
+      ? emailableGuests.filter((guest) => guest.status === "pending" && guest.last_contacted_at)
+      : sendMode === "all"
+        ? emailableGuests
+        : emailableGuests.filter((guest) => !guest.last_contacted_at);
 
   if (!emailableGuests.length) {
     return NextResponse.json(
@@ -147,9 +160,11 @@ export async function POST(request: Request) {
       {
         ok: false,
         message:
-          parsed.data.sendMode === "all"
-            ? "There are no emailable guests for this event."
-            : "All emailable guests have already been contacted. Use resend all to send again.",
+          deliveryType === "reminder"
+            ? "There are no pending guests who have already been contacted. Send invites first or wait for new RSVP activity."
+            : sendMode === "all"
+              ? "There are no emailable guests for this event."
+              : "All emailable guests have already been contacted. Use resend all to send again.",
       },
       { status: 400 },
     );
@@ -187,8 +202,11 @@ export async function POST(request: Request) {
   const sendResults = await Promise.all(
     sendableGuests.map(async (guest) => {
       const rsvpUrl = `${baseUrl}/rsvp/${invite.public_slug}?guest=${encodeURIComponent(guest.rsvp_token)}`;
-      const subject = buildInviteEmailSubject({ eventTitle: event.title });
-      const html = buildInviteEmailHtml({
+      const subject =
+        deliveryType === "reminder"
+          ? buildReminderEmailSubject({ eventTitle: event.title })
+          : buildInviteEmailSubject({ eventTitle: event.title });
+      const emailArgs = {
         eventTitle: inviteDesign.fields.title,
         subtitle: inviteDesign.fields.subtitle,
         dateText: inviteDesign.fields.dateText,
@@ -197,7 +215,11 @@ export async function POST(request: Request) {
         cardImageSrc: inlineCardAttachment ? "cid:invite-card" : cardImageUrl,
         guestName: guest.name,
         rsvpUrl,
-      });
+      };
+      const html =
+        deliveryType === "reminder"
+          ? buildReminderEmailHtml(emailArgs)
+          : buildInviteEmailHtml(emailArgs);
 
       const { data, error } = await resend.emails.send({
         from,
@@ -238,14 +260,18 @@ export async function POST(request: Request) {
         event_id: eventId,
         guest_id: result.guest.id,
         channel: "email",
-        message_type: "invite",
-        subject: buildInviteEmailSubject({ eventTitle: event.title }),
+        message_type: deliveryType === "reminder" ? "reminder" : "invite",
+        subject:
+          deliveryType === "reminder"
+            ? buildReminderEmailSubject({ eventTitle: event.title })
+            : buildInviteEmailSubject({ eventTitle: event.title }),
         body: inviteCopy,
         sent_at: sentAt,
         metadata: {
           resend_id: result.resendId,
           rsvp_url: result.rsvpUrl,
-          send_mode: parsed.data.sendMode,
+          send_mode: sendMode,
+          delivery_type: deliveryType,
         },
       })),
     ),
@@ -257,8 +283,47 @@ export async function POST(request: Request) {
           .eq("id", result.guest.id),
       ),
     ),
-    supabase.from("invites").update({ sent_at: sentAt }).eq("id", invite.id),
+    deliveryType === "invite"
+      ? supabase.from("invites").update({ sent_at: sentAt }).eq("id", invite.id)
+      : Promise.resolve({ error: null }),
   ]);
+
+  if (deliveryType === "invite") {
+    await Promise.all([
+      trackAnalyticsEvent(supabase, {
+        eventName: "invite_sent",
+        userId: user.id,
+        eventId,
+        metadata: {
+          send_mode: sendMode,
+          sent_count: successfulSends.length,
+          failed_count: failedSends.length,
+        },
+      }),
+      createAuditLog(supabase, {
+        action: "invite_sent",
+        userId: user.id,
+        eventId,
+        metadata: {
+          invite_id: invite.id,
+          send_mode: sendMode,
+          sent_count: successfulSends.length,
+          failed_count: failedSends.length,
+        },
+      }),
+    ]);
+  } else {
+    await createAuditLog(supabase, {
+      action: "invite_reminder_sent",
+      userId: user.id,
+      eventId,
+      metadata: {
+        invite_id: invite.id,
+        sent_count: successfulSends.length,
+        failed_count: failedSends.length,
+      },
+    });
+  }
 
   return NextResponse.json({
     ok: true,
@@ -266,7 +331,8 @@ export async function POST(request: Request) {
       sentCount: successfulSends.length,
       skippedCount: guests.length - sendableGuests.length,
       failedCount: failedSends.length,
-      sendMode: parsed.data.sendMode,
+      sendMode,
+      deliveryType,
     },
   });
 }

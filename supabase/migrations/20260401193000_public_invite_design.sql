@@ -1,3 +1,5 @@
+drop function if exists public.get_public_invite_by_slug(text);
+
 create or replace function public.get_public_invite_by_slug(p_slug text)
 returns table (
   event_id uuid,

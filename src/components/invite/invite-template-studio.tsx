@@ -198,7 +198,7 @@ export function InviteTemplateStudio({
               <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Card copy</p>
               <h3 className="mt-2 text-xl font-semibold text-ink">Edit the invitation details</h3>
             </div>
-            <label className="flex items-center gap-3 rounded-2xl border border-border bg-[#fffaf2] px-4 py-3 text-sm text-ink">
+            <label className="flex items-center gap-3 rounded-2xl border border-border bg-[rgba(237,243,255,0.92)] px-4 py-3 text-sm text-ink">
               <input
                 type="checkbox"
                 name="isPublic"
@@ -215,7 +215,7 @@ export function InviteTemplateStudio({
               <Label htmlFor="card-title">Card title</Label>
               <input
                 id="card-title"
-                className="w-full rounded-2xl border border-border bg-[#fffaf2] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                className="w-full rounded-2xl border border-border bg-[rgba(237,243,255,0.92)] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
                 onChange={(eventValue) =>
                   setDesign((current) => ({
                     ...current,
@@ -229,7 +229,7 @@ export function InviteTemplateStudio({
               <Label htmlFor="card-subtitle">Eyebrow</Label>
               <input
                 id="card-subtitle"
-                className="w-full rounded-2xl border border-border bg-[#fffaf2] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                className="w-full rounded-2xl border border-border bg-[rgba(237,243,255,0.92)] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
                 onChange={(eventValue) =>
                   setDesign((current) => ({
                     ...current,
@@ -243,7 +243,7 @@ export function InviteTemplateStudio({
               <Label htmlFor="card-date">Date and time</Label>
               <input
                 id="card-date"
-                className="w-full rounded-2xl border border-border bg-[#fffaf2] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                className="w-full rounded-2xl border border-border bg-[rgba(237,243,255,0.92)] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
                 onChange={(eventValue) =>
                   setDesign((current) => ({
                     ...current,
@@ -257,7 +257,7 @@ export function InviteTemplateStudio({
               <Label htmlFor="card-location">Location</Label>
               <input
                 id="card-location"
-                className="w-full rounded-2xl border border-border bg-[#fffaf2] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                className="w-full rounded-2xl border border-border bg-[rgba(237,243,255,0.92)] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
                 onChange={(eventValue) =>
                   setDesign((current) => ({
                     ...current,
@@ -283,7 +283,7 @@ export function InviteTemplateStudio({
               </div>
               <textarea
                 id="card-message"
-                className="min-h-32 w-full rounded-[1.5rem] border border-border bg-[#fffaf2] p-4 text-sm leading-7 text-ink-muted outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                className="min-h-32 w-full rounded-[1.5rem] border border-border bg-[rgba(237,243,255,0.92)] p-4 text-sm leading-7 text-ink-muted outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
                 minLength={10}
                 onChange={(eventValue) =>
                   setDesign((current) => ({
@@ -298,7 +298,7 @@ export function InviteTemplateStudio({
               <Label htmlFor="card-cta">Call to action</Label>
               <input
                 id="card-cta"
-                className="w-full rounded-2xl border border-border bg-[#fffaf2] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                className="w-full rounded-2xl border border-border bg-[rgba(237,243,255,0.92)] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
                 onChange={(eventValue) =>
                   setDesign((current) => ({
                     ...current,
@@ -316,7 +316,7 @@ export function InviteTemplateStudio({
             </SubmitButton>
           </div>
 
-          <div className="mt-4 rounded-[1.5rem] border border-border bg-[#fffaf2] p-4">
+          <div className="mt-4 rounded-[1.5rem] border border-border bg-[rgba(244,247,255,0.9)] p-4">
             <p className="text-sm leading-6 text-ink-muted">
               Once the card looks right, move into guest management to add recipients, review RSVP
               status, and send the invite.
@@ -348,7 +348,7 @@ export function InviteTemplateStudio({
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-border bg-[#fffaf2] p-6">
+        <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
           <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Full guest message</p>
           <div className="mt-3 rounded-[1.5rem] border border-border bg-white/80 p-5">
             <p className="whitespace-pre-wrap text-sm leading-7 text-ink-muted">
@@ -357,7 +357,7 @@ export function InviteTemplateStudio({
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-border bg-[#fffaf2] p-6">
+        <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
           <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Saved behavior</p>
           <div className="mt-3 space-y-3 text-sm leading-6 text-ink-muted">
             <p>

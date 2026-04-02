@@ -62,7 +62,7 @@ export default async function EventSettingsPage({
           </div>
         </Card>
 
-        <Card className="bg-[#fffaf2]">
+        <Card className="bg-[rgba(244,247,255,0.9)]">
           <h2 className="text-xl font-semibold text-ink">Privacy and consent</h2>
           <div className="mt-5 grid gap-3">
             {[
@@ -113,15 +113,15 @@ export default async function EventSettingsPage({
           ) : null}
         </Card>
 
-        <Card className="bg-[#fffaf2]">
+        <Card className="bg-[rgba(244,247,255,0.9)]">
           <h2 className="text-xl font-semibold text-ink">Recent plan revisions</h2>
           {resolvedSearchParams.restoreSuccess ? (
-            <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            <div className="mt-4 rounded-3xl border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">
               Restored saved plan version {resolvedSearchParams.restoreSuccess}. The event workspace now reflects that snapshot.
             </div>
           ) : null}
           {resolvedSearchParams.restoreError ? (
-            <div className="mt-4 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+            <div className="mt-4 rounded-3xl border border-brand/20 bg-brand/10 px-4 py-3 text-sm text-brand">
               {resolvedSearchParams.restoreError}
             </div>
           ) : null}

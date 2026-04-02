@@ -26,6 +26,13 @@ export function GuestListCard({
   const rsvpRate = guests.length ? Math.round((respondedCount / guests.length) * 100) : 0;
   const acceptedCount = guests.filter((guest) => guest.status === "confirmed").length;
   const pendingCount = guests.filter((guest) => guest.status === "pending").length;
+  const emailableGuestCount = guests.filter((guest) => Boolean(guest.email)).length;
+  const pendingInviteCount = guests.filter(
+    (guest) => Boolean(guest.email) && !guest.last_contacted_at,
+  ).length;
+  const remindableGuestCount = guests.filter(
+    (guest) => Boolean(guest.email) && guest.status === "pending" && guest.last_contacted_at,
+  ).length;
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
@@ -153,7 +160,7 @@ export function GuestListCard({
         </div>
       </Card>
 
-      <Card className="bg-[#fffaf2]">
+      <Card className="bg-[rgba(244,247,255,0.9)]">
         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Guest activity</p>
         <h3 className="mt-3 text-xl font-semibold text-ink">RSVP tracking and delivery state</h3>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -224,7 +231,13 @@ export function GuestListCard({
         </div>
         {invite ? (
           <div className="mt-5">
-            <InviteSendButton eventId={eventId} />
+            <InviteSendButton
+              eventId={eventId}
+              inviteEnabled={invite.is_public}
+              pendingInviteCount={pendingInviteCount}
+              remindableGuestCount={remindableGuestCount}
+              emailableGuestCount={emailableGuestCount}
+            />
           </div>
         ) : null}
         <div className="mt-6">
@@ -235,7 +248,12 @@ export function GuestListCard({
                 <div key={message.id} className="rounded-3xl border border-border bg-white/85 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium text-ink">{message.guest?.name ?? "Guest"}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-ink">{message.guest?.name ?? "Guest"}</p>
+                        <span className="rounded-full bg-canvas px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                          {message.message_type}
+                        </span>
+                      </div>
                       <p className="mt-1 text-sm text-ink-muted">
                         {message.guest?.email ?? "No email saved"}
                       </p>
@@ -247,6 +265,11 @@ export function GuestListCard({
                   <p className="mt-3 text-sm leading-6 text-ink-muted">
                     {message.subject ?? "Invite email sent"}
                   </p>
+                  {message.metadata?.send_mode ? (
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
+                      {String(message.metadata.send_mode).replaceAll("_", " ")}
+                    </p>
+                  ) : null}
                   {message.metadata?.rsvp_url ? (
                     <p className="mt-2 break-all text-xs text-brand">{message.metadata.rsvp_url}</p>
                   ) : null}

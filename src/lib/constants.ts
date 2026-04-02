@@ -1,6 +1,6 @@
 export const APP_NAME = "PartyGenie";
 
-export const EVENT_STATUSES = ["draft", "planning", "ready"] as const;
+export const EVENT_STATUSES = ["draft", "planning", "ready", "completed"] as const;
 
 export const ANALYTICS_EVENTS = [
   "account_created",

@@ -146,7 +146,8 @@ export async function GET(
       <div
         style={{
           alignItems: "center",
-          background: "#f5ede2",
+          background:
+            "radial-gradient(circle at top right, rgba(37,146,255,0.18), transparent 22%), radial-gradient(circle at top left, rgba(139,70,255,0.2), transparent 24%), linear-gradient(180deg, #060a1e 0%, #0e1537 100%)",
           display: "flex",
           height: "100%",
           justifyContent: "center",
@@ -183,7 +184,7 @@ export async function GET(
             <div
               style={{
                 background:
-                  "linear-gradient(180deg, rgba(77,36,15,0.85) 0%, rgba(204,138,85,0.92) 100%)",
+                  "linear-gradient(180deg, rgba(8,12,36,0.88) 0%, rgba(37,146,255,0.52) 52%, rgba(139,70,255,0.62) 100%)",
                 inset: 0,
                 position: "absolute",
               }}
@@ -193,7 +194,7 @@ export async function GET(
           <div
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.18) 55%, rgba(0,0,0,0.32) 100%)",
+                "linear-gradient(180deg, rgba(5,10,35,0.12) 0%, rgba(9,15,46,0.16) 44%, rgba(6,10,30,0.4) 100%)",
               inset: 0,
               position: "absolute",
             }}
@@ -222,6 +223,25 @@ export async function GET(
             >
               <div
                 style={{
+                  alignItems: "center",
+                  background: "rgba(8,12,36,0.66)",
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  borderRadius: 999,
+                  display: "flex",
+                  fontSize: 17,
+                  fontWeight: 700,
+                  justifyContent: "center",
+                  letterSpacing: "0.34em",
+                  margin: "0 auto 22px",
+                  minHeight: 44,
+                  textTransform: "uppercase",
+                  width: 260,
+                }}
+              >
+                Party Genie
+              </div>
+              <div
+                style={{
                   fontSize: 26,
                   fontWeight: 700,
                   letterSpacing: "0.34em",
@@ -247,8 +267,8 @@ export async function GET(
 
             <div
               style={{
-                background: "rgba(34, 21, 13, 0.42)",
-                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(8, 12, 36, 0.48)",
+                border: "1px solid rgba(255,255,255,0.16)",
                 borderRadius: 34,
                 color: "#fffdf9",
                 display: "flex",
@@ -267,10 +287,10 @@ export async function GET(
             <div
               style={{
                 alignItems: "center",
-                background: "rgba(255,255,255,0.16)",
-                border: "1px solid rgba(255,255,255,0.32)",
+                background: "linear-gradient(135deg, rgba(37,146,255,0.28), rgba(139,70,255,0.32))",
+                border: "1px solid rgba(255,255,255,0.2)",
                 borderRadius: 999,
-                color: "#f5d98e",
+                color: "#ffd869",
                 display: "flex",
                 fontSize: 22,
                 fontWeight: 700,

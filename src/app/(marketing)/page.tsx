@@ -34,7 +34,7 @@ export default function MarketingHomePage() {
   return (
     <ShellFrame>
       <section className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <div className="space-y-6">
+        <div className="space-y-6 rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(245,223,255,0.34)_0%,rgba(237,243,255,0.94)_56%,rgba(228,239,255,0.98)_100%)] p-6 shadow-party">
           <Badge>Welcome and onboarding</Badge>
           <div className="space-y-4">
             <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
@@ -57,19 +57,19 @@ export default function MarketingHomePage() {
             </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="bg-white/70">
+            <Card className="bg-[rgba(255,255,255,0.42)]">
               <p className="text-sm font-medium text-ink-muted">Best for</p>
               <p className="mt-2 text-lg font-semibold text-ink">
                 Birthdays, brunches, showers, and holiday hosting
               </p>
             </Card>
-            <Card className="bg-white/70">
+            <Card className="bg-[rgba(255,255,255,0.42)]">
               <p className="text-sm font-medium text-ink-muted">MVP style</p>
               <p className="mt-2 text-lg font-semibold text-ink">
                 Wizard-style setup with editable AI output
               </p>
             </Card>
-            <Card className="bg-white/70">
+            <Card className="bg-[rgba(255,255,255,0.42)]">
               <p className="text-sm font-medium text-ink-muted">Product promise</p>
               <p className="mt-2 text-lg font-semibold text-ink">
                 Minimal input, maximum planning momentum
@@ -78,13 +78,13 @@ export default function MarketingHomePage() {
           </div>
         </div>
 
-        <Card className="overflow-hidden border-white/60 bg-[#fffaf2] p-0 shadow-party">
+        <Card className="overflow-hidden border-white/60 bg-[rgba(244,247,255,0.86)] p-0 shadow-party">
           <div className="border-b border-border px-6 py-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-[#ff8f70]" />
-                <span className="size-3 rounded-full bg-[#f5c55b]" />
-                <span className="size-3 rounded-full bg-[#79c7b5]" />
+                <span className="size-3 rounded-full bg-brand" />
+                <span className="size-3 rounded-full bg-accent" />
+                <span className="size-3 rounded-full bg-warning" />
               </div>
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">First-run preview</p>
             </div>

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  buildRateLimitHeaders,
+  checkPublicRsvpRateLimit,
+} from "@/lib/security/public-rate-limits";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
@@ -10,6 +14,21 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const rateLimit = checkPublicRsvpRateLimit(request.headers);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Too many RSVP attempts. Please wait a few minutes and try again.",
+      },
+      {
+        status: 429,
+        headers: buildRateLimitHeaders(rateLimit),
+      },
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(body);
 
@@ -19,7 +38,10 @@ export async function POST(request: Request) {
         ok: false,
         message: parsed.error.issues[0]?.message ?? "Invalid RSVP payload.",
       },
-      { status: 400 },
+      {
+        status: 400,
+        headers: buildRateLimitHeaders(rateLimit),
+      },
     );
   }
 
@@ -40,12 +62,20 @@ export async function POST(request: Request) {
         ok: false,
         message: error.message,
       },
-      { status: 400 },
+      {
+        status: 400,
+        headers: buildRateLimitHeaders(rateLimit),
+      },
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-    rsvp: data?.[0] ?? null,
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      rsvp: data?.[0] ?? null,
+    },
+    {
+      headers: buildRateLimitHeaders(rateLimit),
+    },
+  );
 }
