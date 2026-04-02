@@ -11,7 +11,11 @@ export default async function EventInvitePage({
   const { event, invite, guests, guestMessages } = await getEventContext(eventId);
 
   return (
-    <AppShell title="Invitation generator" description="Invite editing, guest messaging, RSVP tracking, and reminder controls in one place.">
+    <AppShell
+      title="Invitation generator"
+      description="Invite editing, guest messaging, RSVP tracking, and reminder controls in one place."
+      backHref={`/events/${eventId}`}
+    >
       <InvitePreviewCard event={event} invite={invite} guests={guests} guestMessages={guestMessages} />
     </AppShell>
   );

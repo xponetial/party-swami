@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import {
+  ArrowLeft,
   ChartNoAxesCombined,
   ClipboardList,
   Sparkles,
@@ -20,9 +21,18 @@ type AppShellProps = {
   description: string;
   children: ReactNode;
   actions?: ReactNode;
+  backHref?: string;
+  backLabel?: string;
 };
 
-export async function AppShell({ title, description, children, actions }: AppShellProps) {
+export async function AppShell({
+  title,
+  description,
+  children,
+  actions,
+  backHref,
+  backLabel = "Back to event overview",
+}: AppShellProps) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -66,6 +76,15 @@ export async function AppShell({ title, description, children, actions }: AppShe
         <header className="rounded-[2rem] border border-white/60 bg-surface px-6 py-5 shadow-party backdrop-blur">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
+              {backHref ? (
+                <Link
+                  href={backHref}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-white/70 px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted transition hover:border-brand/40 hover:text-ink"
+                >
+                  <ArrowLeft className="size-3.5" />
+                  {backLabel}
+                </Link>
+              ) : null}
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">PartyGenie MVP</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{title}</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">{description}</p>

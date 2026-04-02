@@ -25,6 +25,7 @@ export default async function EventSettingsPage({
     <AppShell
       title="Security and settings"
       description="Profile, privacy, event visibility, and trust-oriented controls grounded in live Supabase data."
+      backHref={`/events/${eventId}`}
     >
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <Card>

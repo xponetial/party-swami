@@ -11,7 +11,11 @@ export default async function EventTimelinePage({
   const { tasks, timelineItems } = await getEventContext(eventId);
 
   return (
-    <AppShell title="Timeline and tasks" description="Track pre-event prep, event-week readiness, and a clean day-of timeline with reminders.">
+    <AppShell
+      title="Timeline and tasks"
+      description="Track pre-event prep, event-week readiness, and a clean day-of timeline with reminders."
+      backHref={`/events/${eventId}`}
+    >
       <TaskTimelineCard eventId={eventId} tasks={tasks} timelineItems={timelineItems} />
     </AppShell>
   );

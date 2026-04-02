@@ -11,7 +11,11 @@ export default async function EventGuestsPage({
   const { guests, invite } = await getEventContext(eventId);
 
   return (
-    <AppShell title="Guest management" description="Track guest status, add and import attendees, and keep RSVP communication organized.">
+    <AppShell
+      title="Guest management"
+      description="Track guest status, add and import attendees, and keep RSVP communication organized."
+      backHref={`/events/${eventId}`}
+    >
       <GuestListCard eventId={eventId} guests={guests} invite={invite} />
     </AppShell>
   );
