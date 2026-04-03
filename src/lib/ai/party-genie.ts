@@ -81,6 +81,15 @@ type InviteContext = {
   currentMessage?: string | null;
 };
 
+type ShoppingGenerationContext = {
+  planTheme?: string | null;
+  menu?: string[] | null;
+  shoppingCategories?: Array<{
+    category: string;
+    items: Array<{ name: string; quantity: number }>;
+  }> | null;
+};
+
 const generatedTaskSchema = z.object({
   title: z.string().min(3),
   due_label: z.string().min(2),
@@ -228,6 +237,22 @@ function getTheme(event: EventSeed) {
   return event.theme?.trim() || `${event.event_type} celebration`;
 }
 
+function getBudgetTier(event: EventSeed) {
+  if (event.budget == null) {
+    return "flexible";
+  }
+
+  if (event.budget <= 100) {
+    return "lean";
+  }
+
+  if (event.budget <= 250) {
+    return "moderate";
+  }
+
+  return "premium";
+}
+
 function buildAmazonSearchUrl(query: string) {
   return `https://www.amazon.com/s?k=${encodeURIComponent(query.trim())}`;
 }
@@ -271,38 +296,64 @@ function getMenuSuggestions(event: EventSeed) {
   return ["Welcome snack board", "Main shared spread", "Dessert station"];
 }
 
-function getShoppingItems(event: EventSeed): GeneratedShoppingItem[] {
+function dedupeShoppingItems(items: GeneratedShoppingItem[]) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const key = `${item.category.toLowerCase()}::${item.name.toLowerCase()}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function getShoppingItems(event: EventSeed, context?: ShoppingGenerationContext): GeneratedShoppingItem[] {
   const guestCount = getGuestCount(event);
   const type = event.event_type.toLowerCase();
+  const theme = (context?.planTheme?.trim() || getTheme(event)).trim();
+  const budgetTier = getBudgetTier(event);
+  const isPoolParty =
+    type.includes("pool") || theme.toLowerCase().includes("pool");
+  const isPatriotic =
+    theme.toLowerCase().includes("stars") ||
+    theme.toLowerCase().includes("sparklers") ||
+    theme.toLowerCase().includes("4th") ||
+    theme.toLowerCase().includes("july");
+  const menu = context?.menu?.filter(Boolean) ?? [];
+  const categoryHints = context?.shoppingCategories ?? [];
 
   const baseItems: GeneratedShoppingItem[] = [
     normalizeAmazonRecommendation({
       category: "Decor",
-      name: "Theme-forward table accent set",
+      name: isPatriotic ? "Patriotic table accent set" : "Theme-forward table accent set",
       quantity: Math.max(2, Math.ceil(guestCount / 6)),
-      estimated_price: 18,
-      recommendation_reason: `Adds a quick visual lift and helps the ${getTheme(event).toLowerCase()} setup feel intentional right away.`,
-      search_query: `${getTheme(event)} party table decor set`,
+      estimated_price: budgetTier === "lean" ? 14 : 18,
+      recommendation_reason: `Adds a quick visual lift and helps the ${theme.toLowerCase()} setup feel intentional right away.`,
+      search_query: `${theme} party table decor set`,
       image_url: null,
     }),
     normalizeAmazonRecommendation({
-      category: "Hosting",
-      name: "Guest-ready napkin and tabletop bundle",
+      category: "Tableware",
+      name: isPoolParty ? "Outdoor-safe plate and cup bundle" : "Guest-ready napkin and tabletop bundle",
       quantity: Math.max(1, Math.ceil(guestCount / 12)),
-      estimated_price: 16,
+      estimated_price: budgetTier === "lean" ? 14 : 16,
       recommendation_reason: guestCount
         ? `Sized to support about ${guestCount} guests without making you piece together basics one by one.`
         : "Covers the practical hosting basics without making you hunt through multiple listings.",
-      search_query: `${event.event_type} party napkins tableware set for ${guestCount} guests`,
+      search_query: `${theme} party tableware set for ${guestCount} guests`,
       image_url: null,
     }),
     normalizeAmazonRecommendation({
       category: "Beverages",
-      name: "Drink station extras and mixers pack",
+      name: isPoolParty ? "Drink station extras and cooler setup pack" : "Drink station extras and mixers pack",
       quantity: Math.max(2, Math.ceil(guestCount / 8)),
       estimated_price: 14,
       recommendation_reason: "Supports an easy self-serve drink setup so the host is not stuck refilling the station all event.",
-      search_query: `${event.event_type} party drink dispenser accessories mixers`,
+      search_query: isPoolParty
+        ? `${theme} pool party cooler drink dispenser accessories`
+        : `${theme} party drink dispenser accessories mixers`,
       image_url: null,
     }),
   ];
@@ -331,12 +382,12 @@ function getShoppingItems(event: EventSeed): GeneratedShoppingItem[] {
   } else if (type.includes("birthday")) {
     baseItems.push(
       normalizeAmazonRecommendation({
-        category: "Food",
+        category: "Decor",
         name: "Celebration cake topper and candle set",
         quantity: 1,
         estimated_price: 14,
         recommendation_reason: "Adds a birthday-specific finish and works well even if the cake itself comes from somewhere else.",
-        search_query: `${getTheme(event)} birthday cake topper candles`,
+        search_query: `${theme} birthday cake topper candles`,
         image_url: null,
       }),
       normalizeAmazonRecommendation({
@@ -345,7 +396,7 @@ function getShoppingItems(event: EventSeed): GeneratedShoppingItem[] {
         quantity: 1,
         estimated_price: 28,
         recommendation_reason: "Creates the visual focal point most birthday hosts want for photos and arrival impact.",
-        search_query: `${getTheme(event)} birthday balloon arch backdrop kit`,
+        search_query: `${theme} birthday balloon arch backdrop kit`,
         image_url: null,
       }),
     );
@@ -361,7 +412,82 @@ function getShoppingItems(event: EventSeed): GeneratedShoppingItem[] {
     }));
   }
 
-  return baseItems;
+  if (isPoolParty) {
+    baseItems.push(
+      normalizeAmazonRecommendation({
+        category: "Upgrades",
+        name: "Poolside towel and sunscreen station basket",
+        quantity: Math.max(1, Math.ceil(guestCount / 16)),
+        estimated_price: budgetTier === "premium" ? 34 : 22,
+        recommendation_reason: "This makes a pool party feel more hosted and solves the practical guest needs people notice immediately.",
+        search_query: `${theme} pool party towel sunscreen basket`,
+        image_url: null,
+      }),
+      normalizeAmazonRecommendation({
+        category: "Activities",
+        name: "Inflatable pool game bundle",
+        quantity: 1,
+        estimated_price: budgetTier === "lean" ? 18 : 26,
+        recommendation_reason: "Adds an easy activity layer so the event feels more than just standing around the water.",
+        search_query: `${theme} pool party inflatable game set`,
+        image_url: null,
+      }),
+    );
+  }
+
+  if (isPatriotic) {
+    baseItems.push(
+      normalizeAmazonRecommendation({
+        category: "Decor",
+        name: "Stars and stripes string light or bunting kit",
+        quantity: 1,
+        estimated_price: 22,
+        recommendation_reason: "Leans into the patriotic theme more clearly than generic party decor and gives the setup better nighttime payoff.",
+        search_query: `${theme} patriotic string lights bunting party`,
+        image_url: null,
+      }),
+    );
+  }
+
+  for (const category of categoryHints) {
+    const existingNames = new Set(baseItems.map((item) => item.name.toLowerCase()));
+
+    for (const hintedItem of category.items.slice(0, 2)) {
+      if (existingNames.has(hintedItem.name.toLowerCase())) {
+        continue;
+      }
+
+      baseItems.push(
+        normalizeAmazonRecommendation({
+          category: category.category,
+          name: hintedItem.name,
+          quantity: hintedItem.quantity,
+          estimated_price: null,
+          recommendation_reason: `This came directly from the existing ${category.category.toLowerCase()} plan, so the shopping page stays aligned with the rest of the event workflow.`,
+          search_query: `${theme} ${hintedItem.name} amazon`,
+          image_url: null,
+        }),
+      );
+      existingNames.add(hintedItem.name.toLowerCase());
+    }
+  }
+
+  if (menu.length) {
+    const menuTarget = menu[0];
+    baseItems.push(
+      normalizeAmazonRecommendation({
+        category: "Hosting",
+        name: "Serving pieces for the featured food setup",
+        quantity: 1,
+        estimated_price: budgetTier === "lean" ? 16 : 24,
+        recommendation_reason: `Supports the menu plan, especially if you are serving ${menuTarget.toLowerCase()}.`,
+        search_query: `${theme} serving set for ${menuTarget}`,
+        image_url: null,
+      }),
+    );
+  }
+
+  return dedupeShoppingItems(baseItems).slice(0, 8);
 }
 
 function toShoppingCategories(items: GeneratedShoppingItem[]) {
@@ -513,8 +639,8 @@ export function buildInviteCopy(event: EventSeed, context?: InviteContext) {
   return `Join us for ${title}. We would love to celebrate with you on ${dateText} at ${locationText} for a ${subtitle.toLowerCase()} filled with thoughtful details, great company, and an easy flow from arrival to dessert. Please RSVP so we can finish planning with you in mind.`;
 }
 
-export function buildShoppingList(event: EventSeed) {
-  const shoppingItems = getShoppingItems(event);
+export function buildShoppingList(event: EventSeed, context?: ShoppingGenerationContext) {
+  const shoppingItems = getShoppingItems(event, context);
 
   return {
     shoppingItems,
@@ -713,20 +839,35 @@ ${currentMessage ? `- Current guest message: ${currentMessage}` : ""}
   };
 }
 
-export async function generateShoppingList(event: EventSeed) {
-  const fallback = buildShoppingList(event);
+export async function generateShoppingList(event: EventSeed, context?: ShoppingGenerationContext) {
+  const fallback = buildShoppingList(event, context);
+  const contextLines = [
+    context?.planTheme ? `Saved plan theme: ${context.planTheme}` : null,
+    context?.menu?.length ? `Saved menu ideas: ${context.menu.join(", ")}` : null,
+    context?.shoppingCategories?.length
+      ? `Saved shopping category hints: ${context.shoppingCategories
+          .map((category) => `${category.category} (${category.items.map((item) => `${item.name} x${item.quantity}`).join(", ")})`)
+          .join("; ")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
   const generated = await generateStructuredObject({
     generationType: "shopping_list_transform",
     taskType: "lightweight",
     systemPrompt:
-      "You build concise shopping lists for event hosts. Focus on realistic, high-signal items only.",
-    userPrompt: `Create a shopping list for this event brief.\n${eventBrief(event)}\n\nRequirements:
-- Return 4 to 6 useful items.
-- Use broad categories like Decor, Food, Beverages, Hosting, Tableware, Favors, Upgrades.
+      "You build concise shopping lists for event hosts. Focus on realistic, high-signal items only. Be specific, theme-aware, quantity-aware, and practical. Prefer recommendations that look like products someone would actually buy on Amazon, not generic planning notes.",
+    userPrompt: `Create a shopping list for this event brief.\n${eventBrief(event)}${contextLines ? `\n\nSaved planning context:\n${contextLines}` : ""}\n\nRequirements:
+- Return 6 to 8 useful items.
+- Use categories like Decor, Tableware, Beverages, Hosting, Activities, Favors, Upgrades, or Food.
 - Quantities must be whole numbers.
 - Return item names that feel like specific Amazon-searchable products.
 - Include recommendation_reason explaining why each item was chosen for this event.
 - Include search_query with the Amazon search phrase to use.
+- Use the saved plan context when it improves specificity.
+- Vary the recommendation mix so the list does not over-index on one category.
+- Use guest count and budget to influence bundle size and upgrade count.
+- Avoid placeholders like "party supplies" or "decor pack" unless the rest of the name is specific.
 - Use null for image_url if you do not know an exact image.
 - Set external_url to an Amazon search URL when possible.`,
     schema: generatedShoppingListSchema,

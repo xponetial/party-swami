@@ -289,6 +289,22 @@ async function getCurrentPlanRecord(supabase: SupabaseClient, eventId: string) {
   return data ?? null;
 }
 
+async function getPlanContextForShopping(supabase: SupabaseClient, eventId: string) {
+  const { data } = await supabase
+    .from("party_plans")
+    .select("theme, menu, shopping_categories")
+    .eq("event_id", eventId)
+    .maybeSingle<{
+      theme: string | null;
+      menu: string[] | null;
+      shopping_categories:
+        | Array<{ category: string; items: Array<{ name: string; quantity: number }> }>
+        | null;
+    }>();
+
+  return data ?? null;
+}
+
 async function ensureInvite(supabase: SupabaseClient, eventId: string, inviteCopy: string) {
   const { data: invite } = await supabase
     .from("invites")
@@ -403,6 +419,38 @@ async function syncShoppingItems(
     if (error) {
       throw new Error(error.message);
     }
+  }
+
+  const matchingItems = generatedItems.filter((item) =>
+    existingKeys.has(`${item.category.toLowerCase()}::${item.name.toLowerCase()}`),
+  );
+
+  if (matchingItems.length) {
+    await Promise.all(
+      matchingItems.map((item) => {
+        const existingItem = existingItems.find(
+          (current) =>
+            current.category.toLowerCase() === item.category.toLowerCase() &&
+            current.name.toLowerCase() === item.name.toLowerCase(),
+        );
+
+        if (!existingItem) {
+          return Promise.resolve();
+        }
+
+        return supabase
+          .from("shopping_items")
+          .update({
+            quantity: item.quantity,
+            estimated_price: item.estimated_price,
+            recommendation_reason: item.recommendation_reason,
+            search_query: item.search_query,
+            image_url: item.image_url,
+            external_url: item.external_url,
+          })
+          .eq("id", existingItem.id);
+      }),
+    );
   }
 
   const { data: currentItemsData } = await supabase
@@ -1083,7 +1131,12 @@ function getThemeFromEvent(event: EventRecord) {
 export async function generateShoppingListForEvent(supabase: SupabaseClient, eventId: string) {
   const event = await loadEventSeed(supabase, eventId);
   const shoppingList = await ensureShoppingList(supabase, eventId);
-  const generated = await generateShoppingList(event);
+  const planContext = await getPlanContextForShopping(supabase, eventId);
+  const generated = await generateShoppingList(event, {
+    planTheme: planContext?.theme ?? null,
+    menu: planContext?.menu ?? [],
+    shoppingCategories: planContext?.shopping_categories ?? [],
+  });
   const shoppingSummary = await syncShoppingItems(supabase, shoppingList.id, generated.shoppingItems);
   const fingerprintInput = buildEventFingerprint(event, "shopping_list_transform");
   const requestFingerprint = buildFingerprint(fingerprintInput);
