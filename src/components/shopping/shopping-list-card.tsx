@@ -91,6 +91,26 @@ function truncateSearchQuery(value: string | null, maxLength = 72) {
   return `${value.slice(0, maxLength - 1).trimEnd()}...`;
 }
 
+function buildTrackedShoppingHref({
+  eventId,
+  item,
+}: {
+  eventId: string;
+  item: ShoppingItemDetails;
+}) {
+  if (!item.external_url) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    eventId,
+    itemId: item.id,
+    target: item.external_url,
+  });
+
+  return `/api/affiliate/click?${params.toString()}`;
+}
+
 function buildRecommendationVisual(item: ShoppingItemDetails) {
   const categoryLabel = toTitleCase(item.category);
 
@@ -262,11 +282,14 @@ export function ShoppingListCard({
                   </div>
 
                   <div className="mt-4 grid gap-4">
-                    {categoryItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-[1.5rem] border border-border bg-[linear-gradient(135deg,rgba(255,255,255,0.96)_0%,rgba(244,247,255,0.92)_100%)] p-4"
-                      >
+                    {categoryItems.map((item) => {
+                      const trackedHref = buildTrackedShoppingHref({ eventId, item });
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-[1.5rem] border border-border bg-[linear-gradient(135deg,rgba(255,255,255,0.96)_0%,rgba(244,247,255,0.92)_100%)] p-4"
+                        >
                         <div className="grid gap-4 [@media(min-width:1500px)]:grid-cols-[200px_minmax(0,1fr)]">
                           {buildRecommendationVisual(item)}
 
@@ -287,9 +310,13 @@ export function ShoppingListCard({
                               </div>
 
                               <div className="flex shrink-0 flex-wrap gap-3 [@media(min-width:1700px)]:justify-end">
-                                {item.external_url ? (
+                                {trackedHref ? (
                                   <Button asChild>
-                                    <a href={item.external_url} rel="noreferrer" target="_blank">
+                                    <a
+                                      href={trackedHref}
+                                      rel="noreferrer"
+                                      target="_blank"
+                                    >
                                       View on Amazon
                                     </a>
                                   </Button>
@@ -310,8 +337,9 @@ export function ShoppingListCard({
                             ) : null}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))
