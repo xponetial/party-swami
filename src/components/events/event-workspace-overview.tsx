@@ -17,7 +17,14 @@ import {
   type ShoppingItemDetails,
   type TaskDetails,
 } from "@/lib/events";
+import {
+  normalizeInviteDesignData,
+  type InviteDesignData,
+} from "@/lib/invite-design";
+import { getInviteTemplateCatalog } from "@/lib/invite-template-catalog";
+import { findInviteTemplate } from "@/lib/invite-template-types";
 import { AiRevisePlanForm } from "@/components/ai/ai-revise-plan-form";
+import { InviteCardCanvas } from "@/components/invite/invite-card-canvas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,6 +44,67 @@ type HubStep = {
   label: string;
   detail: string;
 };
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function inferCategoryKey(eventType: string, categories: Awaited<ReturnType<typeof getInviteTemplateCatalog>>) {
+  const normalized = slugify(eventType);
+  return (
+    categories.find((category) => normalized.includes(category.key))?.key ??
+    categories.find((category) => category.key.includes(normalized))?.key ??
+    categories[0]?.key ??
+    ""
+  );
+}
+
+function formatDateText(value: string | null) {
+  if (!value) return "Date coming soon";
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "full",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function buildInvitePreviewDesign(
+  event: EventDetails,
+  invite: InviteDetails,
+  categories: Awaited<ReturnType<typeof getInviteTemplateCatalog>>,
+): InviteDesignData {
+  const categoryKey = inferCategoryKey(event.event_type, categories);
+  const template =
+    categories.find((category) => category.key === categoryKey)?.templates[0] ??
+    categories[0]?.templates[0];
+
+  if (!template) {
+    throw new Error("Invite template catalog is empty.");
+  }
+
+  const fallback: InviteDesignData = {
+    templateId: template.templateId,
+    packSlug: template.packSlug,
+    categoryKey: template.categoryKey,
+    categoryLabel: template.categoryLabel,
+    fields: {
+      title: event.title,
+      subtitle: event.theme?.trim() || event.event_type,
+      dateText: formatDateText(event.event_date),
+      locationText: event.location?.trim() || "Location coming soon",
+      messageText: invite.invite_copy ?? `Join us for ${event.title}.`,
+      ctaText: "RSVP with your private link",
+    },
+  };
+
+  return invite.design_json
+    ? normalizeInviteDesignData(invite.design_json, fallback)
+    : fallback;
+}
 
 function getPrimaryStep({
   eventId,
@@ -98,7 +166,7 @@ function formatSentState(invite: InviteDetails | null) {
   return new Date(invite.sent_at).toLocaleString("en-US");
 }
 
-export function EventWorkspaceOverview({
+export async function EventWorkspaceOverview({
   eventId,
   event,
   invite,
@@ -114,10 +182,16 @@ export function EventWorkspaceOverview({
     .reduce((sum, guest) => sum + 1 + guest.plus_one_count, 0);
   const primaryStep = getPrimaryStep({ eventId, invite, guests, shoppingItems, tasks });
   const themeLabel = plan?.theme ?? event.theme ?? `${event.event_type} celebration`;
-  const inviteSummary =
-    invite?.invite_copy ??
-    plan?.invite_copy ??
-    "Shape the guest-facing voice of the event from the invitation generator.";
+  const templateCategories = invite ? await getInviteTemplateCatalog() : [];
+  const invitePreviewDesign =
+    invite && templateCategories.length ? buildInvitePreviewDesign(event, invite, templateCategories) : null;
+  const invitePreviewTemplate =
+    invitePreviewDesign && templateCategories.length
+      ? findInviteTemplate(templateCategories, {
+          templateId: invitePreviewDesign.templateId,
+          packSlug: invitePreviewDesign.packSlug,
+        })
+      : null;
 
   const destinations = [
     {
@@ -164,8 +238,40 @@ export function EventWorkspaceOverview({
               bouncing between summary cards.
             </p>
             <div className="mt-5 rounded-[1.75rem] border border-border bg-[rgba(244,247,255,0.92)] p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Current invite direction</p>
-              <p className="mt-3 text-sm leading-7 text-ink-muted">{inviteSummary}</p>
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="max-w-md">
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Invite preview</p>
+                  <h3 className="mt-2 text-xl font-semibold text-ink">
+                    See the real card guests are moving toward
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-ink-muted">
+                    This keeps the hub visual while the actual editing still lives in the invitation
+                    generator.
+                  </p>
+                  <Button asChild className="mt-4">
+                    <Link href={`/events/${eventId}/invite`}>
+                      Edit invite
+                      <ArrowRight className="size-4" />
+                    </Link>
+                  </Button>
+                </div>
+
+                <div className="mx-auto w-full max-w-[260px]">
+                  {invitePreviewDesign && invitePreviewTemplate ? (
+                    <InviteCardCanvas
+                      alt={`${event.title} invite preview`}
+                      design={invitePreviewDesign}
+                      maxWidth={240}
+                      template={invitePreviewTemplate}
+                    />
+                  ) : (
+                    <div className="rounded-[1.75rem] border border-dashed border-border bg-white/70 px-5 py-8 text-center text-sm leading-7 text-ink-muted">
+                      The invite preview will appear here as soon as the event has a saved invite
+                      design.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
