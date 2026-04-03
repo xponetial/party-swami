@@ -148,10 +148,31 @@ async function getTemplateBackground(assetPath: string) {
   return readFile(absoluteAssetPath);
 }
 
-function buildFrameSvg() {
+async function getInviteSvgFontDataUri() {
+  const fontPath = path.join(
+    process.cwd(),
+    "node_modules",
+    "next",
+    "dist",
+    "compiled",
+    "@vercel",
+    "og",
+    "Geist-Regular.ttf",
+  );
+  const fontBuffer = await readFile(fontPath);
+  return `data:font/ttf;base64,${fontBuffer.toString("base64")}`;
+}
+
+function buildFrameSvg(fontDataUri: string) {
   return `
     <svg width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}" viewBox="0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
+        <style>
+          @font-face {
+            font-family: 'InviteGeist';
+            src: url('${fontDataUri}') format('truetype');
+          }
+        </style>
         <linearGradient id="canvasBg" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#eef3ff" />
           <stop offset="100%" stop-color="#edf2ff" />
@@ -174,9 +195,9 @@ function buildOverlaySvg(params: {
   ctaTop: number;
   titleColor: string;
   ctaColor: string;
-  titleFontFamily: string;
   titleLetterSpacing: string;
   eyebrowLetterSpacing: string;
+  fontDataUri: string;
 }) {
   const {
     title,
@@ -188,9 +209,9 @@ function buildOverlaySvg(params: {
     ctaTop,
     titleColor,
     ctaColor,
-    titleFontFamily,
     titleLetterSpacing,
     eyebrowLetterSpacing,
+    fontDataUri,
   } = params;
 
   const titleLines = getTitleLines(title);
@@ -213,6 +234,12 @@ function buildOverlaySvg(params: {
   return `
     <svg width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}" viewBox="0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
+        <style>
+          @font-face {
+            font-family: 'InviteGeist';
+            src: url('${fontDataUri}') format('truetype');
+          }
+        </style>
         <linearGradient id="imageShade" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="rgba(4,8,28,0.18)" />
           <stop offset="42%" stop-color="rgba(8,12,36,0.08)" />
@@ -224,7 +251,7 @@ function buildOverlaySvg(params: {
         </linearGradient>
       </defs>
 
-      <text x="${CARD_X}" y="28" fill="#6f63d9" font-family="sans-serif" font-size="15" letter-spacing="5" text-transform="uppercase">
+      <text x="${CARD_X}" y="28" fill="#6f63d9" font-family="InviteGeist" font-size="15" letter-spacing="5" text-transform="uppercase">
         AI PARTY GENIE INVITATION
       </text>
 
@@ -235,7 +262,7 @@ function buildOverlaySvg(params: {
         x="${titleCenterX}"
         y="${titleBaseY}"
         fill="${titleColor}"
-        font-family="sans-serif"
+        font-family="InviteGeist"
         font-size="19"
         font-weight="700"
         letter-spacing="${eyebrowLetterSpacing}"
@@ -249,7 +276,7 @@ function buildOverlaySvg(params: {
         x="${titleCenterX}"
         y="${titleBaseY + 42}"
         fill="${titleColor}"
-        font-family="${titleFontFamily}"
+        font-family="InviteGeist"
         font-size="${titleFontSize}"
         font-weight="700"
         letter-spacing="${titleLetterSpacing}"
@@ -272,7 +299,7 @@ function buildOverlaySvg(params: {
         x="${detailTextX}"
         y="${detailsTextY}"
         fill="${titleColor}"
-        font-family="sans-serif"
+        font-family="InviteGeist"
         font-size="21"
         font-weight="500"
         text-anchor="middle"
@@ -294,7 +321,7 @@ function buildOverlaySvg(params: {
         x="${ctaX + ctaWidth / 2}"
         y="${ctaY + 50}"
         fill="${ctaColor}"
-        font-family="sans-serif"
+        font-family="InviteGeist"
         font-size="22"
         font-weight="700"
         letter-spacing="3"
@@ -338,9 +365,9 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
   const ctaTop = layout?.ctaTop ?? 86;
   const titleColor = layout?.accents[0] ?? "#ffffff";
   const ctaColor = layout?.accents[1] ?? "#ffd869";
-  const titleFontFamily = layout?.emailTitleFontFamily ?? "Georgia, serif";
   const titleLetterSpacing = layout?.emailTitleLetterSpacing ?? "0.04em";
   const eyebrowLetterSpacing = layout?.emailEyebrowLetterSpacing ?? "0.16em";
+  const fontDataUri = await getInviteSvgFontDataUri();
   const message = compactInviteCopy(design.fields.messageText, 140);
   const backgroundBuffer = template
     ? await getTemplateBackground(template.assetPath)
@@ -370,11 +397,11 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
     ctaTop,
     titleColor,
     ctaColor,
-    titleFontFamily,
     titleLetterSpacing,
     eyebrowLetterSpacing,
+    fontDataUri,
   });
-  const frameSvg = buildFrameSvg();
+  const frameSvg = buildFrameSvg(fontDataUri);
 
   return sharp({
     create: {
