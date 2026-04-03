@@ -363,6 +363,9 @@ async function syncShoppingItems(
     name: string;
     quantity: number;
     estimated_price: number | null;
+    recommendation_reason: string;
+    search_query: string;
+    image_url: string | null;
     external_url: string | null;
   }>,
 ) {
@@ -389,6 +392,9 @@ async function syncShoppingItems(
         name: item.name,
         quantity: item.quantity,
         estimated_price: item.estimated_price,
+        recommendation_reason: item.recommendation_reason,
+        search_query: item.search_query,
+        image_url: item.image_url,
         external_url: item.external_url,
         sort_order: index,
       })),
@@ -430,6 +436,9 @@ async function replaceShoppingItems(
     name: string;
     quantity: number;
     estimated_price: number | null;
+    recommendation_reason: string | null;
+    search_query: string | null;
+    image_url: string | null;
     external_url: string | null;
   }>,
 ) {
@@ -443,6 +452,9 @@ async function replaceShoppingItems(
         name: item.name,
         quantity: item.quantity,
         estimated_price: item.estimated_price,
+        recommendation_reason: item.recommendation_reason,
+        search_query: item.search_query,
+        image_url: item.image_url,
         external_url: item.external_url,
         sort_order: index + 1,
       })),
@@ -587,6 +599,9 @@ function buildShoppingItemsFromCategories(
       name: item.name,
       quantity: item.quantity,
       estimated_price: null,
+      recommendation_reason: null,
+      search_query: null,
+      image_url: null,
       external_url: null,
     })),
   );

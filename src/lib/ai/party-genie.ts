@@ -16,6 +16,9 @@ type GeneratedShoppingItem = {
   name: string;
   quantity: number;
   estimated_price: number | null;
+  recommendation_reason: string;
+  search_query: string;
+  image_url: string | null;
   external_url: string | null;
 };
 
@@ -95,6 +98,9 @@ const generatedShoppingItemSchema = z.object({
   name: z.string().min(2),
   quantity: z.number().int().min(1),
   estimated_price: z.number().min(0).nullable(),
+  recommendation_reason: z.string().min(12),
+  search_query: z.string().min(3),
+  image_url: z.string().url().nullable(),
   external_url: z.string().url().nullable(),
 });
 
@@ -222,6 +228,20 @@ function getTheme(event: EventSeed) {
   return event.theme?.trim() || `${event.event_type} celebration`;
 }
 
+function buildAmazonSearchUrl(query: string) {
+  return `https://www.amazon.com/s?k=${encodeURIComponent(query.trim())}`;
+}
+
+function normalizeAmazonRecommendation(item: Omit<GeneratedShoppingItem, "external_url"> & { external_url?: string | null }) {
+  const searchQuery = item.search_query.trim();
+
+  return {
+    ...item,
+    search_query: searchQuery,
+    external_url: item.external_url?.trim() || buildAmazonSearchUrl(searchQuery),
+  };
+}
+
 function getEventMoment(event: EventSeed) {
   if (!event.event_date) {
     return "an upcoming gathering";
@@ -256,71 +276,89 @@ function getShoppingItems(event: EventSeed): GeneratedShoppingItem[] {
   const type = event.event_type.toLowerCase();
 
   const baseItems: GeneratedShoppingItem[] = [
-    {
+    normalizeAmazonRecommendation({
       category: "Decor",
-      name: "Candles or table accents",
+      name: "Theme-forward table accent set",
       quantity: Math.max(2, Math.ceil(guestCount / 6)),
-      estimated_price: 12,
-      external_url: null,
-    },
-    {
+      estimated_price: 18,
+      recommendation_reason: `Adds a quick visual lift and helps the ${getTheme(event).toLowerCase()} setup feel intentional right away.`,
+      search_query: `${getTheme(event)} party table decor set`,
+      image_url: null,
+    }),
+    normalizeAmazonRecommendation({
       category: "Hosting",
-      name: "Disposable napkins or linens",
+      name: "Guest-ready napkin and tabletop bundle",
       quantity: Math.max(1, Math.ceil(guestCount / 12)),
-      estimated_price: 10,
-      external_url: null,
-    },
-    {
+      estimated_price: 16,
+      recommendation_reason: guestCount
+        ? `Sized to support about ${guestCount} guests without making you piece together basics one by one.`
+        : "Covers the practical hosting basics without making you hunt through multiple listings.",
+      search_query: `${event.event_type} party napkins tableware set for ${guestCount} guests`,
+      image_url: null,
+    }),
+    normalizeAmazonRecommendation({
       category: "Beverages",
-      name: "Sparkling water and mixers",
+      name: "Drink station extras and mixers pack",
       quantity: Math.max(2, Math.ceil(guestCount / 8)),
-      estimated_price: 8,
-      external_url: null,
-    },
+      estimated_price: 14,
+      recommendation_reason: "Supports an easy self-serve drink setup so the host is not stuck refilling the station all event.",
+      search_query: `${event.event_type} party drink dispenser accessories mixers`,
+      image_url: null,
+    }),
   ];
 
   if (type.includes("dinner")) {
     baseItems.push(
-      {
+      normalizeAmazonRecommendation({
         category: "Food",
-        name: "Main course ingredients",
+        name: "Family-style servingware set",
         quantity: 1,
-        estimated_price: 45,
-        external_url: null,
-      },
-      {
+        estimated_price: 42,
+        recommendation_reason: "Makes it easier to serve a dinner crowd cleanly and keeps the table feeling coordinated.",
+        search_query: `family style serving bowls platter set dinner party`,
+        image_url: null,
+      }),
+      normalizeAmazonRecommendation({
         category: "Food",
-        name: "Dessert ingredients",
+        name: "Dessert stand or display tray",
         quantity: 1,
-        estimated_price: 18,
-        external_url: null,
-      },
+        estimated_price: 24,
+        recommendation_reason: "Gives the dessert moment more presence without adding much complexity to the setup.",
+        search_query: `dessert stand display tray party`,
+        image_url: null,
+      }),
     );
   } else if (type.includes("birthday")) {
     baseItems.push(
-      {
+      normalizeAmazonRecommendation({
         category: "Food",
-        name: "Birthday cake or cupcakes",
+        name: "Celebration cake topper and candle set",
         quantity: 1,
-        estimated_price: 30,
-        external_url: null,
-      },
-      {
+        estimated_price: 14,
+        recommendation_reason: "Adds a birthday-specific finish and works well even if the cake itself comes from somewhere else.",
+        search_query: `${getTheme(event)} birthday cake topper candles`,
+        image_url: null,
+      }),
+      normalizeAmazonRecommendation({
         category: "Decor",
-        name: "Balloons or backdrop kit",
+        name: "Photo backdrop or balloon statement kit",
         quantity: 1,
-        estimated_price: 25,
-        external_url: null,
-      },
+        estimated_price: 28,
+        recommendation_reason: "Creates the visual focal point most birthday hosts want for photos and arrival impact.",
+        search_query: `${getTheme(event)} birthday balloon arch backdrop kit`,
+        image_url: null,
+      }),
     );
   } else {
-    baseItems.push({
+    baseItems.push(normalizeAmazonRecommendation({
       category: "Food",
-      name: "Shareable appetizers",
+      name: "Shareable appetizer and snack serving set",
       quantity: Math.max(2, Math.ceil(guestCount / 8)),
-      estimated_price: 16,
-      external_url: null,
-    });
+      estimated_price: 20,
+      recommendation_reason: "Helps the food setup feel ready for guests without requiring a more formal catering setup.",
+      search_query: `${event.event_type} appetizer serving set party`,
+      image_url: null,
+    }));
   }
 
   return baseItems;
@@ -541,6 +579,7 @@ export async function revisePartyPlan({
 
   return {
     ...generated.data,
+    shoppingItems: generated.data.shoppingItems.map((item) => normalizeAmazonRecommendation(item)),
     rawResponse: {
       provider: generated.usage.provider,
       generatedAt: new Date().toISOString(),
@@ -565,7 +604,11 @@ export async function generatePartyPlan(event: EventSeed): Promise<GeneratedPart
 - Return 4 to 6 shopping items with realistic quantities.
 - Return 4 tasks.
 - Return 4 timeline items with sort_order starting at 1.
-- Use null for external_url unless a clear retailer link is necessary.`,
+- Return item names that look like real Amazon-searchable product ideas, not generic placeholders.
+- Include recommendation_reason explaining why the item fits this specific event.
+- Include search_query with the exact Amazon search phrase a host should use.
+- Use null for image_url if you do not know an exact image.
+- Use an Amazon search URL for external_url when possible.`,
     schema: generatedPartyPlanSchema,
   }).catch(() => null);
 
@@ -593,6 +636,7 @@ export async function generatePartyPlan(event: EventSeed): Promise<GeneratedPart
 
   return {
     ...generated.data,
+    shoppingItems: generated.data.shoppingItems.map((item) => normalizeAmazonRecommendation(item)),
     rawResponse: {
       provider: generated.usage.provider,
       generatedAt: new Date().toISOString(),
@@ -678,9 +722,13 @@ export async function generateShoppingList(event: EventSeed) {
       "You build concise shopping lists for event hosts. Focus on realistic, high-signal items only.",
     userPrompt: `Create a shopping list for this event brief.\n${eventBrief(event)}\n\nRequirements:
 - Return 4 to 6 useful items.
-- Use broad categories like Decor, Food, Beverages, Hosting.
+- Use broad categories like Decor, Food, Beverages, Hosting, Tableware, Favors, Upgrades.
 - Quantities must be whole numbers.
-- Use null for external_url unless absolutely necessary.`,
+- Return item names that feel like specific Amazon-searchable products.
+- Include recommendation_reason explaining why each item was chosen for this event.
+- Include search_query with the Amazon search phrase to use.
+- Use null for image_url if you do not know an exact image.
+- Set external_url to an Amazon search URL when possible.`,
     schema: generatedShoppingListSchema,
   }).catch(() => null);
 
@@ -710,6 +758,7 @@ export async function generateShoppingList(event: EventSeed) {
 
   return {
     ...generated.data,
+    shoppingItems: generated.data.shoppingItems.map((item) => normalizeAmazonRecommendation(item)),
     rawResponse: {
       provider: generated.usage.provider,
       generatedAt: new Date().toISOString(),

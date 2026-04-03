@@ -66,6 +66,9 @@ export type ShoppingItemDetails = {
   estimated_price: number | null;
   status: "pending" | "ready" | "purchased" | "removed";
   external_url: string | null;
+  recommendation_reason: string | null;
+  search_query: string | null;
+  image_url: string | null;
 };
 
 export type TaskDetails = {
@@ -197,7 +200,7 @@ export const getEventContext = cache(async (eventId: string) => {
     ? (
         await supabase
           .from("shopping_items")
-          .select("id, category, name, quantity, estimated_price, status, external_url")
+          .select("id, category, name, quantity, estimated_price, status, external_url, recommendation_reason, search_query, image_url")
           .eq("shopping_list_id", shoppingList.id)
           .order("sort_order", { ascending: true })
           .returns<ShoppingItemDetails[]>()

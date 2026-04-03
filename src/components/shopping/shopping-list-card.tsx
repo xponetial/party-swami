@@ -45,6 +45,10 @@ function buildRecommendationReason(
   event: EventDetails,
   plan: PartyPlanDetails | null,
 ) {
+  if (item.recommendation_reason?.trim()) {
+    return item.recommendation_reason;
+  }
+
   const normalizedCategory = item.category.toLowerCase();
   const guestTarget = event.guest_target;
   const theme = plan?.theme ?? event.theme ?? event.event_type;
@@ -79,6 +83,28 @@ function summarizeCategory(itemCount: number, category: string) {
   }
 
   return `${itemCount} ${label.toLowerCase()} picks`;
+}
+
+function buildRecommendationVisual(item: ShoppingItemDetails) {
+  const categoryLabel = toTitleCase(item.category);
+
+  if (item.image_url) {
+    return (
+      <div
+        className="h-32 rounded-[1.35rem] bg-cover bg-center"
+        style={{ backgroundImage: `url(${item.image_url})` }}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-32 items-end rounded-[1.35rem] border border-white/70 bg-[linear-gradient(145deg,rgba(37,146,255,0.22)_0%,rgba(118,97,255,0.18)_45%,rgba(255,255,255,0.94)_100%)] p-4">
+      <div>
+        <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Amazon search pick</p>
+        <p className="mt-2 text-lg font-semibold text-ink">{categoryLabel}</p>
+      </div>
+    </div>
+  );
 }
 
 export function ShoppingListCard({
@@ -235,8 +261,11 @@ export function ShoppingListCard({
                         key={item.id}
                         className="rounded-[1.5rem] border border-border bg-[linear-gradient(135deg,rgba(255,255,255,0.96)_0%,rgba(244,247,255,0.92)_100%)] p-4"
                       >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="max-w-2xl">
+                        <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+                          {buildRecommendationVisual(item)}
+
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="max-w-2xl">
                             <p className="text-lg font-semibold text-ink">{item.name}</p>
                             <p className="mt-2 text-sm leading-6 text-ink-muted">
                               {buildRecommendationReason(item, event, plan)}
@@ -247,20 +276,26 @@ export function ShoppingListCard({
                                 {formatMoney(item.estimated_price)}
                               </span>
                               <span className="rounded-full bg-white px-3 py-2">{item.status}</span>
+                              {item.search_query ? (
+                                <span className="rounded-full bg-white px-3 py-2 normal-case tracking-normal">
+                                  Amazon search: {item.search_query}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-3 lg:justify-end">
+                            <div className="flex flex-wrap gap-3 lg:justify-end">
                             {item.external_url ? (
                               <Button asChild>
                                 <a href={item.external_url} rel="noreferrer" target="_blank">
-                                  View item
+                                  View on Amazon
                                 </a>
                               </Button>
                             ) : null}
                             <Button asChild variant="secondary">
                               <Link href={`#manual-item-${item.id}`}>Adjust details</Link>
                             </Button>
+                          </div>
                           </div>
                         </div>
                       </div>
