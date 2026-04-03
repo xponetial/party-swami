@@ -211,6 +211,15 @@ async function renderTextBuffer(params: {
     .toBuffer();
 }
 
+async function getBufferSize(buffer: Buffer) {
+  const metadata = await sharp(buffer).metadata();
+
+  return {
+    width: metadata.width ?? 0,
+    height: metadata.height ?? 0,
+  };
+}
+
 export async function createInviteCardImagePng(invite: PublicInviteImageRecord) {
   const templateCategories = await getInviteTemplateCatalog();
   const fallbackDesign: InviteDesignData = {
@@ -236,6 +245,7 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
   const design = invite.design_json
     ? normalizeInviteDesignData(invite.design_json, fallbackDesign)
     : fallbackDesign;
+  const emailCtaText = "RSVP with your private link";
   const template = resolveTemplate(templateCategories, design, invite.event_type);
   const layout = template ? getInviteCardLayout(template) : null;
   const titleTop = layout?.titleTop ?? 18;
@@ -301,12 +311,20 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
     fontPath,
   });
   const ctaBuffer = await renderTextBuffer({
-    text: design.fields.ctaText.toUpperCase(),
+    text: emailCtaText.toUpperCase(),
     width: ctaWidth - 36,
     fontSize: 22,
     color: ctaColor,
     fontPath,
   });
+  const eyebrowSize = await getBufferSize(eyebrowBuffer);
+  const titleSize = await getBufferSize(titleBuffer);
+  const messageSize = await getBufferSize(messageBuffer);
+  const ctaSize = await getBufferSize(ctaBuffer);
+  const eyebrowLeft = Math.round(titleCenterX - eyebrowSize.width / 2);
+  const titleLeft = Math.round(titleCenterX - titleSize.width / 2);
+  const messageLeft = Math.round(detailsBoxX + (detailsBoxWidth - messageSize.width) / 2);
+  const ctaLeft = Math.round(ctaX + (ctaWidth - ctaSize.width) / 2);
 
   return sharp({
     create: {
@@ -334,22 +352,22 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
       },
       {
         input: eyebrowBuffer,
-        left: Math.round(titleCenterX - (IMAGE_WIDTH - 80) / 2),
+        left: eyebrowLeft,
         top: subtitleTop,
       },
       {
         input: titleBuffer,
-        left: Math.round(titleCenterX - (IMAGE_WIDTH - 60) / 2),
+        left: titleLeft,
         top: titleTopY,
       },
       {
         input: messageBuffer,
-        left: detailsBoxX + 28,
+        left: messageLeft,
         top: detailsBoxY + 28,
       },
       {
         input: ctaBuffer,
-        left: ctaX + 18,
+        left: ctaLeft,
         top: ctaY + 22,
       },
     ])
