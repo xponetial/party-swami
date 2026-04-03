@@ -77,6 +77,71 @@ function buildRecommendationReason(
   return `Recommended because it supports the ${theme} plan and fits the event setup already stored in Party Genie.`;
 }
 
+function buildConfidenceTags(
+  item: ShoppingItemDetails,
+  event: EventDetails,
+  plan: PartyPlanDetails | null,
+) {
+  const tags: Array<{ label: string; className?: string }> = [];
+  const normalizedCategory = item.category.trim().toLowerCase();
+  const reason = buildRecommendationReason(item, event, plan).toLowerCase();
+  const price = item.estimated_price ?? 0;
+
+  if (price > 0 && price <= 15) {
+    tags.push({
+      label: "Budget-friendly",
+      className:
+        "bg-[linear-gradient(135deg,rgba(227,255,243,0.96)_0%,rgba(238,255,250,0.92)_100%)] text-emerald-700",
+    });
+  } else if (event.budget && price >= event.budget * 0.18) {
+    tags.push({
+      label: "High impact",
+      className:
+        "bg-[linear-gradient(135deg,rgba(255,239,230,0.95)_0%,rgba(255,247,238,0.9)_100%)] text-orange-700",
+    });
+  }
+
+  if (
+    normalizedCategory.includes("hosting") ||
+    normalizedCategory.includes("table") ||
+    normalizedCategory.includes("serve") ||
+    reason.includes("practical") ||
+    reason.includes("easy") ||
+    reason.includes("self-serve")
+  ) {
+    tags.push({
+      label: "Fast setup",
+      className:
+        "bg-[linear-gradient(135deg,rgba(233,244,255,0.96)_0%,rgba(244,248,255,0.92)_100%)] text-sky-700",
+    });
+  }
+
+  if (
+    normalizedCategory.includes("decor") ||
+    normalizedCategory.includes("upgrade") ||
+    normalizedCategory.includes("activity") ||
+    reason.includes("visual") ||
+    reason.includes("focal point") ||
+    reason.includes("lift")
+  ) {
+    tags.push({
+      label: "Guest favorite",
+      className:
+        "bg-[linear-gradient(135deg,rgba(250,236,255,0.95)_0%,rgba(244,238,255,0.92)_100%)] text-fuchsia-700",
+    });
+  }
+
+  if (!tags.length) {
+    tags.push({
+      label: "Host-approved",
+      className:
+        "bg-[linear-gradient(135deg,rgba(242,238,255,0.95)_0%,rgba(238,246,255,0.9)_100%)] text-indigo-700",
+    });
+  }
+
+  return tags.slice(0, 3);
+}
+
 function summarizeCategory(itemCount: number, category: string) {
   const label = toTitleCase(category);
   if (itemCount === 1) {
@@ -354,6 +419,7 @@ export function ShoppingListCard({
                   <div className="mt-4 grid gap-4">
                     {categoryItems.map((item) => {
                       const trackedHref = buildTrackedShoppingHref({ eventId, item });
+                      const confidenceTags = buildConfidenceTags(item, event, plan);
 
                       return (
                         <div
@@ -367,6 +433,13 @@ export function ShoppingListCard({
                             <div className="flex min-w-0 flex-col gap-4 [@media(min-width:1700px)]:flex-row [@media(min-width:1700px)]:items-start [@media(min-width:1700px)]:justify-between">
                               <div className="min-w-0 max-w-2xl">
                                 <p className="text-xl font-semibold leading-8 text-ink">{item.name}</p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {confidenceTags.map((tag) => (
+                                    <Badge key={tag.label} className={tag.className}>
+                                      {tag.label}
+                                    </Badge>
+                                  ))}
+                                </div>
                                 <p className="mt-2 max-w-xl text-sm leading-7 text-ink-muted">
                                   {buildRecommendationReason(item, event, plan)}
                                 </p>
