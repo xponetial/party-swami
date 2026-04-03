@@ -80,65 +80,11 @@ function resolveTemplate(
   );
 }
 
-function escapeXml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function wrapText(value: string, maxCharsPerLine: number, maxLines: number) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length <= maxCharsPerLine) {
-      current = candidate;
-      continue;
-    }
-
-    if (current) {
-      lines.push(current);
-    }
-    current = word;
-
-    if (lines.length === maxLines - 1) {
-      break;
-    }
-  }
-
-  if (lines.length < maxLines && current) {
-    lines.push(current);
-  }
-
-  const remainingWords = words.slice(lines.join(" ").split(/\s+/).filter(Boolean).length);
-  if (remainingWords.length && lines.length) {
-    const lastLine = `${lines[lines.length - 1]} ${remainingWords.join(" ")}`.trim();
-    lines[lines.length - 1] =
-      lastLine.length > maxCharsPerLine ? `${lastLine.slice(0, maxCharsPerLine - 3).trimEnd()}...` : lastLine;
-  }
-
-  return lines.slice(0, maxLines);
-}
-
 function getTitleLines(title: string) {
   return formatTitleForCard(title)
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-}
-
-function toSvgTspans(lines: string[], x: number, dy: number) {
-  return lines
-    .map((line, index) => {
-      const offset = index === 0 ? 0 : dy;
-      return `<tspan x="${x}" dy="${offset}">${escapeXml(line)}</tspan>`;
-    })
-    .join("");
 }
 
 async function getTemplateBackground(assetPath: string) {
@@ -148,8 +94,8 @@ async function getTemplateBackground(assetPath: string) {
   return readFile(absoluteAssetPath);
 }
 
-async function getInviteSvgFontDataUri() {
-  const fontPath = path.join(
+function getInviteFontPath() {
+  return path.join(
     process.cwd(),
     "node_modules",
     "next",
@@ -159,20 +105,12 @@ async function getInviteSvgFontDataUri() {
     "og",
     "Geist-Regular.ttf",
   );
-  const fontBuffer = await readFile(fontPath);
-  return `data:font/ttf;base64,${fontBuffer.toString("base64")}`;
 }
 
-function buildFrameSvg(fontDataUri: string) {
+function buildFrameSvg() {
   return `
     <svg width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}" viewBox="0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <style>
-          @font-face {
-            font-family: 'InviteGeist';
-            src: url('${fontDataUri}') format('truetype');
-          }
-        </style>
         <linearGradient id="canvasBg" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#eef3ff" />
           <stop offset="100%" stop-color="#edf2ff" />
@@ -186,46 +124,17 @@ function buildFrameSvg(fontDataUri: string) {
 }
 
 function buildOverlaySvg(params: {
-  title: string;
-  subtitle: string;
-  message: string;
-  ctaText: string;
-  titleTop: number;
   detailsTop: number;
   ctaTop: number;
-  titleColor: string;
-  ctaColor: string;
-  titleLetterSpacing: string;
-  eyebrowLetterSpacing: string;
-  fontDataUri: string;
 }) {
   const {
-    title,
-    subtitle,
-    message,
-    ctaText,
-    titleTop,
     detailsTop,
     ctaTop,
-    titleColor,
-    ctaColor,
-    titleLetterSpacing,
-    eyebrowLetterSpacing,
-    fontDataUri,
   } = params;
-
-  const titleLines = getTitleLines(title);
-  const titleFontSize = getTitleFontSize(title);
-  const titleLineHeight = Math.round(titleFontSize * 1.08);
-  const titleCenterX = IMAGE_X + IMAGE_WIDTH / 2;
-  const titleBaseY = IMAGE_Y + (IMAGE_HEIGHT * titleTop) / 100 - (titleLines.length - 1) * (titleLineHeight / 2);
-  const detailLines = wrapText(message, 34, 4);
-  const detailTextX = IMAGE_X + IMAGE_WIDTH / 2;
   const detailsBoxWidth = Math.round(IMAGE_WIDTH * 0.84);
-  const detailsBoxHeight = 120 + Math.max(0, detailLines.length - 1) * 34;
+  const detailsBoxHeight = 188;
   const detailsBoxX = Math.round((CANVAS_WIDTH - detailsBoxWidth) / 2);
   const detailsBoxY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * detailsTop) / 100 - detailsBoxHeight / 2);
-  const detailsTextY = detailsBoxY + 38;
   const ctaWidth = Math.round(IMAGE_WIDTH * 0.7);
   const ctaHeight = 84;
   const ctaX = Math.round((CANVAS_WIDTH - ctaWidth) / 2);
@@ -234,12 +143,6 @@ function buildOverlaySvg(params: {
   return `
     <svg width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}" viewBox="0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <style>
-          @font-face {
-            font-family: 'InviteGeist';
-            src: url('${fontDataUri}') format('truetype');
-          }
-        </style>
         <linearGradient id="imageShade" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="rgba(4,8,28,0.18)" />
           <stop offset="42%" stop-color="rgba(8,12,36,0.08)" />
@@ -251,37 +154,8 @@ function buildOverlaySvg(params: {
         </linearGradient>
       </defs>
 
-      <text x="${CARD_X}" y="28" fill="#6f63d9" font-family="InviteGeist" font-size="15" letter-spacing="5" text-transform="uppercase">
-        AI PARTY GENIE INVITATION
-      </text>
-
       <rect x="${IMAGE_X}" y="${IMAGE_Y}" width="${IMAGE_WIDTH}" height="${IMAGE_HEIGHT}" rx="18" fill="rgba(255,255,255,0.08)" />
       <rect x="${IMAGE_X}" y="${IMAGE_Y}" width="${IMAGE_WIDTH}" height="${IMAGE_HEIGHT}" rx="18" fill="url(#imageShade)" />
-
-      <text
-        x="${titleCenterX}"
-        y="${titleBaseY}"
-        fill="${titleColor}"
-        font-family="InviteGeist"
-        font-size="19"
-        letter-spacing="${eyebrowLetterSpacing}"
-        text-anchor="middle"
-        opacity="0.94"
-      >
-        ${escapeXml(subtitle.toUpperCase())}
-      </text>
-
-      <text
-        x="${titleCenterX}"
-        y="${titleBaseY + 42}"
-        fill="${titleColor}"
-        font-family="InviteGeist"
-        font-size="${titleFontSize}"
-        letter-spacing="${titleLetterSpacing}"
-        text-anchor="middle"
-      >
-        ${toSvgTspans(titleLines, titleCenterX, titleLineHeight)}
-      </text>
 
       <rect
         x="${detailsBoxX}"
@@ -293,17 +167,6 @@ function buildOverlaySvg(params: {
         stroke="rgba(255,255,255,0.18)"
       />
 
-      <text
-        x="${detailTextX}"
-        y="${detailsTextY}"
-        fill="${titleColor}"
-        font-family="InviteGeist"
-        font-size="21"
-        text-anchor="middle"
-      >
-        ${toSvgTspans(detailLines, detailTextX, 34)}
-      </text>
-
       <rect
         x="${ctaX}"
         y="${ctaY}"
@@ -313,20 +176,39 @@ function buildOverlaySvg(params: {
         fill="url(#ctaFill)"
         stroke="rgba(255,255,255,0.2)"
       />
-
-      <text
-        x="${ctaX + ctaWidth / 2}"
-        y="${ctaY + 50}"
-        fill="${ctaColor}"
-        font-family="InviteGeist"
-        font-size="22"
-        letter-spacing="3"
-        text-anchor="middle"
-      >
-        ${escapeXml(ctaText.toUpperCase())}
-      </text>
     </svg>
   `.trim();
+}
+
+function escapePango(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+async function renderTextBuffer(params: {
+  text: string;
+  width: number;
+  fontSize: number;
+  color: string;
+  fontPath: string;
+}) {
+  const { text, width, fontSize, color, fontPath } = params;
+
+  return sharp({
+    text: {
+      text: `<span foreground="${color}">${escapePango(text)}</span>`,
+      font: `InviteGeist ${fontSize}`,
+      fontfile: fontPath,
+      width,
+      align: "center",
+      rgba: true,
+      wrap: "word-char",
+    },
+  })
+    .png()
+    .toBuffer();
 }
 
 export async function createInviteCardImagePng(invite: PublicInviteImageRecord) {
@@ -361,9 +243,7 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
   const ctaTop = layout?.ctaTop ?? 86;
   const titleColor = layout?.accents[0] ?? "#ffffff";
   const ctaColor = layout?.accents[1] ?? "#ffd869";
-  const titleLetterSpacing = layout?.emailTitleLetterSpacing ?? "0.04em";
-  const eyebrowLetterSpacing = layout?.emailEyebrowLetterSpacing ?? "0.16em";
-  const fontDataUri = await getInviteSvgFontDataUri();
+  const fontPath = getInviteFontPath();
   const message = compactInviteCopy(design.fields.messageText, 140);
   const backgroundBuffer = template
     ? await getTemplateBackground(template.assetPath)
@@ -384,20 +264,49 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
     .toBuffer();
 
   const overlaySvg = buildOverlaySvg({
-    title: design.fields.title,
-    subtitle: design.fields.subtitle,
-    message,
-    ctaText: design.fields.ctaText,
-    titleTop,
     detailsTop,
     ctaTop,
-    titleColor,
-    ctaColor,
-    titleLetterSpacing,
-    eyebrowLetterSpacing,
-    fontDataUri,
   });
-  const frameSvg = buildFrameSvg(fontDataUri);
+  const frameSvg = buildFrameSvg();
+  const titleLines = getTitleLines(design.fields.title);
+  const titleFontSize = getTitleFontSize(design.fields.title);
+  const titleCenterX = IMAGE_X + IMAGE_WIDTH / 2;
+  const subtitleTop = Math.round(IMAGE_Y + (IMAGE_HEIGHT * titleTop) / 100 - 34);
+  const titleTopY = subtitleTop + 44;
+  const detailsBoxWidth = Math.round(IMAGE_WIDTH * 0.84);
+  const detailsBoxX = Math.round((CANVAS_WIDTH - detailsBoxWidth) / 2);
+  const detailsBoxY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * detailsTop) / 100 - 94);
+  const ctaWidth = Math.round(IMAGE_WIDTH * 0.7);
+  const ctaX = Math.round((CANVAS_WIDTH - ctaWidth) / 2);
+  const ctaY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * ctaTop) / 100 - 42);
+  const eyebrowBuffer = await renderTextBuffer({
+    text: design.fields.subtitle.toUpperCase(),
+    width: IMAGE_WIDTH - 80,
+    fontSize: 19,
+    color: titleColor,
+    fontPath,
+  });
+  const titleBuffer = await renderTextBuffer({
+    text: titleLines.join("\n"),
+    width: IMAGE_WIDTH - 60,
+    fontSize: titleFontSize,
+    color: titleColor,
+    fontPath,
+  });
+  const messageBuffer = await renderTextBuffer({
+    text: message,
+    width: detailsBoxWidth - 56,
+    fontSize: 21,
+    color: titleColor,
+    fontPath,
+  });
+  const ctaBuffer = await renderTextBuffer({
+    text: design.fields.ctaText.toUpperCase(),
+    width: ctaWidth - 36,
+    fontSize: 22,
+    color: ctaColor,
+    fontPath,
+  });
 
   return sharp({
     create: {
@@ -422,6 +331,26 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
         input: Buffer.from(overlaySvg),
         left: 0,
         top: 0,
+      },
+      {
+        input: eyebrowBuffer,
+        left: Math.round(titleCenterX - (IMAGE_WIDTH - 80) / 2),
+        top: subtitleTop,
+      },
+      {
+        input: titleBuffer,
+        left: Math.round(titleCenterX - (IMAGE_WIDTH - 60) / 2),
+        top: titleTopY,
+      },
+      {
+        input: messageBuffer,
+        left: detailsBoxX + 28,
+        top: detailsBoxY + 28,
+      },
+      {
+        input: ctaBuffer,
+        left: ctaX + 18,
+        top: ctaY + 22,
       },
     ])
     .png()
