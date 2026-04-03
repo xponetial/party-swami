@@ -1,6 +1,6 @@
-import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
 import {
   compactInviteCopy,
@@ -24,6 +24,19 @@ export type PublicInviteImageRecord = {
   invite_copy: string | null;
   design_json: InviteDesignData | null;
 };
+
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 1200;
+const CARD_X = 28;
+const CARD_Y = 64;
+const CARD_WIDTH = 744;
+const CARD_HEIGHT = 1072;
+const FRAME_RADIUS = 34;
+const IMAGE_INSET = 18;
+const IMAGE_X = CARD_X + IMAGE_INSET;
+const IMAGE_Y = CARD_Y + IMAGE_INSET;
+const IMAGE_WIDTH = CARD_WIDTH - IMAGE_INSET * 2;
+const IMAGE_HEIGHT = CARD_HEIGHT - IMAGE_INSET * 2;
 
 function slugify(value: string) {
   return value
@@ -67,30 +80,223 @@ function resolveTemplate(
   );
 }
 
-function getImageMimeType(assetPath: string) {
-  const extension = path.extname(assetPath).toLowerCase();
-
-  switch (extension) {
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".webp":
-      return "image/webp";
-    default:
-      return "image/png";
-  }
+function escapeXml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
-async function getTemplateBackgroundDataUri(assetPath: string) {
+function wrapText(value: string, maxCharsPerLine: number, maxLines: number) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length <= maxCharsPerLine) {
+      current = candidate;
+      continue;
+    }
+
+    if (current) {
+      lines.push(current);
+    }
+    current = word;
+
+    if (lines.length === maxLines - 1) {
+      break;
+    }
+  }
+
+  if (lines.length < maxLines && current) {
+    lines.push(current);
+  }
+
+  const remainingWords = words.slice(lines.join(" ").split(/\s+/).filter(Boolean).length);
+  if (remainingWords.length && lines.length) {
+    const lastLine = `${lines[lines.length - 1]} ${remainingWords.join(" ")}`.trim();
+    lines[lines.length - 1] =
+      lastLine.length > maxCharsPerLine ? `${lastLine.slice(0, maxCharsPerLine - 1).trimEnd()}…` : lastLine;
+  }
+
+  return lines.slice(0, maxLines);
+}
+
+function getTitleLines(title: string) {
+  return formatTitleForCard(title)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function toSvgTspans(lines: string[], x: number, dy: number) {
+  return lines
+    .map((line, index) => {
+      const offset = index === 0 ? 0 : dy;
+      return `<tspan x="${x}" dy="${offset}">${escapeXml(line)}</tspan>`;
+    })
+    .join("");
+}
+
+async function getTemplateBackground(assetPath: string) {
   const normalizedAssetPath = assetPath.replace(/^\/+/, "").replace(/\//g, path.sep);
   const absoluteAssetPath = path.join(process.cwd(), "public", normalizedAssetPath);
-  const fileBuffer = await readFile(absoluteAssetPath);
-  const mimeType = getImageMimeType(assetPath);
 
-  return `data:${mimeType};base64,${fileBuffer.toString("base64")}`;
+  return readFile(absoluteAssetPath);
 }
 
-export async function createInviteCardImageResponse(invite: PublicInviteImageRecord) {
+function buildOverlaySvg(params: {
+  title: string;
+  subtitle: string;
+  message: string;
+  ctaText: string;
+  titleTop: number;
+  detailsTop: number;
+  ctaTop: number;
+  titleColor: string;
+  ctaColor: string;
+  titleFontFamily: string;
+  titleLetterSpacing: string;
+  eyebrowLetterSpacing: string;
+}) {
+  const {
+    title,
+    subtitle,
+    message,
+    ctaText,
+    titleTop,
+    detailsTop,
+    ctaTop,
+    titleColor,
+    ctaColor,
+    titleFontFamily,
+    titleLetterSpacing,
+    eyebrowLetterSpacing,
+  } = params;
+
+  const titleLines = getTitleLines(title);
+  const titleFontSize = getTitleFontSize(title);
+  const titleLineHeight = Math.round(titleFontSize * 1.08);
+  const titleCenterX = IMAGE_X + IMAGE_WIDTH / 2;
+  const titleBaseY = IMAGE_Y + (IMAGE_HEIGHT * titleTop) / 100 - (titleLines.length - 1) * (titleLineHeight / 2);
+  const detailLines = wrapText(message, 34, 4);
+  const detailTextX = IMAGE_X + IMAGE_WIDTH / 2;
+  const detailsBoxWidth = Math.round(IMAGE_WIDTH * 0.84);
+  const detailsBoxHeight = 120 + Math.max(0, detailLines.length - 1) * 34;
+  const detailsBoxX = Math.round((CANVAS_WIDTH - detailsBoxWidth) / 2);
+  const detailsBoxY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * detailsTop) / 100 - detailsBoxHeight / 2);
+  const detailsTextY = detailsBoxY + 38;
+  const ctaWidth = Math.round(IMAGE_WIDTH * 0.7);
+  const ctaHeight = 84;
+  const ctaX = Math.round((CANVAS_WIDTH - ctaWidth) / 2);
+  const ctaY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * ctaTop) / 100 - ctaHeight / 2);
+
+  return `
+    <svg width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}" viewBox="0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="canvasBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#eef3ff" />
+          <stop offset="100%" stop-color="#edf2ff" />
+        </linearGradient>
+        <linearGradient id="imageShade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(4,8,28,0.18)" />
+          <stop offset="42%" stop-color="rgba(8,12,36,0.08)" />
+          <stop offset="100%" stop-color="rgba(6,10,30,0.32)" />
+        </linearGradient>
+        <linearGradient id="ctaFill" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="rgba(37,146,255,0.36)" />
+          <stop offset="100%" stop-color="rgba(139,70,255,0.34)" />
+        </linearGradient>
+      </defs>
+
+      <rect width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}" rx="34" fill="url(#canvasBg)" />
+      <text x="${CARD_X}" y="28" fill="#6f63d9" font-family="Arial, sans-serif" font-size="15" letter-spacing="5" text-transform="uppercase">
+        AI PARTY GENIE INVITATION
+      </text>
+
+      <rect x="${CARD_X}" y="${CARD_Y}" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" rx="${FRAME_RADIUS}" fill="#131a4a" />
+      <rect x="${IMAGE_X}" y="${IMAGE_Y}" width="${IMAGE_WIDTH}" height="${IMAGE_HEIGHT}" rx="18" fill="rgba(255,255,255,0.08)" />
+      <rect x="${IMAGE_X}" y="${IMAGE_Y}" width="${IMAGE_WIDTH}" height="${IMAGE_HEIGHT}" rx="18" fill="url(#imageShade)" />
+
+      <text
+        x="${titleCenterX}"
+        y="${titleBaseY}"
+        fill="${titleColor}"
+        font-family="Arial, sans-serif"
+        font-size="19"
+        font-weight="700"
+        letter-spacing="${eyebrowLetterSpacing}"
+        text-anchor="middle"
+        opacity="0.94"
+      >
+        ${escapeXml(subtitle.toUpperCase())}
+      </text>
+
+      <text
+        x="${titleCenterX}"
+        y="${titleBaseY + 42}"
+        fill="${titleColor}"
+        font-family="${titleFontFamily}"
+        font-size="${titleFontSize}"
+        font-weight="700"
+        letter-spacing="${titleLetterSpacing}"
+        text-anchor="middle"
+      >
+        ${toSvgTspans(titleLines, titleCenterX, titleLineHeight)}
+      </text>
+
+      <rect
+        x="${detailsBoxX}"
+        y="${detailsBoxY}"
+        width="${detailsBoxWidth}"
+        height="${detailsBoxHeight}"
+        rx="28"
+        fill="rgba(8,12,36,0.48)"
+        stroke="rgba(255,255,255,0.18)"
+      />
+
+      <text
+        x="${detailTextX}"
+        y="${detailsTextY}"
+        fill="${titleColor}"
+        font-family="Arial, sans-serif"
+        font-size="21"
+        font-weight="500"
+        text-anchor="middle"
+      >
+        ${toSvgTspans(detailLines, detailTextX, 34)}
+      </text>
+
+      <rect
+        x="${ctaX}"
+        y="${ctaY}"
+        width="${ctaWidth}"
+        height="${ctaHeight}"
+        rx="42"
+        fill="url(#ctaFill)"
+        stroke="rgba(255,255,255,0.2)"
+      />
+
+      <text
+        x="${ctaX + ctaWidth / 2}"
+        y="${ctaY + 50}"
+        fill="${ctaColor}"
+        font-family="Arial, sans-serif"
+        font-size="22"
+        font-weight="700"
+        letter-spacing="3"
+        text-anchor="middle"
+      >
+        ${escapeXml(ctaText.toUpperCase())}
+      </text>
+    </svg>
+  `.trim();
+}
+
+export async function createInviteCardImagePng(invite: PublicInviteImageRecord) {
   const templateCategories = await getInviteTemplateCatalog();
   const fallbackDesign: InviteDesignData = {
     templateId: "email-fallback-template",
@@ -111,15 +317,12 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
       ctaText: "RSVP with your private link",
     },
   };
+
   const design = invite.design_json
     ? normalizeInviteDesignData(invite.design_json, fallbackDesign)
     : fallbackDesign;
   const template = resolveTemplate(templateCategories, design, invite.event_type);
-  const backgroundUrl = template ? await getTemplateBackgroundDataUri(template.assetPath) : null;
   const layout = template ? getInviteCardLayout(template) : null;
-  const message = compactInviteCopy(design.fields.messageText, 360);
-  const titleFontSize = getTitleFontSize(design.fields.title);
-  const formattedTitle = formatTitleForCard(design.fields.title);
   const titleTop = layout?.titleTop ?? 18;
   const detailsTop = layout?.detailsTop ?? 60;
   const ctaTop = layout?.ctaTop ?? 86;
@@ -128,230 +331,60 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
   const titleFontFamily = layout?.emailTitleFontFamily ?? "Georgia, serif";
   const titleLetterSpacing = layout?.emailTitleLetterSpacing ?? "0.04em";
   const eyebrowLetterSpacing = layout?.emailEyebrowLetterSpacing ?? "0.16em";
+  const message = compactInviteCopy(design.fields.messageText, 140);
+  const backgroundBuffer = template
+    ? await getTemplateBackground(template.assetPath)
+    : await sharp({
+        create: {
+          width: IMAGE_WIDTH,
+          height: IMAGE_HEIGHT,
+          channels: 4,
+          background: "#28366f",
+        },
+      })
+        .png()
+        .toBuffer();
 
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          alignItems: "center",
-          background:
-            "radial-gradient(circle at top right, rgba(37,146,255,0.18), transparent 22%), radial-gradient(circle at top left, rgba(139,70,255,0.2), transparent 24%), linear-gradient(180deg, #060a1e 0%, #0e1537 100%)",
-          display: "flex",
-          height: "100%",
-          justifyContent: "center",
-          width: "100%",
-        }}
-      >
-        <div
-          style={{
-            borderRadius: 48,
-            display: "flex",
-            height: 1120,
-            overflow: "hidden",
-            position: "relative",
-            width: 760,
-          }}
-        >
-          {backgroundUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              alt=""
-              height="1120"
-              src={backgroundUrl}
-              style={{
-                height: "100%",
-                left: 0,
-                objectFit: "cover",
-                position: "absolute",
-                top: 0,
-                width: "100%",
-              }}
-              width="760"
-            />
-          ) : (
-            <div
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(8,12,36,0.88) 0%, rgba(37,146,255,0.52) 52%, rgba(139,70,255,0.62) 100%)",
-                inset: 0,
-                position: "absolute",
-              }}
-            />
-          )}
+  const resizedBackground = await sharp(backgroundBuffer)
+    .resize(IMAGE_WIDTH, IMAGE_HEIGHT, { fit: "cover" })
+    .png()
+    .toBuffer();
 
-          <div
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(4,8,28,0.28) 0%, rgba(7,12,34,0.18) 24%, rgba(8,12,36,0.12) 42%, rgba(6,10,30,0.48) 100%)",
-              inset: 0,
-              position: "absolute",
-            }}
-          />
+  const overlaySvg = buildOverlaySvg({
+    title: design.fields.title,
+    subtitle: design.fields.subtitle,
+    message,
+    ctaText: design.fields.ctaText,
+    titleTop,
+    detailsTop,
+    ctaTop,
+    titleColor,
+    ctaColor,
+    titleFontFamily,
+    titleLetterSpacing,
+    eyebrowLetterSpacing,
+  });
 
-          <div
-            style={{
-              alignItems: "center",
-              color: "#ffffff",
-              display: "flex",
-              flexDirection: "column",
-              inset: 0,
-              padding: "64px 56px 56px",
-              position: "absolute",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                alignItems: "center",
-                background: "rgba(8,12,36,0.76)",
-                border: "1px solid rgba(255,255,255,0.18)",
-                borderRadius: 999,
-                color: "#ffffff",
-                display: "flex",
-                fontSize: 17,
-                fontWeight: 700,
-                justifyContent: "center",
-                letterSpacing: "0.34em",
-                minHeight: 44,
-                textTransform: "uppercase",
-                width: 260,
-              }}
-            >
-              AI Party Genie
-            </div>
-
-            <div
-              style={{
-                alignItems: "center",
-                display: "flex",
-                flexDirection: "column",
-                gap: 18,
-                justifyContent: "center",
-                left: "50%",
-                position: "absolute",
-                top: `${titleTop}%`,
-                transform: "translate(-50%, -50%)",
-                width: "76%",
-              }}
-            >
-              <div
-                style={{
-                  alignItems: "center",
-                  color: titleColor,
-                  display: "flex",
-                  fontSize: 18,
-                  fontWeight: 700,
-                  justifyContent: "center",
-                  letterSpacing: eyebrowLetterSpacing,
-                  opacity: 0.92,
-                  textAlign: "center",
-                  textTransform: "uppercase",
-                  width: "100%",
-                }}
-              >
-                {design.fields.subtitle}
-              </div>
-              <div
-                style={{
-                  alignItems: "center",
-                  color: titleColor,
-                  display: "flex",
-                  fontFamily: titleFontFamily,
-                  fontSize: titleFontSize,
-                  fontWeight: 700,
-                  justifyContent: "center",
-                  letterSpacing: titleLetterSpacing,
-                  lineHeight: 1.04,
-                  textAlign: "center",
-                  whiteSpace: "pre-wrap",
-                  width: "100%",
-                  wordBreak: "break-word",
-                }}
-              >
-                {formattedTitle}
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: "rgba(8, 12, 36, 0.48)",
-                border: "1px solid rgba(255,255,255,0.18)",
-                borderRadius: 34,
-                color: titleColor,
-                display: "flex",
-                flexDirection: "column",
-                fontSize: 22,
-                lineHeight: 1.45,
-                left: "50%",
-                maxHeight: 300,
-                overflow: "hidden",
-                padding: "28px 32px",
-                position: "absolute",
-                textAlign: "center",
-                top: `${detailsTop}%`,
-                transform: "translate(-50%, -50%)",
-                width: "84%",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {message}
-            </div>
-
-            <div
-              style={{
-                alignItems: "center",
-                background: "linear-gradient(135deg, rgba(37,146,255,0.28), rgba(139,70,255,0.32))",
-                border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: 999,
-                color: "#ffd869",
-                display: "flex",
-                fontSize: 22,
-                fontWeight: 700,
-                justifyContent: "center",
-                letterSpacing: "0.22em",
-                left: "50%",
-                minHeight: 88,
-                padding: "0 26px",
-                position: "absolute",
-                textAlign: "center",
-                top: `${ctaTop}%`,
-                transform: "translate(-50%, -50%)",
-                textTransform: "uppercase",
-                width: "70%",
-              }}
-            >
-              <div
-                style={{
-                  alignItems: "center",
-                  color: ctaColor,
-                  display: "flex",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  width: "100%",
-                }}
-              >
-                {design.fields.ctaText}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    ),
-    {
-      width: 800,
-      height: 1200,
+  return sharp({
+    create: {
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+      channels: 4,
+      background: "#eef3ff",
     },
-  );
-}
-
-export async function createInviteCardEmailAttachment(invite: PublicInviteImageRecord) {
-  const imageResponse = await createInviteCardImageResponse(invite);
-  const arrayBuffer = await imageResponse.arrayBuffer();
-
-  return {
-    filename: "invite-card.png",
-    content: Buffer.from(arrayBuffer).toString("base64"),
-    contentType: "image/png",
-    contentId: "invite-card",
-  };
+  })
+    .composite([
+      {
+        input: resizedBackground,
+        left: IMAGE_X,
+        top: IMAGE_Y,
+      },
+      {
+        input: Buffer.from(overlaySvg),
+        left: 0,
+        top: 0,
+      },
+    ])
+    .png()
+    .toBuffer();
 }

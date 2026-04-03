@@ -5,6 +5,7 @@ type InviteEmailArgs = {
   locationText: string;
   inviteCopy: string;
   cardImageSrc: string | null;
+  cardImageHref?: string | null;
   guestName: string;
   rsvpUrl: string;
 };
@@ -24,6 +25,7 @@ function buildEventEmailHtml({
   locationText,
   inviteCopy,
   cardImageSrc,
+  cardImageHref,
   guestName,
   rsvpUrl,
   emailType,
@@ -42,7 +44,9 @@ function buildEventEmailHtml({
 
   const cardImageMarkup = cardImageSrc
     ? `<div style="margin: 0 0 24px;">
-          <img src="${cardImageSrc}" alt="${eventTitle} invitation card" style="display: block; width: 100%; max-width: 576px; border-radius: 24px; border: 1px solid rgba(112, 137, 255, 0.28);" />
+          <a href="${cardImageHref || rsvpUrl}" style="display: block; text-decoration: none;">
+            <img src="${cardImageSrc}" alt="${eventTitle} invitation card" style="display: block; width: 100%; max-width: 576px; border-radius: 24px; border: 1px solid rgba(112, 137, 255, 0.28);" />
+          </a>
         </div>`
     : "";
 

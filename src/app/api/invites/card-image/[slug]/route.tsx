@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { type InviteDesignData } from "@/lib/invite-design";
-import { createInviteCardImageResponse } from "@/lib/invite-card-image";
+import { createInviteCardImagePng } from "@/lib/invite-card-image";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -32,6 +32,12 @@ export async function GET(
   }
 
   const invite = inviteRows[0] as PublicInviteRecord;
+  const png = await createInviteCardImagePng(invite);
 
-  return createInviteCardImageResponse(invite);
+  return new Response(new Uint8Array(png), {
+    headers: {
+      "cache-control": "public, max-age=300, stale-while-revalidate=86400",
+      "content-type": "image/png",
+    },
+  });
 }

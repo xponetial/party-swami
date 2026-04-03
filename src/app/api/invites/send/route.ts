@@ -8,7 +8,6 @@ import {
   buildReminderEmailSubject,
 } from "@/lib/email/invite-template";
 import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
-import { createInviteCardEmailAttachment } from "@/lib/invite-card-image";
 import { getInviteFromEmail, getResendClient } from "@/lib/email/resend";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
@@ -173,15 +172,7 @@ export async function POST(request: Request) {
     ? normalizeInviteDesignData(invite.design_json, fallbackDesign)
     : fallbackDesign;
   const inviteCopy = inviteDesign.fields.messageText;
-  const inlineCardAttachment = await createInviteCardEmailAttachment({
-    title: event.title,
-    event_type: event.event_type,
-    event_date: event.event_date,
-    location: event.location,
-    theme: null,
-    invite_copy: invite.invite_copy,
-    design_json: invite.design_json,
-  });
+  const cardImageUrl = `${baseUrl}/api/invites/card-image/${invite.public_slug}`;
 
   const sendResults = await Promise.all(
     sendableGuests.map(async (guest) => {
@@ -196,7 +187,8 @@ export async function POST(request: Request) {
         dateText: inviteDesign.fields.dateText,
         locationText: inviteDesign.fields.locationText,
         inviteCopy,
-        cardImageSrc: "cid:invite-card",
+        cardImageSrc: cardImageUrl,
+        cardImageHref: rsvpUrl,
         guestName: guest.name,
         rsvpUrl,
       };
@@ -210,7 +202,6 @@ export async function POST(request: Request) {
         to: guest.email!,
         subject,
         html,
-        attachments: [inlineCardAttachment],
       });
 
       return {
