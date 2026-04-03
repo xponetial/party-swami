@@ -222,9 +222,11 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
 
             <div
               style={{
+                alignItems: "center",
                 display: "flex",
                 flexDirection: "column",
                 gap: 18,
+                justifyContent: "center",
                 left: "50%",
                 position: "absolute",
                 top: `${titleTop}%`,
@@ -234,26 +236,35 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
             >
               <div
                 style={{
+                  alignItems: "center",
                   color: titleColor,
+                  display: "flex",
                   fontSize: 18,
                   fontWeight: 700,
+                  justifyContent: "center",
                   letterSpacing: eyebrowLetterSpacing,
                   opacity: 0.92,
+                  textAlign: "center",
                   textTransform: "uppercase",
+                  width: "100%",
                 }}
               >
                 {design.fields.subtitle}
               </div>
               <div
                 style={{
+                  alignItems: "center",
                   color: titleColor,
+                  display: "flex",
                   fontFamily: titleFontFamily,
                   fontSize: titleFontSize,
                   fontWeight: 700,
+                  justifyContent: "center",
                   letterSpacing: titleLetterSpacing,
                   lineHeight: 1.04,
                   textAlign: "center",
                   whiteSpace: "pre-wrap",
+                  width: "100%",
                   wordBreak: "break-word",
                 }}
               >
@@ -280,6 +291,7 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
                 top: `${detailsTop}%`,
                 transform: "translate(-50%, -50%)",
                 width: "84%",
+                whiteSpace: "pre-wrap",
               }}
             >
               {message}
@@ -308,7 +320,18 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
                 width: "70%",
               }}
             >
-              <span style={{ color: ctaColor }}>{design.fields.ctaText}</span>
+              <div
+                style={{
+                  alignItems: "center",
+                  color: ctaColor,
+                  display: "flex",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  width: "100%",
+                }}
+              >
+                {design.fields.ctaText}
+              </div>
             </div>
           </div>
         </div>
