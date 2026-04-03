@@ -16,6 +16,7 @@ export default async function EventPage({
       description={`A visual-first plan for ${event.event_type}, including invite preview, shopping, menu ideas, and checklist progress.`}
       backHref="/dashboard"
       backLabel="Back to dashboard"
+      eventNav={{ eventId, eventTitle: event.title, active: "overview" }}
     >
       <EventWorkspaceOverview
         eventId={eventId}

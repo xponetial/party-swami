@@ -12,6 +12,7 @@ export default async function NewEventPage({
 
   return (
     <AppShell
+      currentSection="/events/new"
       title="Create event"
       description="Choose the kind of event first, then shape the vibe, date, guest count, and budget around the card family you want to lead with."
     >

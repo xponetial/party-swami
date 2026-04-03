@@ -315,6 +315,7 @@ export default async function DashboardPage({
   if (!user) {
     return (
       <AppShell
+        currentSection="/dashboard"
         title="Dashboard"
         description="Connect the frontend to Supabase by signing in, then your event workspace can load directly from the database."
         actions={
@@ -449,6 +450,7 @@ export default async function DashboardPage({
   if (eventsError) {
     return (
       <AppShell
+        currentSection="/dashboard"
         title="Dashboard"
         description="The frontend is connected to Supabase, but the dashboard query hit an error."
       >
@@ -687,6 +689,7 @@ export default async function DashboardPage({
 
   return (
     <AppShell
+      currentSection="/dashboard"
       title="Dashboard"
       description="This dashboard is now reading live Supabase event data and surfacing the latest AI-generated summary."
       actions={

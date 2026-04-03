@@ -15,6 +15,7 @@ export default async function EventShoppingPage({
       title="Party Genie Shopping"
       description="Personalized shopping recommendations based on the event details you already planned."
       backHref={`/events/${eventId}`}
+      eventNav={{ eventId, eventTitle: event.title, active: "shopping" }}
     >
       <ShoppingListCard
         event={event}

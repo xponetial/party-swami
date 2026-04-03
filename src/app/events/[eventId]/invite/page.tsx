@@ -19,6 +19,7 @@ export default async function EventInvitePage({
       title="Invitation generator"
       description="Invite editing, guest messaging, RSVP tracking, and reminder controls in one place."
       backHref={`/events/${eventId}`}
+      eventNav={{ eventId, eventTitle: event.title, active: "invite" }}
     >
       <InvitePreviewCard
         event={event}
