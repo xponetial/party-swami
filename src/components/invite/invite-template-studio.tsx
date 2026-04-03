@@ -287,20 +287,9 @@ export function InviteTemplateStudio({
                 value={design.fields.messageText}
               />
             </label>
-            <label className="space-y-2">
-              <Label htmlFor="card-cta">Call to action</Label>
-              <input
-                id="card-cta"
-                className="w-full rounded-2xl border border-border bg-[rgba(237,243,255,0.92)] px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
-                onChange={(eventValue) =>
-                  setDesign((current) => ({
-                    ...current,
-                    fields: { ...current.fields, ctaText: eventValue.target.value },
-                  }))
-                }
-                value={design.fields.ctaText}
-              />
-            </label>
+            <div className="rounded-[1.5rem] border border-border bg-[rgba(237,243,255,0.92)] px-4 py-3 text-sm text-ink-muted">
+              RSVP call-to-action text is fixed automatically for guests.
+            </div>
           </div>
 
           <div className="mt-5">
