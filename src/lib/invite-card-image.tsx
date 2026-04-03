@@ -84,6 +84,20 @@ function getTitleFontSize(title: string) {
   return 72;
 }
 
+function formatTitleForCard(title: string) {
+  const words = title.trim().split(/\s+/).filter(Boolean);
+
+  if (words.length <= 2) {
+    return title.trim();
+  }
+
+  const midpoint = Math.ceil(words.length / 2);
+  const firstLine = words.slice(0, midpoint).join(" ");
+  const secondLine = words.slice(midpoint).join(" ");
+
+  return `${firstLine}\n${secondLine}`;
+}
+
 function getImageMimeType(assetPath: string) {
   const extension = path.extname(assetPath).toLowerCase();
 
@@ -135,6 +149,7 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
   const backgroundUrl = template ? await getTemplateBackgroundDataUri(template.assetPath) : null;
   const message = compactCopy(design.fields.messageText, 360);
   const titleFontSize = getTitleFontSize(design.fields.title);
+  const formattedTitle = formatTitleForCard(design.fields.title);
 
   return new ImageResponse(
     (
@@ -256,18 +271,24 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
                   background: "linear-gradient(180deg, rgba(6,10,30,0.52) 0%, rgba(6,10,30,0.36) 100%)",
                   border: "1px solid rgba(255,255,255,0.14)",
                   borderRadius: 30,
+                  display: "flex",
                   fontFamily: "Georgia, serif",
                   fontSize: titleFontSize,
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   lineHeight: 1.04,
+                  justifyContent: "center",
                   marginTop: 18,
                   maxWidth: "100%",
+                  overflow: "hidden",
                   padding: "22px 28px",
+                  textAlign: "center",
                   whiteSpace: "pre-wrap",
+                  width: "100%",
+                  wordBreak: "break-word",
                 }}
               >
-                {design.fields.title}
+                {formattedTitle}
               </div>
             </div>
 
