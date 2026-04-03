@@ -2,6 +2,12 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
+import {
+  compactInviteCopy,
+  formatTitleForCard,
+  getInviteCardLayout,
+  getTitleFontSize,
+} from "@/lib/invite-card-layout";
 import { getInviteTemplateCatalog } from "@/lib/invite-template-catalog";
 import {
   findInviteTemplate,
@@ -61,43 +67,6 @@ function resolveTemplate(
   );
 }
 
-function compactCopy(value: string, maxLength: number) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
-function getTitleFontSize(title: string) {
-  const length = title.trim().length;
-
-  if (length > 34) {
-    return 54;
-  }
-
-  if (length > 24) {
-    return 62;
-  }
-
-  return 72;
-}
-
-function formatTitleForCard(title: string) {
-  const words = title.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length <= 2) {
-    return title.trim();
-  }
-
-  const midpoint = Math.ceil(words.length / 2);
-  const firstLine = words.slice(0, midpoint).join(" ");
-  const secondLine = words.slice(midpoint).join(" ");
-
-  return `${firstLine}\n${secondLine}`;
-}
-
 function getImageMimeType(assetPath: string) {
   const extension = path.extname(assetPath).toLowerCase();
 
@@ -147,9 +116,18 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
     : fallbackDesign;
   const template = resolveTemplate(templateCategories, design, invite.event_type);
   const backgroundUrl = template ? await getTemplateBackgroundDataUri(template.assetPath) : null;
-  const message = compactCopy(design.fields.messageText, 360);
+  const layout = template ? getInviteCardLayout(template) : null;
+  const message = compactInviteCopy(design.fields.messageText, 360);
   const titleFontSize = getTitleFontSize(design.fields.title);
   const formattedTitle = formatTitleForCard(design.fields.title);
+  const titleTop = layout?.titleTop ?? 18;
+  const detailsTop = layout?.detailsTop ?? 60;
+  const ctaTop = layout?.ctaTop ?? 86;
+  const titleColor = layout?.accents[0] ?? "#ffffff";
+  const ctaColor = layout?.accents[1] ?? "#ffd869";
+  const titleFontFamily = layout?.emailTitleFontFamily ?? "Georgia, serif";
+  const titleLetterSpacing = layout?.emailTitleLetterSpacing ?? "0.04em";
+  const eyebrowLetterSpacing = layout?.emailEyebrowLetterSpacing ?? "0.16em";
 
   return new ImageResponse(
     (
@@ -217,50 +195,50 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
               display: "flex",
               flexDirection: "column",
               inset: 0,
-              padding: "108px 70px 78px",
+              padding: "64px 56px 56px",
               position: "absolute",
               textAlign: "center",
             }}
           >
             <div
               style={{
+                alignItems: "center",
+                background: "rgba(8,12,36,0.76)",
+                border: "1px solid rgba(255,255,255,0.18)",
+                borderRadius: 999,
+                color: "#ffffff",
+                display: "flex",
+                fontSize: 17,
+                fontWeight: 700,
+                justifyContent: "center",
+                letterSpacing: "0.34em",
+                minHeight: 44,
+                textTransform: "uppercase",
+                width: 260,
+              }}
+            >
+              AI Party Genie
+            </div>
+
+            <div
+              style={{
                 display: "flex",
                 flexDirection: "column",
                 gap: 18,
-                marginTop: 0,
-                width: "100%",
+                left: "50%",
+                position: "absolute",
+                top: `${titleTop}%`,
+                transform: "translate(-50%, -50%)",
+                width: "76%",
               }}
             >
               <div
                 style={{
-                  alignItems: "center",
-                  background: "rgba(8,12,36,0.76)",
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  borderRadius: 999,
-                  display: "flex",
-                  fontSize: 17,
+                  color: titleColor,
+                  fontSize: 18,
                   fontWeight: 700,
-                  justifyContent: "center",
-                  letterSpacing: "0.34em",
-                  margin: "0 auto 22px",
-                  minHeight: 44,
-                  textTransform: "uppercase",
-                  width: 260,
-                }}
-              >
-                AI Party Genie
-              </div>
-              <div
-                style={{
-                  background: "rgba(8,12,36,0.52)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: 999,
-                  fontSize: 24,
-                  fontWeight: 700,
-                  letterSpacing: "0.22em",
-                  margin: "0 auto",
-                  maxWidth: "92%",
-                  padding: "12px 22px",
+                  letterSpacing: eyebrowLetterSpacing,
+                  opacity: 0.92,
                   textTransform: "uppercase",
                 }}
               >
@@ -268,23 +246,14 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
               </div>
               <div
                 style={{
-                  background: "linear-gradient(180deg, rgba(6,10,30,0.52) 0%, rgba(6,10,30,0.36) 100%)",
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  borderRadius: 30,
-                  display: "flex",
-                  fontFamily: "Georgia, serif",
+                  color: titleColor,
+                  fontFamily: titleFontFamily,
                   fontSize: titleFontSize,
                   fontWeight: 700,
-                  letterSpacing: "0.04em",
+                  letterSpacing: titleLetterSpacing,
                   lineHeight: 1.04,
-                  justifyContent: "center",
-                  marginTop: 18,
-                  maxWidth: "100%",
-                  overflow: "hidden",
-                  padding: "22px 28px",
                   textAlign: "center",
                   whiteSpace: "pre-wrap",
-                  width: "100%",
                   wordBreak: "break-word",
                 }}
               >
@@ -297,15 +266,20 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
                 background: "rgba(8, 12, 36, 0.48)",
                 border: "1px solid rgba(255,255,255,0.18)",
                 borderRadius: 34,
-                color: "#fffdf9",
+                color: titleColor,
                 display: "flex",
                 flexDirection: "column",
                 fontSize: 22,
                 lineHeight: 1.45,
-                marginTop: 480,
+                left: "50%",
+                maxHeight: 300,
+                overflow: "hidden",
                 padding: "28px 32px",
+                position: "absolute",
                 textAlign: "center",
-                width: "100%",
+                top: `${detailsTop}%`,
+                transform: "translate(-50%, -50%)",
+                width: "84%",
               }}
             >
               {message}
@@ -323,15 +297,18 @@ export async function createInviteCardImageResponse(invite: PublicInviteImageRec
                 fontWeight: 700,
                 justifyContent: "center",
                 letterSpacing: "0.22em",
-                marginTop: 34,
+                left: "50%",
                 minHeight: 88,
                 padding: "0 26px",
+                position: "absolute",
                 textAlign: "center",
+                top: `${ctaTop}%`,
+                transform: "translate(-50%, -50%)",
                 textTransform: "uppercase",
-                width: "86%",
+                width: "70%",
               }}
             >
-              {design.fields.ctaText}
+              <span style={{ color: ctaColor }}>{design.fields.ctaText}</span>
             </div>
           </div>
         </div>
