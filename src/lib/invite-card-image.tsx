@@ -264,7 +264,6 @@ function buildOverlaySvg(params: {
         fill="${titleColor}"
         font-family="InviteGeist"
         font-size="19"
-        font-weight="700"
         letter-spacing="${eyebrowLetterSpacing}"
         text-anchor="middle"
         opacity="0.94"
@@ -278,7 +277,6 @@ function buildOverlaySvg(params: {
         fill="${titleColor}"
         font-family="InviteGeist"
         font-size="${titleFontSize}"
-        font-weight="700"
         letter-spacing="${titleLetterSpacing}"
         text-anchor="middle"
       >
@@ -301,7 +299,6 @@ function buildOverlaySvg(params: {
         fill="${titleColor}"
         font-family="InviteGeist"
         font-size="21"
-        font-weight="500"
         text-anchor="middle"
       >
         ${toSvgTspans(detailLines, detailTextX, 34)}
@@ -323,7 +320,6 @@ function buildOverlaySvg(params: {
         fill="${ctaColor}"
         font-family="InviteGeist"
         font-size="22"
-        font-weight="700"
         letter-spacing="3"
         text-anchor="middle"
       >
