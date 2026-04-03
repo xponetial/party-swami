@@ -119,7 +119,7 @@ function wrapText(value: string, maxCharsPerLine: number, maxLines: number) {
   if (remainingWords.length && lines.length) {
     const lastLine = `${lines[lines.length - 1]} ${remainingWords.join(" ")}`.trim();
     lines[lines.length - 1] =
-      lastLine.length > maxCharsPerLine ? `${lastLine.slice(0, maxCharsPerLine - 1).trimEnd()}…` : lastLine;
+      lastLine.length > maxCharsPerLine ? `${lastLine.slice(0, maxCharsPerLine - 3).trimEnd()}...` : lastLine;
   }
 
   return lines.slice(0, maxLines);
@@ -213,7 +213,7 @@ function buildOverlaySvg(params: {
       </defs>
 
       <rect width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}" rx="34" fill="url(#canvasBg)" />
-      <text x="${CARD_X}" y="28" fill="#6f63d9" font-family="Arial, sans-serif" font-size="15" letter-spacing="5" text-transform="uppercase">
+      <text x="${CARD_X}" y="28" fill="#6f63d9" font-family="sans-serif" font-size="15" letter-spacing="5" text-transform="uppercase">
         AI PARTY GENIE INVITATION
       </text>
 
@@ -225,7 +225,7 @@ function buildOverlaySvg(params: {
         x="${titleCenterX}"
         y="${titleBaseY}"
         fill="${titleColor}"
-        font-family="Arial, sans-serif"
+        font-family="sans-serif"
         font-size="19"
         font-weight="700"
         letter-spacing="${eyebrowLetterSpacing}"
@@ -262,7 +262,7 @@ function buildOverlaySvg(params: {
         x="${detailTextX}"
         y="${detailsTextY}"
         fill="${titleColor}"
-        font-family="Arial, sans-serif"
+        font-family="sans-serif"
         font-size="21"
         font-weight="500"
         text-anchor="middle"
@@ -284,7 +284,7 @@ function buildOverlaySvg(params: {
         x="${ctaX + ctaWidth / 2}"
         y="${ctaY + 50}"
         fill="${ctaColor}"
-        font-family="Arial, sans-serif"
+        font-family="sans-serif"
         font-size="22"
         font-weight="700"
         letter-spacing="3"

@@ -62,10 +62,10 @@ export function getEmailFontFamily(fontStyle: string) {
   const flavor = getFontFlavor(fontStyle);
 
   if (flavor === "serif") {
-    return "Georgia, serif";
+    return "serif";
   }
 
-  return "Arial, sans-serif";
+  return "sans-serif";
 }
 
 export function getEmailTitleLetterSpacing(fontStyle: string) {
