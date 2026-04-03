@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { restorePlanVersionForEvent } from "@/lib/ai/workflows";
+import { enforceAiLimits } from "@/lib/ai/limits";
+import { generatePlanForEvent, restorePlanVersionForEvent } from "@/lib/ai/workflows";
 import { inviteDesignSchema } from "@/lib/invite-design";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
@@ -283,6 +284,20 @@ export async function createEventAction(formData: FormData) {
       },
     }),
   ]);
+
+  try {
+    const limit = await enforceAiLimits(supabase, {
+      userId: user.id,
+      eventId: event.id,
+      generationType: "party_plan",
+    });
+
+    if (limit.allowed) {
+      await generatePlanForEvent(supabase, event.id);
+    }
+  } catch {
+    // Event creation should still succeed even if the first AI generation cannot run.
+  }
 
   revalidatePath("/dashboard");
   redirect(`/events/${event.id}`);

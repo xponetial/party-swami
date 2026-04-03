@@ -57,8 +57,8 @@ export function EventWorkspaceOverview({
               <AiGenerateButton
                 endpoint="/api/ai/generate-plan"
                 eventId={eventId}
-                label="Refresh AI plan"
-                pendingLabel="Refreshing plan..."
+                label="Regenerate AI plan"
+                pendingLabel="Regenerating plan..."
               />
             </div>
           </div>
