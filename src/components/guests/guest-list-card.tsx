@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { addGuestAction, deleteGuestAction, updateGuestAction } from "@/app/events/actions";
+import { addGuestAction, deleteGuestAction, importGuestsAction, updateGuestAction } from "@/app/events/actions";
 import { InviteSendButton } from "@/components/invite/invite-send-button";
 import { type GuestDetails, type GuestMessageDetails, type InviteDetails } from "@/lib/events";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,31 @@ export function GuestListCard({
             <SubmitButton pendingLabel="Adding guest...">Add guest</SubmitButton>
           </div>
         </form>
+
+        <div className="mt-4 rounded-[1.75rem] border border-border bg-white/80 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-ink">Bulk guest import</p>
+              <p className="mt-2 text-sm leading-6 text-ink-muted">
+                Download the sample spreadsheet, fill in your full guest list, then upload the CSV to add everyone at once.
+              </p>
+            </div>
+            <Button asChild variant="secondary">
+              <Link href="/templates/guest-import-template.csv">Download sample CSV</Link>
+            </Button>
+          </div>
+
+          <form action={importGuestsAction} className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
+            <input type="hidden" name="eventId" value={eventId} />
+            <div className="space-y-2">
+              <Label htmlFor="guest-csv">Upload completed guest CSV</Label>
+              <Input id="guest-csv" name="guestCsv" type="file" accept=".csv,text/csv" required />
+            </div>
+            <div className="flex items-end">
+              <SubmitButton pendingLabel="Importing guests...">Import guest list</SubmitButton>
+            </div>
+          </form>
+        </div>
 
         <div className="mt-6 grid gap-4">
           {guests.length ? (

@@ -42,6 +42,13 @@ const guestSchema = z.object({
   plusOneCount: z.coerce.number().int().min(0).default(0),
 });
 
+const bulkGuestRowSchema = z.object({
+  name: z.string().trim().min(2),
+  email: z.email().optional().or(z.literal("")),
+  phone: z.string().trim().optional(),
+  plusOneCount: z.coerce.number().int().min(0).default(0),
+});
+
 const updateGuestSchema = guestSchema.extend({
   guestId: z.string().uuid(),
   status: z.enum(["pending", "confirmed", "declined"]),
@@ -132,6 +139,82 @@ function parseDateTime(date?: string, time?: string) {
   if (!date) return null;
   if (!time) return new Date(`${date}T12:00:00`).toISOString();
   return new Date(`${date}T${time}:00`).toISOString();
+}
+
+function parseCsvLine(line: string) {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const nextChar = line[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function parseGuestImportCsv(csvText: string) {
+  const normalizedText = csvText.replace(/^\uFEFF/, "").trim();
+
+  if (!normalizedText) {
+    throw new Error("The uploaded CSV is empty.");
+  }
+
+  const lines = normalizedText.split(/\r?\n/).filter((line) => line.trim().length > 0);
+
+  if (lines.length < 2) {
+    throw new Error("Add at least one guest row below the header.");
+  }
+
+  const headers = parseCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
+  const requiredHeaders = ["name", "email", "phone", "plusonecount"];
+
+  if (!requiredHeaders.every((header) => headers.includes(header))) {
+    throw new Error("Use the sample CSV template so the column headers match.");
+  }
+
+  const rows = lines.slice(1).map((line, index) => {
+    const values = parseCsvLine(line);
+    const record = Object.fromEntries(headers.map((header, headerIndex) => [header, values[headerIndex] ?? ""]));
+    const parsedRow = bulkGuestRowSchema.safeParse({
+      name: record.name,
+      email: record.email || "",
+      phone: record.phone || "",
+      plusOneCount: record.plusonecount || 0,
+    });
+
+    if (!parsedRow.success) {
+      throw new Error(`Row ${index + 2} is invalid. Check the name, email, and plus-one fields.`);
+    }
+
+    return parsedRow.data;
+  });
+
+  if (!rows.length) {
+    throw new Error("No guest rows were found in the uploaded CSV.");
+  }
+
+  return rows;
 }
 
 async function requireUser() {
@@ -432,6 +515,34 @@ export async function addGuestAction(formData: FormData) {
 
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath(`/events/${parsed.data.eventId}/guests`);
+  revalidatePath("/dashboard");
+}
+
+export async function importGuestsAction(formData: FormData) {
+  const { supabase } = await requireUser();
+  const eventId = z.string().uuid().parse(formData.get("eventId"));
+  const file = formData.get("guestCsv");
+
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Upload a CSV file with your guest list.");
+  }
+
+  const csvText = await file.text();
+  const guests = parseGuestImportCsv(csvText);
+
+  await supabase.from("guests").insert(
+    guests.map((guest) => ({
+      event_id: eventId,
+      name: guest.name,
+      email: guest.email || null,
+      phone: guest.phone?.trim() || null,
+      plus_one_count: guest.plusOneCount,
+    })),
+  );
+
+  revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/events/${eventId}/guests`);
+  revalidatePath(`/events/${eventId}/invite`);
   revalidatePath("/dashboard");
 }
 
