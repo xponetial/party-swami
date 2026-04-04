@@ -21,6 +21,10 @@ import { type GuestDetails, type GuestMessageDetails, type InviteDetails } from 
 type GuestFilter = "all" | "pending" | "confirmed" | "declined" | "needsInvite" | "hasEmail";
 
 const initialBulkState: BulkGuestActionState = {};
+const INITIAL_VISIBLE_GUESTS = 15;
+const VISIBLE_GUESTS_STEP = 15;
+const INITIAL_VISIBLE_LOGS = 3;
+const VISIBLE_LOGS_STEP = 5;
 
 function formatDeliveryState(guest: GuestDetails) {
   if (guest.last_contacted_at) {
@@ -72,6 +76,9 @@ export function GuestListCard({
   const [filter, setFilter] = useState<GuestFilter>("all");
   const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
   const [expandedGuestIds, setExpandedGuestIds] = useState<string[]>([]);
+  const [visibleGuestCount, setVisibleGuestCount] = useState(INITIAL_VISIBLE_GUESTS);
+  const [showDeliveryLog, setShowDeliveryLog] = useState(false);
+  const [visibleLogCount, setVisibleLogCount] = useState(INITIAL_VISIBLE_LOGS);
   const [bulkState, bulkFormAction] = useActionState(bulkGuestAction, initialBulkState);
 
   const confirmedSeats = guests
@@ -112,6 +119,10 @@ export function GuestListCard({
   const selectedCount = selectedGuestIds.length;
   const allVisibleSelected =
     visibleGuests.length > 0 && visibleGuests.every((guest) => selectedGuestIds.includes(guest.id));
+  const displayedGuests = visibleGuests.slice(0, visibleGuestCount);
+  const hasMoreGuests = visibleGuests.length > visibleGuestCount;
+  const displayedGuestMessages = guestMessages.slice(0, visibleLogCount);
+  const hasMoreLogs = guestMessages.length > visibleLogCount;
 
   function toggleExpanded(guestId: string) {
     setExpandedGuestIds((current) =>
@@ -256,7 +267,10 @@ export function GuestListCard({
               <Input
                 id="guest-search"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setVisibleGuestCount(INITIAL_VISIBLE_GUESTS);
+                }}
                 placeholder="Search by name, email, or phone"
               />
             </div>
@@ -272,7 +286,10 @@ export function GuestListCard({
                       ? "bg-[linear-gradient(135deg,#ff7bd5_0%,#a54dff_36%,#2f8fff_100%)] text-white shadow-[0_14px_30px_rgba(101,85,176,0.12)]"
                       : "border border-border bg-white text-ink-muted hover:text-ink"
                   }`}
-                  onClick={() => setFilter(filterOption)}
+                  onClick={() => {
+                    setFilter(filterOption);
+                    setVisibleGuestCount(INITIAL_VISIBLE_GUESTS);
+                  }}
                   type="button"
                 >
                   {getConfidenceCopy(filterOption)}
@@ -367,7 +384,7 @@ export function GuestListCard({
 
         <div className="mt-6 space-y-4">
           {visibleGuests.length ? (
-            visibleGuests.map((guest) => {
+            displayedGuests.map((guest) => {
               const isExpanded = expandedGuestIds.includes(guest.id);
               const isSelected = selectedGuestIds.includes(guest.id);
               const seatImpact = 1 + guest.plus_one_count;
@@ -509,6 +526,23 @@ export function GuestListCard({
               No guests match the current search and filter settings.
             </div>
           )}
+          {visibleGuests.length ? (
+            <div className="flex flex-col gap-3 rounded-[1.5rem] border border-dashed border-border bg-white/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-ink-muted">
+                Showing {Math.min(displayedGuests.length, visibleGuests.length)} of {visibleGuests.length} guest
+                {visibleGuests.length === 1 ? "" : "s"} for the current filter.
+              </p>
+              {hasMoreGuests ? (
+                <Button
+                  onClick={() => setVisibleGuestCount((current) => current + VISIBLE_GUESTS_STEP)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Load more guests
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </Card>
 
@@ -588,46 +622,80 @@ export function GuestListCard({
           </div>
         ) : null}
         <div className="mt-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Recent delivery log</p>
-          <div className="mt-3 space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Recent delivery log</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                {guestMessages.length} delivery event{guestMessages.length === 1 ? "" : "s"} captured so far.
+              </p>
+            </div>
             {guestMessages.length ? (
-              guestMessages.map((message) => (
-                <div key={message.id} className="rounded-3xl border border-border bg-white/85 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-medium text-ink">{message.guest?.name ?? "Guest"}</p>
-                        <span className="rounded-full bg-canvas px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                          {message.message_type}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-ink-muted">
-                        {message.guest?.email ?? "No email saved"}
-                      </p>
-                    </div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
-                      {message.sent_at ? new Date(message.sent_at).toLocaleString("en-US") : "Draft"}
-                    </p>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-ink-muted">
-                    {message.subject ?? "Invite email sent"}
-                  </p>
-                  {message.metadata?.send_mode ? (
-                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
-                      {String(message.metadata.send_mode).replaceAll("_", " ")}
-                    </p>
-                  ) : null}
-                  {message.metadata?.rsvp_url ? (
-                    <p className="mt-2 break-all text-xs text-brand">{message.metadata.rsvp_url}</p>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <div className="rounded-3xl border border-border bg-white/85 p-4 text-sm text-ink-muted">
-                No invite deliveries have been logged yet.
-              </div>
-            )}
+              <Button
+                onClick={() => {
+                  setShowDeliveryLog((current) => !current);
+                  setVisibleLogCount(INITIAL_VISIBLE_LOGS);
+                }}
+                type="button"
+                variant="secondary"
+              >
+                {showDeliveryLog ? "Hide activity log" : "Show activity log"}
+              </Button>
+            ) : null}
           </div>
+          {showDeliveryLog ? (
+            <div className="mt-3 space-y-3">
+              {guestMessages.length ? (
+                <>
+                  {displayedGuestMessages.map((message) => (
+                    <div key={message.id} className="rounded-3xl border border-border bg-white/85 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-ink">{message.guest?.name ?? "Guest"}</p>
+                            <span className="rounded-full bg-canvas px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                              {message.message_type}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-ink-muted">
+                            {message.guest?.email ?? "No email saved"}
+                          </p>
+                        </div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
+                          {message.sent_at ? new Date(message.sent_at).toLocaleString("en-US") : "Draft"}
+                        </p>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-ink-muted">
+                        {message.subject ?? "Invite email sent"}
+                      </p>
+                      {message.metadata?.send_mode ? (
+                        <p className="mt-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
+                          {String(message.metadata.send_mode).replaceAll("_", " ")}
+                        </p>
+                      ) : null}
+                      {message.metadata?.rsvp_url ? (
+                        <p className="mt-2 break-all text-xs text-brand">{message.metadata.rsvp_url}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                  {hasMoreLogs ? (
+                    <div className="flex justify-start">
+                      <Button
+                        onClick={() => setVisibleLogCount((current) => current + VISIBLE_LOGS_STEP)}
+                        type="button"
+                        variant="secondary"
+                      >
+                        Show more activity
+                      </Button>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="rounded-3xl border border-border bg-white/85 p-4 text-sm text-ink-muted">
+                  No invite deliveries have been logged yet.
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
         <div className="mt-6 rounded-3xl border border-border bg-white/85 p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Next step</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { importGuestsAction, type GuestImportActionState } from "@/app/events/actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ const initialState: GuestImportActionState = {};
 export function GuestImportForm({ eventId }: { eventId: string }) {
   const [state, formAction] = useActionState(importGuestsAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [showAllRowErrors, setShowAllRowErrors] = useState(false);
 
   useEffect(() => {
     if (state.success) {
@@ -47,12 +48,25 @@ export function GuestImportForm({ eventId }: { eventId: string }) {
               <div className="mt-3 space-y-2 text-sm text-ink-muted">
                 <p className="font-medium text-ink">Rows to fix in the CSV:</p>
                 <ul className="space-y-1">
-                  {(state.rowErrors ?? []).slice(0, 5).map((rowError) => (
+                  {(showAllRowErrors ? state.rowErrors ?? [] : (state.rowErrors ?? []).slice(0, 5)).map((rowError) => (
                     <li key={rowError}>{rowError}</li>
                   ))}
                 </ul>
                 {state.rowErrors && state.rowErrors.length > 5 ? (
-                  <p>Plus {state.rowErrors.length - 5} more row issue(s).</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p>
+                      {showAllRowErrors
+                        ? "Showing every skipped row."
+                        : `Plus ${state.rowErrors.length - 5} more row issue(s).`}
+                    </p>
+                    <button
+                      className="font-medium text-brand underline underline-offset-4"
+                      onClick={() => setShowAllRowErrors((current) => !current)}
+                      type="button"
+                    >
+                      {showAllRowErrors ? "Show fewer row issues" : "Show all row issues"}
+                    </button>
+                  </div>
                 ) : null}
               </div>
             ) : null}
