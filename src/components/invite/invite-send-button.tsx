@@ -107,7 +107,7 @@ export function InviteSendButton({
             disabled={action.disabled || pendingAction !== null}
             onClick={() => handleClick(action)}
             type="button"
-            variant={action.deliveryType === "reminder" ? "secondary" : "primary"}
+            variant="primary"
           >
             {pendingAction === action.key ? action.pendingLabel : action.label}
           </Button>
