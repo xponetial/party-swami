@@ -68,6 +68,51 @@ const channelLabel: Record<string, string> = {
   landing_page: "Landing page",
 };
 
+const socialMediaGuideSteps = [
+  {
+    title: "1. Start with Brand Voice",
+    detail:
+      "Fill out the Brand voice panel first. This tells the AI how Party Genie should sound, who it is talking to, and what kind of call-to-action to use. If you skip this step, the generated content can feel too generic.",
+  },
+  {
+    title: "2. Create One Campaign per Party Idea",
+    detail:
+      "Think of a campaign as one themed marketing push. Example: 'Backyard birthday brunch' or 'Little mermaid pool party'. Use Generate from theme if you want help from AI, or Manual campaign if you already know exactly what you want.",
+  },
+  {
+    title: "3. Review the Drafts Before Publishing",
+    detail:
+      "The AI creates drafts fast, but you should still read them like an editor. Check that the message is clear, the tone sounds right, and the call-to-action matches your goal, such as saves, clicks, or bookings.",
+  },
+  {
+    title: "4. Use Statuses Like a Simple Workflow",
+    detail:
+      "Draft means still being written. In review means ready for someone to check. Approved means the content is good to go. Scheduled means it has a planned publish date. Published means it already went live. Archived means keep it for reference, but remove it from the active queue.",
+  },
+  {
+    title: "5. Plan Dates Before You Feel Behind",
+    detail:
+      "Use Plan campaign week or the Calendar planner to spread content across the week. A simple beginner habit is to schedule one piece of content per day instead of trying to post everything at once.",
+  },
+  {
+    title: "6. Assets Support the Post",
+    detail:
+      "Each draft can store image ideas, notes, links, and now uploaded creative files. If you already have a product image, mood board, or finished visual, attach it so the team knows exactly what should go with the post.",
+  },
+  {
+    title: "7. Track Performance After Posting",
+    detail:
+      "After a post goes live, save the published URL and enter simple numbers like impressions, clicks, conversions, and revenue. This helps you learn which party themes and channels are actually working, even if you are new to social media.",
+  },
+];
+
+const socialMediaGuideTips = [
+  "If you are brand new, start with one campaign and only 2 or 3 drafts instead of trying to manage everything at once.",
+  "Instagram and Pinterest are usually the easiest beginner channels for party inspiration content.",
+  "If a draft feels too sales-heavy, edit the copy so it teaches or inspires first, then add the call-to-action.",
+  "If you are unsure what to post next, look at the Performance card and repeat the themes that got clicks or conversions.",
+];
+
 function Badge({ status }: { status: string }) {
   const className =
     status === "published"
@@ -217,6 +262,54 @@ export default async function AdminSocialMediaPage({
           {resolved.message}
         </div>
       ) : null}
+
+      <DashboardPanel
+        collapsible
+        defaultOpen
+        description="A beginner-friendly walkthrough of what this page does, what each section means, and the easiest order to use it in."
+        summaryMeta="Start here"
+        title="How To Use Social Media Admin"
+      >
+        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-3">
+            {socialMediaGuideSteps.map((item) => (
+              <div key={item.title} className="rounded-2xl border border-border bg-white/70 px-4 py-4">
+                <p className="font-semibold text-ink">{item.title}</p>
+                <p className="mt-2 text-sm leading-6 text-ink-muted">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            <Surface>
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Best order to use this page</p>
+              <ol className="mt-3 space-y-2 text-sm leading-6 text-ink-muted">
+                <li>1. Save your Brand voice settings.</li>
+                <li>2. Generate or create a campaign.</li>
+                <li>3. Review and edit the drafts.</li>
+                <li>4. Plan the publish dates.</li>
+                <li>5. Publish the content.</li>
+                <li>6. Enter performance numbers after it goes live.</li>
+              </ol>
+            </Surface>
+            <Surface>
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Beginner tips</p>
+              <div className="mt-3 space-y-3">
+                {socialMediaGuideTips.map((tip) => (
+                  <p key={tip} className="text-sm leading-6 text-ink-muted">
+                    {tip}
+                  </p>
+                ))}
+              </div>
+            </Surface>
+            <Surface>
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">What success looks like</p>
+              <p className="mt-3 text-sm leading-6 text-ink-muted">
+                A good beginner workflow is simple: publish consistently, learn which themes people respond to, and improve the next campaign from those results. You do not need to master every platform at once for this page to be useful.
+              </p>
+            </Surface>
+          </div>
+        </div>
+      </DashboardPanel>
 
       <div className="grid gap-4 xl:grid-cols-4">
         <DashboardMetricCard detail="Active campaigns." icon={Megaphone} label="Campaigns" value={String(social.metrics.campaigns)} />
