@@ -58,6 +58,10 @@ const socialMediaCampaignStatusSchema = z.object({
   status: z.enum(["draft", "in_review", "approved", "scheduled", "published"]),
 });
 
+const socialMediaDeleteCampaignSchema = z.object({
+  campaignId: z.string().uuid(),
+});
+
 const socialMediaGenerateCampaignSchema = z.object({
   theme: z.string().trim().min(3).max(120),
   audienceHint: z.string().trim().max(200).optional(),
@@ -515,6 +519,29 @@ export async function updateSocialMediaCampaignStatusAction(formData: FormData) 
   const { error } = await supabase
     .from("social_media_campaigns")
     .update({ status: parsed.data.status })
+    .eq("id", parsed.data.campaignId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateSocialMediaPaths();
+}
+
+export async function deleteSocialMediaCampaignAction(formData: FormData) {
+  await requireAdminAccess();
+  const parsed = socialMediaDeleteCampaignSchema.safeParse({
+    campaignId: formData.get("campaignId"),
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid campaign delete request.");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("social_media_campaigns")
+    .delete()
     .eq("id", parsed.data.campaignId);
 
   if (error) {

@@ -11,6 +11,7 @@ import {
 import {
   createSocialMediaCampaignAction,
   createSocialMediaContentItemAction,
+  deleteSocialMediaCampaignAction,
   generateSocialMediaCampaignAction,
   updateSocialMediaBrandProfileAction,
   updateSocialMediaCampaignStatusAction,
@@ -365,26 +366,39 @@ export default async function AdminSocialMediaPage() {
                       </p>
                     </div>
 
-                    <form
-                      action={updateSocialMediaCampaignStatusAction}
-                      className="grid gap-3 rounded-3xl bg-canvas p-4 sm:grid-cols-[1fr_auto]"
-                    >
-                      <input name="campaignId" type="hidden" value={campaign.id} />
-                      <select
-                        className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
-                        defaultValue={campaign.status}
-                        name="status"
+                    <div className="grid gap-3 rounded-3xl bg-canvas p-4">
+                      <form
+                        action={updateSocialMediaCampaignStatusAction}
+                        className="grid gap-3 sm:grid-cols-[1fr_auto]"
                       >
-                        <option value="draft">Draft</option>
-                        <option value="in_review">In review</option>
-                        <option value="approved">Approved</option>
-                        <option value="scheduled">Scheduled</option>
-                        <option value="published">Published</option>
-                      </select>
-                      <SubmitButton pendingLabel="Saving..." variant="secondary">
-                        Update
-                      </SubmitButton>
-                    </form>
+                        <input name="campaignId" type="hidden" value={campaign.id} />
+                        <select
+                          className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                          defaultValue={campaign.status}
+                          name="status"
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="in_review">In review</option>
+                          <option value="approved">Approved</option>
+                          <option value="scheduled">Scheduled</option>
+                          <option value="published">Published</option>
+                        </select>
+                        <SubmitButton pendingLabel="Saving..." variant="secondary">
+                          Update
+                        </SubmitButton>
+                      </form>
+
+                      <form action={deleteSocialMediaCampaignAction}>
+                        <input name="campaignId" type="hidden" value={campaign.id} />
+                        <SubmitButton
+                          className="w-full justify-center rounded-2xl border border-[rgba(214,72,112,0.25)] bg-[rgba(255,255,255,0.9)] text-[#b42345] shadow-none hover:bg-[rgba(255,240,245,1)]"
+                          pendingLabel="Deleting..."
+                          variant="ghost"
+                        >
+                          Delete campaign
+                        </SubmitButton>
+                      </form>
+                    </div>
                   </div>
                 </div>
               ))
