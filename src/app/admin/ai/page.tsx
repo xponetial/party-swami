@@ -29,12 +29,14 @@ export default async function AdminAiPage({
     requireAdminAccess(),
     getAdminAiMetrics(rangeDays),
   ]);
+  const maxModelCost = Math.max(1, ...ai.byModel.map((item) => item.costUsd));
+  const maxGenerationTypeCost = Math.max(1, ...ai.byGenerationType.map((item) => item.costUsd));
 
   return (
     <AdminShell
       currentSection="/admin/ai"
       title="AI control center"
-      description="Monitor model usage, cost, latency, and fallback behavior across Party Genie’s AI features."
+      description="Monitor model usage, cost, latency, and fallback behavior across Party Genie's AI features."
       adminName={profile?.full_name}
       actions={
         <div className="flex flex-wrap gap-2">
@@ -53,12 +55,42 @@ export default async function AdminAiPage({
       }
     >
       <div className="grid gap-4 xl:grid-cols-3">
-        <DashboardMetricCard detail={`In the last ${rangeDays} days`} icon={BrainCircuit} label="AI requests" value={String(ai.totals.requests)} />
-        <DashboardMetricCard detail="Summed from ai_generations" icon={DollarSign} label="Estimated cost" value={formatAdminCurrency(ai.totals.estimatedCostUsd)} />
-        <DashboardMetricCard detail="Average over generations with latency" icon={TimerReset} label="Avg latency" value={`${ai.totals.averageLatencyMs} ms`} />
-        <DashboardMetricCard detail="Non-success runs captured in the window" icon={AlertTriangle} label="Fallbacks" value={String(ai.totals.fallbackCount)} />
-        <DashboardMetricCard detail="Successful generations as a percentage of all requests" icon={Bot} label="Success rate" value={`${ai.totals.successRate}%`} />
-        <DashboardMetricCard detail="Cache reuse can materially lower cost over time" icon={BrainCircuit} label="Cached input tokens" value={String(ai.totals.cachedInputTokens)} />
+        <DashboardMetricCard
+          detail={`In the last ${rangeDays} days`}
+          icon={BrainCircuit}
+          label="AI requests"
+          value={String(ai.totals.requests)}
+        />
+        <DashboardMetricCard
+          detail="Summed from ai_generations"
+          icon={DollarSign}
+          label="Estimated cost"
+          value={formatAdminCurrency(ai.totals.estimatedCostUsd)}
+        />
+        <DashboardMetricCard
+          detail="Average over generations with latency"
+          icon={TimerReset}
+          label="Avg latency"
+          value={`${ai.totals.averageLatencyMs} ms`}
+        />
+        <DashboardMetricCard
+          detail="Non-success runs captured in the window"
+          icon={AlertTriangle}
+          label="Fallbacks"
+          value={String(ai.totals.fallbackCount)}
+        />
+        <DashboardMetricCard
+          detail="Successful generations as a percentage of all requests"
+          icon={Bot}
+          label="Success rate"
+          value={`${ai.totals.successRate}%`}
+        />
+        <DashboardMetricCard
+          detail="Cache reuse can materially lower cost over time"
+          icon={BrainCircuit}
+          label="Cached input tokens"
+          value={String(ai.totals.cachedInputTokens)}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -79,6 +111,12 @@ export default async function AdminAiPage({
                     <p className="mt-1 text-sm text-ink-muted">{item.averageLatencyMs} ms avg</p>
                   </div>
                 </div>
+                <div className="mt-3 h-2 rounded-full bg-canvas">
+                  <div
+                    className="h-2 rounded-full bg-[linear-gradient(135deg,#2f8fff_0%,#8b46ff_58%,#ff7bd5_100%)]"
+                    style={{ width: `${Math.max(12, Math.round((item.costUsd / maxModelCost) * 100))}%` }}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -97,6 +135,14 @@ export default async function AdminAiPage({
                     <p className="mt-1 text-sm text-ink-muted">{item.requests} requests</p>
                   </div>
                   <p className="font-semibold text-ink">{formatAdminCurrency(item.costUsd)}</p>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-canvas">
+                  <div
+                    className="h-2 rounded-full bg-[linear-gradient(135deg,#ff7bd5_0%,#a54dff_36%,#2f8fff_100%)]"
+                    style={{
+                      width: `${Math.max(12, Math.round((item.costUsd / maxGenerationTypeCost) * 100))}%`,
+                    }}
+                  />
                 </div>
               </div>
             ))}

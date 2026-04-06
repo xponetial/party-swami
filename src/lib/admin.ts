@@ -57,9 +57,13 @@ type InviteRow = {
 };
 
 type GuestRow = {
+  id: string;
   event_id: string;
+  name?: string;
+  email?: string | null;
   status: "pending" | "confirmed" | "declined";
   plus_one_count: number;
+  last_contacted_at?: string | null;
 };
 
 type AiGenerationRow = {
@@ -207,7 +211,42 @@ export type AdminTemplateCategorySummary = {
     usageCount: number;
     sentCount: number;
     assetPath: string;
+    isActive: boolean;
+    notes: string | null;
   }>;
+};
+
+export type AdminUserDetail = {
+  user: AdminUserRow;
+  recentEvents: AdminEventRow[];
+  recentAi: AiGenerationRow[];
+  recentAnalytics: AnalyticsEventRow[];
+};
+
+export type AdminEventDetail = {
+  event: AdminEventRow & {
+    ownerId: string;
+    budget: number | null;
+    location: string | null;
+    eventDate: string | null;
+    guestTarget: number | null;
+  };
+  guests: GuestRow[];
+  invite: InviteRow | null;
+  guestMessages: Array<{
+    id: string;
+    guest_id: string | null;
+    message_type: string;
+    subject: string | null;
+    sent_at: string | null;
+    metadata: Record<string, unknown> | null;
+  }>;
+  analytics: AnalyticsEventRow[];
+  aiFailures: AiGenerationRow[];
+  planSummary: {
+    theme: string | null;
+    generatedAt: string | null;
+  } | null;
 };
 
 function formatShortDate(value: string) {
@@ -893,15 +932,22 @@ export async function getAdminEvents(options: {
 
 export async function getAdminTemplateMetrics() {
   const supabase = createSupabaseAdminClient();
-  const [catalog, { data: invites = [] }] = await Promise.all([
-    getInviteTemplateCatalog(),
+  const [catalog, { data: invites = [] }, { data: templateControls = [] }] = await Promise.all([
+    getInviteTemplateCatalog(true),
     supabase
       .from("invites")
       .select("id, event_id, design_json, sent_at, created_at")
       .returns<InviteRow[]>(),
+    supabase
+      .from("template_admin_controls")
+      .select("pack_slug, template_id, is_active, notes")
+      .returns<Array<{ pack_slug: string; template_id: string; is_active: boolean; notes: string | null }>>(),
   ]);
 
   const safeInvites = invites ?? [];
+  const controlByTemplate = new Map(
+    (templateControls ?? []).map((control) => [`${control.pack_slug}:${control.template_id}`, control] as const),
+  );
   const usageByTemplate = safeInvites.reduce<Map<string, { usageCount: number; sentCount: number }>>((map, invite) => {
     const templateId = invite.design_json?.templateId;
     const packSlug = invite.design_json?.packSlug;
@@ -924,6 +970,8 @@ export async function getAdminTemplateMetrics() {
         usageCount: usage?.usageCount ?? 0,
         sentCount: usage?.sentCount ?? 0,
         assetPath: template.assetPath,
+        isActive: controlByTemplate.get(`${template.packSlug}:${template.templateId}`)?.is_active ?? true,
+        notes: controlByTemplate.get(`${template.packSlug}:${template.templateId}`)?.notes ?? null,
       };
     });
 
@@ -934,4 +982,198 @@ export async function getAdminTemplateMetrics() {
       templates: templates.sort((a, b) => b.usageCount - a.usageCount || a.style.localeCompare(b.style)),
     };
   });
+}
+
+export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail | null> {
+  const supabase = createSupabaseAdminClient();
+
+  const [users, { data: ownedEvents = [] }, { data: aiRows = [] }, { data: analyticsRows = [] }] = await Promise.all([
+    getAdminUsers(undefined),
+    supabase
+      .from("events")
+      .select("id, owner_id, title, event_type, event_date, location, guest_target, budget, status, created_at, updated_at")
+      .eq("owner_id", userId)
+      .order("updated_at", { ascending: false })
+      .returns<EventRow[]>(),
+    createSupabaseAdminClient()
+      .from("ai_generations")
+      .select("id, user_id, event_id, generation_type, model, status, estimated_cost_usd, latency_ms, input_tokens, output_tokens, cached_input_tokens, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .returns<AiGenerationRow[]>(),
+    createSupabaseAdminClient()
+      .from("analytics_events")
+      .select("id, user_id, event_id, event_name, metadata, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .returns<AnalyticsEventRow[]>(),
+  ]);
+
+  const user = users.find((entry) => entry.id === userId);
+  if (!user) return null;
+
+  const eventIds = (ownedEvents ?? []).map((event) => event.id);
+  const [eventRows, authUsers, { data: profiles = [] }, { data: guests = [] }, { data: invites = [] }] =
+    await Promise.all([
+      Promise.resolve(ownedEvents ?? []),
+      listAuthUsers(),
+      supabase.from("profiles").select("id, full_name, plan_tier, phone, created_at").returns<AdminProfile[]>(),
+      eventIds.length
+        ? supabase
+            .from("guests")
+            .select("id, event_id, name, email, status, plus_one_count, last_contacted_at")
+            .in("event_id", eventIds)
+            .returns<GuestRow[]>()
+        : Promise.resolve({ data: [], error: null }),
+      eventIds.length
+        ? supabase
+            .from("invites")
+            .select("id, event_id, design_json, sent_at, created_at")
+            .in("event_id", eventIds)
+            .returns<InviteRow[]>()
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+  const authByUser = new Map(authUsers.map((authUser) => [authUser.id, authUser] as const));
+  const profileByUser = new Map((profiles ?? []).map((profile) => [profile.id, profile] as const));
+  const inviteByEvent = new Map((invites ?? []).map((invite) => [invite.event_id, invite] as const));
+  const guestSummary = (guests ?? []).reduce<Map<string, { count: number; confirmedSeats: number }>>(
+    (map, guest) => {
+      const existing = map.get(guest.event_id) ?? { count: 0, confirmedSeats: 0 };
+      existing.count += 1;
+      if (guest.status === "confirmed") {
+        existing.confirmedSeats += 1 + guest.plus_one_count;
+      }
+      map.set(guest.event_id, existing);
+      return map;
+    },
+    new Map(),
+  );
+
+  const recentEvents = (eventRows ?? []).map<AdminEventRow>((event) => ({
+    id: event.id,
+    title: event.title,
+    eventType: event.event_type,
+    status: event.status,
+    hostName: profileByUser.get(event.owner_id)?.full_name ?? null,
+    hostEmail: authByUser.get(event.owner_id)?.email ?? null,
+    guestCount: guestSummary.get(event.id)?.count ?? 0,
+    confirmedSeats: guestSummary.get(event.id)?.confirmedSeats ?? 0,
+    inviteSentAt: inviteByEvent.get(event.id)?.sent_at ?? null,
+    createdAt: event.created_at,
+    updatedAt: event.updated_at,
+  }));
+
+  return {
+    user,
+    recentEvents,
+    recentAi: aiRows ?? [],
+    recentAnalytics: analyticsRows ?? [],
+  };
+}
+
+export async function getAdminEventDetail(eventId: string): Promise<AdminEventDetail | null> {
+  const supabase = createSupabaseAdminClient();
+  const [
+    { data: event },
+    { data: guests = [] },
+    { data: invite },
+    { data: guestMessages = [] },
+    { data: analytics = [] },
+    { data: aiFailures = [] },
+    { data: plan },
+  ] = await Promise.all([
+    supabase
+      .from("events")
+      .select("id, owner_id, title, event_type, event_date, location, guest_target, budget, status, created_at, updated_at")
+      .eq("id", eventId)
+      .maybeSingle<EventRow>(),
+    supabase
+      .from("guests")
+      .select("id, event_id, name, email, status, plus_one_count, last_contacted_at")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: true })
+      .returns<GuestRow[]>(),
+    supabase
+      .from("invites")
+      .select("id, event_id, design_json, sent_at, created_at")
+      .eq("event_id", eventId)
+      .maybeSingle<InviteRow>(),
+    supabase
+      .from("guest_messages")
+      .select("id, guest_id, message_type, subject, sent_at, metadata")
+      .eq("event_id", eventId)
+      .order("sent_at", { ascending: false })
+      .limit(30)
+      .returns<Array<{ id: string; guest_id: string | null; message_type: string; subject: string | null; sent_at: string | null; metadata: Record<string, unknown> | null }>>(),
+    supabase
+      .from("analytics_events")
+      .select("id, user_id, event_id, event_name, metadata, created_at")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false })
+      .limit(30)
+      .returns<AnalyticsEventRow[]>(),
+    supabase
+      .from("ai_generations")
+      .select("id, user_id, event_id, generation_type, model, status, estimated_cost_usd, latency_ms, input_tokens, output_tokens, cached_input_tokens, created_at")
+      .eq("event_id", eventId)
+      .neq("status", "success")
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .returns<AiGenerationRow[]>(),
+    supabase
+      .from("party_plans")
+      .select("theme, generated_at")
+      .eq("event_id", eventId)
+      .maybeSingle<{ theme: string | null; generated_at: string | null }>(),
+  ]);
+
+  if (!event) return null;
+
+  const [events, authUsers, { data: profiles = [] }] = await Promise.all([
+    getAdminEvents({}),
+    listAuthUsers(),
+    supabase.from("profiles").select("id, full_name, plan_tier, phone, created_at").returns<AdminProfile[]>(),
+  ]);
+
+  const authByUser = new Map(authUsers.map((user) => [user.id, user] as const));
+  const profileByUser = new Map((profiles ?? []).map((profile) => [profile.id, profile] as const));
+  const matching = events.find((entry) => entry.id === eventId);
+  const base =
+    matching ??
+    ({
+      id: event.id,
+      title: event.title,
+      eventType: event.event_type,
+      status: event.status,
+      hostName: profileByUser.get(event.owner_id)?.full_name ?? null,
+      hostEmail: authByUser.get(event.owner_id)?.email ?? null,
+      guestCount: (guests ?? []).length,
+      confirmedSeats: (guests ?? []).reduce(
+        (sum, guest) => sum + (guest.status === "confirmed" ? 1 + guest.plus_one_count : 0),
+        0,
+      ),
+      inviteSentAt: invite?.sent_at ?? null,
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
+    } satisfies AdminEventRow);
+
+  return {
+    event: {
+      ...base,
+      ownerId: event.owner_id,
+      budget: event.budget,
+      location: event.location,
+      eventDate: event.event_date,
+      guestTarget: event.guest_target,
+    },
+    guests: guests ?? [],
+    invite: invite ?? null,
+    guestMessages: guestMessages ?? [],
+    analytics: analytics ?? [],
+    aiFailures: aiFailures ?? [],
+    planSummary: plan ? { theme: plan.theme, generatedAt: plan.generated_at } : null,
+  };
 }

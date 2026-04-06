@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Search } from "lucide-react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
@@ -7,6 +8,7 @@ import {
   getAdminUsers,
   requireAdminAccess,
 } from "@/lib/admin";
+import { Button } from "@/components/ui/button";
 
 export default async function AdminUsersPage({
   searchParams,
@@ -61,6 +63,9 @@ export default async function AdminUsersPage({
                   <span className="rounded-full bg-canvas px-3 py-1 text-xs uppercase tracking-[0.18em] text-ink-muted">
                     {user.eventCount} event{user.eventCount === 1 ? "" : "s"}
                   </span>
+                  <Button asChild variant="secondary">
+                    <Link href={`/admin/users/${user.id}`}>Open user</Link>
+                  </Button>
                 </div>
               </div>
 

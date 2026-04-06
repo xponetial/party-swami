@@ -88,6 +88,9 @@ export default async function AdminEventsPage({
                     {event.status}
                   </span>
                   <Button asChild variant="secondary">
+                    <Link href={`/admin/events/${event.id}`}>Admin detail</Link>
+                  </Button>
+                  <Button asChild variant="secondary">
                     <Link href={`/events/${event.id}`}>Open workspace</Link>
                   </Button>
                 </div>
