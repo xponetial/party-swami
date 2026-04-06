@@ -165,6 +165,17 @@ type SocialMediaContentItemRow = {
   updated_at: string;
 };
 
+type SocialMediaActivityRow = {
+  id: string;
+  campaign_id: string | null;
+  content_item_id: string | null;
+  action: string;
+  summary: string;
+  metadata: Record<string, unknown> | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 export type AdminActivityItem = {
   id: string;
   kind: "analytics" | "audit";
@@ -459,6 +470,16 @@ export type AdminSocialMediaData = {
     channel: SocialMediaContentItemRow["channel"];
     title: string;
     status: SocialMediaContentItemRow["status"];
+  }>;
+  activity: Array<{
+    id: string;
+    campaignId: string | null;
+    contentItemId: string | null;
+    action: string;
+    summary: string;
+    actorEmail: string | null;
+    actorName: string | null;
+    createdAt: string;
   }>;
   campaigns: Array<{
     id: string;
@@ -1409,6 +1430,7 @@ export async function getAdminSocialMediaData(): Promise<AdminSocialMediaData> {
     { data: campaigns = [] },
     { data: contentItems = [] },
     { data: socialAiRows = [] },
+    { data: activityRows = [] },
   ] = await Promise.all([
     listAuthUsers(),
     supabase.from("profiles").select("id, full_name, plan_tier, phone, created_at").returns<AdminProfile[]>(),
@@ -1436,6 +1458,12 @@ export async function getAdminSocialMediaData(): Promise<AdminSocialMediaData> {
       .order("created_at", { ascending: false })
       .limit(50)
       .returns<AiGenerationRow[]>(),
+    supabase
+      .from("social_media_activity_log")
+      .select("id, campaign_id, content_item_id, action, summary, metadata, created_by, created_at")
+      .order("created_at", { ascending: false })
+      .limit(80)
+      .returns<SocialMediaActivityRow[]>(),
   ]);
 
   const authByUser = new Map(authUsers.map((user) => [user.id, user] as const));
@@ -1527,6 +1555,16 @@ export async function getAdminSocialMediaData(): Promise<AdminSocialMediaData> {
       },
     },
     calendar,
+    activity: (activityRows ?? []).map((entry) => ({
+      id: entry.id,
+      campaignId: entry.campaign_id,
+      contentItemId: entry.content_item_id,
+      action: entry.action,
+      summary: entry.summary,
+      actorEmail: entry.created_by ? authByUser.get(entry.created_by)?.email ?? null : null,
+      actorName: entry.created_by ? profileByUser.get(entry.created_by)?.full_name ?? null : null,
+      createdAt: entry.created_at,
+    })),
     campaigns: allCampaigns.map((campaign) => ({
       id: campaign.id,
       theme: campaign.theme,

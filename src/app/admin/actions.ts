@@ -91,6 +91,11 @@ const socialMediaContentStatusSchema = z.object({
   status: z.enum(["draft", "in_review", "approved", "scheduled", "published", "archived"]),
 });
 
+const socialMediaRescheduleContentSchema = z.object({
+  contentItemId: z.string().uuid(),
+  publishOn: z.string().trim().optional(),
+});
+
 const socialMediaUpdateContentItemSchema = z.object({
   contentItemId: z.string().uuid(),
   title: z.string().trim().min(3).max(160),
@@ -214,6 +219,36 @@ async function trackAdminAiGeneration({
   }
 
   await supabase.from("user_usage_monthly").insert(payload);
+}
+
+async function logSocialMediaActivity({
+  campaignId,
+  contentItemId,
+  action,
+  summary,
+  createdBy,
+  metadata,
+}: {
+  campaignId?: string | null;
+  contentItemId?: string | null;
+  action: string;
+  summary: string;
+  createdBy?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.from("social_media_activity_log").insert({
+    campaign_id: campaignId ?? null,
+    content_item_id: contentItemId ?? null,
+    action,
+    summary,
+    metadata: metadata ?? {},
+    created_by: createdBy ?? null,
+  });
+
+  if (error && error.code !== "42P01") {
+    console.error("Unable to log social media activity", error);
+  }
 }
 
 function buildPublishDate(weekOf: string | null, publishOffsetDays: number) {
@@ -408,6 +443,16 @@ export async function updateSocialMediaBrandProfileAction(formData: FormData) {
     throw new Error(error.message);
   }
 
+  await logSocialMediaActivity({
+    action: "brand_profile_updated",
+    summary: "Updated the default social media brand voice.",
+    createdBy: admin.userId,
+    metadata: {
+      postingGoalPerWeek: parsed.data.postingGoalPerWeek,
+      focusMetrics: parsed.data.focusMetrics,
+    },
+  });
+
   revalidateSocialMediaPaths();
 }
 
@@ -445,6 +490,17 @@ export async function createSocialMediaCampaignAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
+
+  await logSocialMediaActivity({
+    action: "campaign_created",
+    summary: `Created campaign "${parsed.data.theme}".`,
+    createdBy: admin.userId,
+    metadata: {
+      theme: parsed.data.theme,
+      status,
+      priority: parsed.data.priority,
+    },
+  });
 
   revalidateSocialMediaPaths();
 }
@@ -543,11 +599,23 @@ export async function generateSocialMediaCampaignAction(formData: FormData) {
     status: usage?.usedFallback ? "fallback" : "success",
   });
 
+  await logSocialMediaActivity({
+    campaignId: createdCampaign.id,
+    action: "campaign_generated",
+    summary: `Generated campaign "${parsed.data.theme}" from theme.`,
+    createdBy: admin.userId,
+    metadata: {
+      theme: parsed.data.theme,
+      contentItems: generated.contentItems.length,
+      usedFallback: usage?.usedFallback ?? false,
+    },
+  });
+
   revalidateSocialMediaPaths();
 }
 
 export async function updateSocialMediaCampaignStatusAction(formData: FormData) {
-  await requireAdminAccess();
+  const admin = await requireAdminAccess();
   const parsed = socialMediaCampaignStatusSchema.safeParse({
     campaignId: formData.get("campaignId"),
     status: formData.get("status"),
@@ -570,11 +638,19 @@ export async function updateSocialMediaCampaignStatusAction(formData: FormData) 
     throw new Error(error.message);
   }
 
+  await logSocialMediaActivity({
+    campaignId: parsed.data.campaignId,
+    action: "campaign_status_updated",
+    summary: `Moved campaign to ${parsed.data.status.replaceAll("_", " ")}.`,
+    createdBy: admin.userId,
+    metadata: { status: parsed.data.status },
+  });
+
   revalidateSocialMediaPaths();
 }
 
 export async function deleteSocialMediaCampaignAction(formData: FormData) {
-  await requireAdminAccess();
+  const admin = await requireAdminAccess();
   const parsed = socialMediaDeleteCampaignSchema.safeParse({
     campaignId: formData.get("campaignId"),
   });
@@ -584,6 +660,11 @@ export async function deleteSocialMediaCampaignAction(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const { data: campaign } = await supabase
+    .from("social_media_campaigns")
+    .select("id, theme")
+    .eq("id", parsed.data.campaignId)
+    .maybeSingle<{ id: string; theme: string }>();
   const { error } = await supabase
     .from("social_media_campaigns")
     .delete()
@@ -592,6 +673,16 @@ export async function deleteSocialMediaCampaignAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
+
+  await logSocialMediaActivity({
+    action: "campaign_deleted",
+    summary: `Deleted campaign "${campaign?.theme ?? "Untitled campaign"}".`,
+    createdBy: admin.userId,
+    metadata: {
+      campaignId: parsed.data.campaignId,
+      theme: campaign?.theme ?? null,
+    },
+  });
 
   revalidateSocialMediaPaths();
 }
@@ -693,11 +784,23 @@ export async function duplicateSocialMediaCampaignAction(formData: FormData) {
     }
   }
 
+  await logSocialMediaActivity({
+    campaignId: createdCampaign.id,
+    action: "campaign_duplicated",
+    summary: `Duplicated campaign "${campaign.theme}".`,
+    createdBy: admin.userId,
+    metadata: {
+      sourceCampaignId: parsed.data.campaignId,
+      sourceTheme: campaign.theme,
+      duplicatedItems: contentItems.length,
+    },
+  });
+
   revalidateSocialMediaPaths();
 }
 
 export async function archiveSocialMediaCampaignAction(formData: FormData) {
-  await requireAdminAccess();
+  const admin = await requireAdminAccess();
   const parsed = socialMediaDuplicateCampaignSchema.safeParse({
     campaignId: formData.get("campaignId"),
   });
@@ -728,11 +831,18 @@ export async function archiveSocialMediaCampaignAction(formData: FormData) {
     throw new Error(contentError.message);
   }
 
+  await logSocialMediaActivity({
+    campaignId: parsed.data.campaignId,
+    action: "campaign_archived",
+    summary: "Archived campaign and moved its drafts out of the active queue.",
+    createdBy: admin.userId,
+  });
+
   revalidateSocialMediaPaths();
 }
 
 export async function bulkUpdateSocialMediaCampaignContentStatusAction(formData: FormData) {
-  await requireAdminAccess();
+  const admin = await requireAdminAccess();
   const parsed = socialMediaBulkCampaignSchema.safeParse({
     campaignId: formData.get("campaignId"),
     status: formData.get("status"),
@@ -752,6 +862,14 @@ export async function bulkUpdateSocialMediaCampaignContentStatusAction(formData:
   if (error) {
     throw new Error(error.message);
   }
+
+  await logSocialMediaActivity({
+    campaignId: parsed.data.campaignId,
+    action: "campaign_bulk_status_updated",
+    summary: `Updated all active campaign drafts to ${parsed.data.status.replaceAll("_", " ")}.`,
+    createdBy: admin.userId,
+    metadata: { status: parsed.data.status },
+  });
 
   revalidateSocialMediaPaths();
 }
@@ -862,11 +980,22 @@ export async function regenerateSocialMediaCampaignAction(formData: FormData) {
     status: usage?.usedFallback ? "fallback" : "success",
   });
 
+  await logSocialMediaActivity({
+    campaignId: campaign.id,
+    action: "campaign_regenerated",
+    summary: `Regenerated campaign "${campaign.theme}" and replaced its draft set.`,
+    createdBy: admin.userId,
+    metadata: {
+      contentItems: generated.contentItems.length,
+      usedFallback: usage?.usedFallback ?? false,
+    },
+  });
+
   revalidateSocialMediaPaths();
 }
 
 export async function createSocialMediaContentItemAction(formData: FormData) {
-  await requireAdminAccess();
+  const admin = await requireAdminAccess();
   const parsed = socialMediaContentItemSchema.safeParse({
     campaignId: formData.get("campaignId"),
     channel: formData.get("channel"),
@@ -909,11 +1038,23 @@ export async function createSocialMediaContentItemAction(formData: FormData) {
     throw new Error(error.message);
   }
 
+  await logSocialMediaActivity({
+    campaignId: parsed.data.campaignId,
+    action: "content_created",
+    summary: `Added ${parsed.data.channel.replaceAll("_", " ")} draft "${parsed.data.title}".`,
+    createdBy: admin.userId,
+    metadata: {
+      channel: parsed.data.channel,
+      status,
+      publishOn,
+    },
+  });
+
   revalidateSocialMediaPaths();
 }
 
 export async function updateSocialMediaContentItemAction(formData: FormData) {
-  await requireAdminAccess();
+  const admin = await requireAdminAccess();
   const parsed = socialMediaUpdateContentItemSchema.safeParse({
     contentItemId: formData.get("contentItemId"),
     title: formData.get("title"),
@@ -935,6 +1076,11 @@ export async function updateSocialMediaContentItemAction(formData: FormData) {
 
   const supabase = createSupabaseAdminClient();
   const publishOn = parsed.data.publishOn?.trim() || null;
+  const { data: existingItem } = await supabase
+    .from("social_media_content_items")
+    .select("campaign_id")
+    .eq("id", parsed.data.contentItemId)
+    .maybeSingle<{ campaign_id: string }>();
   const { error } = await supabase
     .from("social_media_content_items")
     .update({
@@ -955,6 +1101,18 @@ export async function updateSocialMediaContentItemAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
+
+  await logSocialMediaActivity({
+    campaignId: existingItem?.campaign_id ?? null,
+    contentItemId: parsed.data.contentItemId,
+    action: "content_updated",
+    summary: `Saved edits to "${parsed.data.title}".`,
+    createdBy: admin.userId,
+    metadata: {
+      status: parsed.data.status,
+      publishOn,
+    },
+  });
 
   revalidateSocialMediaPaths();
 }
@@ -1054,11 +1212,23 @@ export async function regenerateSocialMediaContentItemAction(formData: FormData)
     status: usage?.usedFallback ? "fallback" : "success",
   });
 
+  await logSocialMediaActivity({
+    campaignId: contentItem.campaign_id,
+    contentItemId: contentItem.id,
+    action: "content_regenerated",
+    summary: `Regenerated ${contentItem.channel.replaceAll("_", " ")} draft.`,
+    createdBy: admin.userId,
+    metadata: {
+      channel: contentItem.channel,
+      usedFallback: usage?.usedFallback ?? false,
+    },
+  });
+
   revalidateSocialMediaPaths();
 }
 
 export async function updateSocialMediaContentStatusAction(formData: FormData) {
-  await requireAdminAccess();
+  const admin = await requireAdminAccess();
   const parsed = socialMediaContentStatusSchema.safeParse({
     contentItemId: formData.get("contentItemId"),
     status: formData.get("status"),
@@ -1069,6 +1239,11 @@ export async function updateSocialMediaContentStatusAction(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const { data: existingItem } = await supabase
+    .from("social_media_content_items")
+    .select("campaign_id, title")
+    .eq("id", parsed.data.contentItemId)
+    .maybeSingle<{ campaign_id: string; title: string }>();
   const { error } = await supabase
     .from("social_media_content_items")
     .update({ status: parsed.data.status })
@@ -1077,6 +1252,78 @@ export async function updateSocialMediaContentStatusAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
+
+  await logSocialMediaActivity({
+    campaignId: existingItem?.campaign_id ?? null,
+    contentItemId: parsed.data.contentItemId,
+    action: "content_status_updated",
+    summary: `Moved "${existingItem?.title ?? "Draft"}" to ${parsed.data.status.replaceAll("_", " ")}.`,
+    createdBy: admin.userId,
+    metadata: { status: parsed.data.status },
+  });
+
+  revalidateSocialMediaPaths();
+}
+
+export async function rescheduleSocialMediaContentItemAction(formData: FormData) {
+  const admin = await requireAdminAccess();
+  const parsed = socialMediaRescheduleContentSchema.safeParse({
+    contentItemId: formData.get("contentItemId"),
+    publishOn: formData.get("publishOn") || undefined,
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid publish date update.");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const publishOn = parsed.data.publishOn?.trim() || null;
+  const { data: existingItem } = await supabase
+    .from("social_media_content_items")
+    .select("campaign_id, title, status")
+    .eq("id", parsed.data.contentItemId)
+    .maybeSingle<{
+      campaign_id: string;
+      title: string;
+      status: "draft" | "in_review" | "approved" | "scheduled" | "published" | "archived";
+    }>();
+
+  if (!existingItem) {
+    throw new Error("Content item not found.");
+  }
+
+  const nextStatus =
+    existingItem.status === "published" || existingItem.status === "archived"
+      ? existingItem.status
+      : publishOn
+        ? "scheduled"
+        : "approved";
+
+  const { error } = await supabase
+    .from("social_media_content_items")
+    .update({
+      publish_on: publishOn,
+      status: nextStatus,
+    })
+    .eq("id", parsed.data.contentItemId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await logSocialMediaActivity({
+    campaignId: existingItem.campaign_id,
+    contentItemId: parsed.data.contentItemId,
+    action: "content_rescheduled",
+    summary: publishOn
+      ? `Scheduled "${existingItem.title}" for ${publishOn}.`
+      : `Cleared the publish date for "${existingItem.title}".`,
+    createdBy: admin.userId,
+    metadata: {
+      publishOn,
+      status: nextStatus,
+    },
+  });
 
   revalidateSocialMediaPaths();
 }
