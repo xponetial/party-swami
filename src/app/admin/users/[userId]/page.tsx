@@ -161,6 +161,72 @@ export default async function AdminUserDetailPage({
         </DashboardPanel>
       </div>
 
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <DashboardPanel
+          title="Recent AI failures"
+          description="This isolates the runs that most likely need admin review."
+        >
+          <div className="space-y-3">
+            {detail.recentAiFailures.length ? (
+              detail.recentAiFailures.map((generation) => (
+                <div key={generation.id} className="rounded-2xl border border-border bg-white/70 px-4 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-ink">{generation.generation_type.replaceAll("_", " ")}</p>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        {generation.model} | {generation.status}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-ink">
+                        {formatAdminCurrency(Number(generation.estimated_cost_usd ?? 0))}
+                      </p>
+                      <p className="mt-1 text-sm text-ink-muted">{formatAdminDateTime(generation.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-3xl bg-canvas px-4 py-5 text-sm text-ink-muted">
+                No failed or fallback AI generations were recorded for this user.
+              </div>
+            )}
+          </div>
+        </DashboardPanel>
+
+        <DashboardPanel
+          title="Recent invite delivery"
+          description="The newest invite or reminder activity across the events this user owns."
+        >
+          <div className="space-y-3">
+            {detail.recentGuestMessages.length ? (
+              detail.recentGuestMessages.map((message) => (
+                <div key={message.id} className="rounded-2xl border border-border bg-white/70 px-4 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-ink">{message.messageType.replaceAll("_", " ")}</p>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        {message.eventTitle}
+                        {message.guestName ? ` | ${message.guestName}` : ""}
+                        {message.guestEmail ? ` | ${message.guestEmail}` : ""}
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-ink-muted">
+                        {message.channel}
+                      </p>
+                    </div>
+                    <p className="text-sm text-ink-muted">{formatAdminDateTime(message.sentAt)}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-3xl bg-canvas px-4 py-5 text-sm text-ink-muted">
+                No invite sends or reminders are stored yet for this user&apos;s events.
+              </div>
+            )}
+          </div>
+        </DashboardPanel>
+      </div>
+
       <DashboardPanel
         title="Recent product activity"
         description="The latest tracked analytics touching this user account."

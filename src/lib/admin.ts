@@ -220,7 +220,19 @@ export type AdminUserDetail = {
   user: AdminUserRow;
   recentEvents: AdminEventRow[];
   recentAi: AiGenerationRow[];
+  recentAiFailures: AiGenerationRow[];
   recentAnalytics: AnalyticsEventRow[];
+  recentGuestMessages: Array<{
+    id: string;
+    eventId: string;
+    eventTitle: string;
+    guestName: string | null;
+    guestEmail: string | null;
+    messageType: string;
+    channel: string;
+    subject: string | null;
+    sentAt: string | null;
+  }>;
 };
 
 export type AdminEventDetail = {
@@ -236,6 +248,9 @@ export type AdminEventDetail = {
   guestMessages: Array<{
     id: string;
     guest_id: string | null;
+    guestName: string | null;
+    guestEmail: string | null;
+    channel: string;
     message_type: string;
     subject: string | null;
     sent_at: string | null;
@@ -987,29 +1002,30 @@ export async function getAdminTemplateMetrics() {
 export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail | null> {
   const supabase = createSupabaseAdminClient();
 
-  const [users, { data: ownedEvents = [] }, { data: aiRows = [] }, { data: analyticsRows = [] }] = await Promise.all([
-    getAdminUsers(undefined),
-    supabase
-      .from("events")
-      .select("id, owner_id, title, event_type, event_date, location, guest_target, budget, status, created_at, updated_at")
-      .eq("owner_id", userId)
-      .order("updated_at", { ascending: false })
-      .returns<EventRow[]>(),
-    createSupabaseAdminClient()
-      .from("ai_generations")
-      .select("id, user_id, event_id, generation_type, model, status, estimated_cost_usd, latency_ms, input_tokens, output_tokens, cached_input_tokens, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(20)
-      .returns<AiGenerationRow[]>(),
-    createSupabaseAdminClient()
-      .from("analytics_events")
-      .select("id, user_id, event_id, event_name, metadata, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(20)
-      .returns<AnalyticsEventRow[]>(),
-  ]);
+  const [users, { data: ownedEvents = [] }, { data: aiRows = [] }, { data: analyticsRows = [] }] =
+    await Promise.all([
+      getAdminUsers(undefined),
+      supabase
+        .from("events")
+        .select("id, owner_id, title, event_type, event_date, location, guest_target, budget, status, created_at, updated_at")
+        .eq("owner_id", userId)
+        .order("updated_at", { ascending: false })
+        .returns<EventRow[]>(),
+      supabase
+        .from("ai_generations")
+        .select("id, user_id, event_id, generation_type, model, status, estimated_cost_usd, latency_ms, input_tokens, output_tokens, cached_input_tokens, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20)
+        .returns<AiGenerationRow[]>(),
+      supabase
+        .from("analytics_events")
+        .select("id, user_id, event_id, event_name, metadata, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20)
+        .returns<AnalyticsEventRow[]>(),
+    ]);
 
   const user = users.find((entry) => entry.id === userId);
   if (!user) return null;
@@ -1036,9 +1052,33 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
         : Promise.resolve({ data: [], error: null }),
     ]);
 
+  const [{ data: guestMessages = [] }] = await Promise.all([
+    eventIds.length
+      ? supabase
+          .from("guest_messages")
+          .select("id, event_id, guest_id, channel, message_type, subject, sent_at")
+          .in("event_id", eventIds)
+          .order("sent_at", { ascending: false })
+          .limit(30)
+          .returns<
+            Array<{
+              id: string;
+              event_id: string;
+              guest_id: string | null;
+              channel: string;
+              message_type: string;
+              subject: string | null;
+              sent_at: string | null;
+            }>
+          >()
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
   const authByUser = new Map(authUsers.map((authUser) => [authUser.id, authUser] as const));
   const profileByUser = new Map((profiles ?? []).map((profile) => [profile.id, profile] as const));
   const inviteByEvent = new Map((invites ?? []).map((invite) => [invite.event_id, invite] as const));
+  const eventTitleById = new Map((eventRows ?? []).map((event) => [event.id, event.title] as const));
+  const guestById = new Map((guests ?? []).map((guest) => [guest.id, guest] as const));
   const guestSummary = (guests ?? []).reduce<Map<string, { count: number; confirmedSeats: number }>>(
     (map, guest) => {
       const existing = map.get(guest.event_id) ?? { count: 0, confirmedSeats: 0 };
@@ -1070,7 +1110,19 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
     user,
     recentEvents,
     recentAi: aiRows ?? [],
+    recentAiFailures: (aiRows ?? []).filter((generation) => generation.status !== "success").slice(0, 8),
     recentAnalytics: analyticsRows ?? [],
+    recentGuestMessages: (guestMessages ?? []).map((message) => ({
+      id: message.id,
+      eventId: message.event_id,
+      eventTitle: eventTitleById.get(message.event_id) ?? "Unknown event",
+      guestName: message.guest_id ? guestById.get(message.guest_id)?.name ?? null : null,
+      guestEmail: message.guest_id ? guestById.get(message.guest_id)?.email ?? null : null,
+      messageType: message.message_type,
+      channel: message.channel,
+      subject: message.subject,
+      sentAt: message.sent_at,
+    })),
   };
 }
 
@@ -1103,11 +1155,21 @@ export async function getAdminEventDetail(eventId: string): Promise<AdminEventDe
       .maybeSingle<InviteRow>(),
     supabase
       .from("guest_messages")
-      .select("id, guest_id, message_type, subject, sent_at, metadata")
+      .select("id, guest_id, channel, message_type, subject, sent_at, metadata")
       .eq("event_id", eventId)
       .order("sent_at", { ascending: false })
       .limit(30)
-      .returns<Array<{ id: string; guest_id: string | null; message_type: string; subject: string | null; sent_at: string | null; metadata: Record<string, unknown> | null }>>(),
+      .returns<
+        Array<{
+          id: string;
+          guest_id: string | null;
+          channel: string;
+          message_type: string;
+          subject: string | null;
+          sent_at: string | null;
+          metadata: Record<string, unknown> | null;
+        }>
+      >(),
     supabase
       .from("analytics_events")
       .select("id, user_id, event_id, event_name, metadata, created_at")
@@ -1140,6 +1202,7 @@ export async function getAdminEventDetail(eventId: string): Promise<AdminEventDe
 
   const authByUser = new Map(authUsers.map((user) => [user.id, user] as const));
   const profileByUser = new Map((profiles ?? []).map((profile) => [profile.id, profile] as const));
+  const guestById = new Map((guests ?? []).map((guest) => [guest.id, guest] as const));
   const matching = events.find((entry) => entry.id === eventId);
   const base =
     matching ??
@@ -1171,7 +1234,11 @@ export async function getAdminEventDetail(eventId: string): Promise<AdminEventDe
     },
     guests: guests ?? [],
     invite: invite ?? null,
-    guestMessages: guestMessages ?? [],
+    guestMessages: (guestMessages ?? []).map((message) => ({
+      ...message,
+      guestName: message.guest_id ? guestById.get(message.guest_id)?.name ?? null : null,
+      guestEmail: message.guest_id ? guestById.get(message.guest_id)?.email ?? null : null,
+    })),
     analytics: analytics ?? [],
     aiFailures: aiFailures ?? [],
     planSummary: plan ? { theme: plan.theme, generatedAt: plan.generated_at } : null,

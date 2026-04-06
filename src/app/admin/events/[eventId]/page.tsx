@@ -141,7 +141,14 @@ export default async function AdminEventDetailPage({
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-semibold text-ink">{message.message_type.replaceAll("_", " ")}</p>
-                      <p className="mt-1 text-sm text-ink-muted">{message.subject ?? "No subject saved"}</p>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        {message.subject ?? "No subject saved"}
+                        {message.guestName ? ` | ${message.guestName}` : ""}
+                        {message.guestEmail ? ` | ${message.guestEmail}` : ""}
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-ink-muted">
+                        {message.channel}
+                      </p>
                     </div>
                     <p className="text-sm text-ink-muted">{formatAdminDateTime(message.sent_at)}</p>
                   </div>
