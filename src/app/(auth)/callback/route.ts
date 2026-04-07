@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeNextPath } from "@/lib/auth/urls";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const next = request.nextUrl.searchParams.get("next") ?? "/dashboard";
+  const next = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?message=Missing%20auth%20code.", request.url));

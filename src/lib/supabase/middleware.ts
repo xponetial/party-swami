@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { sanitizeNextPath } from "@/lib/auth/urls";
 
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({
@@ -36,11 +37,17 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/dashboard") || pathname.startsWith("/events") || pathname.startsWith("/admin");
 
   if (!user && isProtectedPage) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set(
+      "next",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
+    return NextResponse.redirect(loginUrl);
   }
 
   if (user && isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    const nextPath = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
+    return NextResponse.redirect(new URL(nextPath, request.url));
   }
 
   return response;

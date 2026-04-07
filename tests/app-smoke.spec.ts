@@ -13,9 +13,11 @@ test("marketing home renders", async ({ page }) => {
 test("login and signup pages render", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /continue with google/i })).toBeVisible();
 
   await page.goto("/signup");
-  await expect(page.getByRole("heading", { name: /welcome to partygenie/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /plan your party in seconds/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /continue with email/i })).toBeVisible();
 });
 
 test("pricing page reflects live tier limits", async ({ page }) => {

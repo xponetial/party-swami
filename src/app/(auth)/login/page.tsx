@@ -1,22 +1,25 @@
 import Link from "next/link";
 import { AuthCard } from "@/components/auth/auth-card";
-import { LoginForm } from "@/components/auth/login-form";
+import { AuthEntryForm } from "@/components/auth/auth-entry-form";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ message?: string; next?: string }>;
 }) {
-  const { message } = await searchParams;
+  const { message, next } = await searchParams;
 
   return (
     <AuthCard
       title="Welcome back"
-      description="Sign in with your Supabase email and password to load your live event workspace."
+      description="Return to your latest party plan with Google or a passwordless email link."
       footer={
         <p className="text-sm text-ink-muted">
           Need an account?{" "}
-          <Link href="/signup" className="font-medium text-brand hover:text-brand-dark">
+          <Link
+            href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+            className="font-medium text-brand hover:text-brand-dark"
+          >
             Create one
           </Link>
         </p>
@@ -27,7 +30,7 @@ export default async function LoginPage({
           {message}
         </p>
       ) : null}
-      <LoginForm />
+      <AuthEntryForm next={next} showRecoveryLink />
     </AuthCard>
   );
 }
