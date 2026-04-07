@@ -19,7 +19,7 @@ export function BrandLockup({
     <Link href="/" className={cn("inline-flex flex-col gap-3", className)}>
       <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080c24] shadow-[0_24px_70px_rgba(7,11,34,0.45)]">
         <Image
-          src="/party-swami-logo.svg"
+          src="/party-swami-logo.png"
           alt="Party Swami logo"
           width={imageWidth}
           height={imageWidth}

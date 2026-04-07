@@ -17,9 +17,9 @@ export const metadata: Metadata = {
   title: "Party Swami",
   description: "AI-powered party planning, invitations, guests, shopping, and tasks in one dashboard.",
   icons: {
-    icon: [{ url: "/party-swami-logo.svg?v=20260406", type: "image/svg+xml", sizes: "any" }],
-    apple: [{ url: "/party-swami-logo.svg?v=20260406", type: "image/svg+xml", sizes: "any" }],
-    shortcut: ["/party-swami-logo.svg?v=20260406"],
+    icon: [{ url: "/party-swami-logo.png?v=20260406", type: "image/png", sizes: "768x768" }],
+    apple: [{ url: "/party-swami-logo.png?v=20260406", type: "image/png", sizes: "768x768" }],
+    shortcut: ["/party-swami-logo.png?v=20260406"],
   },
 };
 

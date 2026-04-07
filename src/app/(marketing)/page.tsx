@@ -41,7 +41,7 @@ export default function MarketingHomePage() {
           className="block overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080c24] shadow-[0_24px_70px_rgba(7,11,34,0.32)]"
         >
           <Image
-            src="/party-swami-banner.svg"
+            src="/party-swami-banner.png"
             alt="Party Swami celebration banner"
             width={1120}
             height={768}
