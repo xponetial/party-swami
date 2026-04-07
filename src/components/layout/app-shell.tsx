@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandLockup } from "@/components/layout/brand-lockup";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -153,6 +154,7 @@ export async function AppShell({
           </div>
         </header>
         <main className="grid gap-4">{children}</main>
+        <SiteFooter />
       </div>
     </div>
   );

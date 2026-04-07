@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandLockup } from "@/components/layout/brand-lockup";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +120,7 @@ export function AdminShell({
         </header>
 
         <main className="grid gap-4">{children}</main>
+        <SiteFooter />
       </div>
     </div>
   );

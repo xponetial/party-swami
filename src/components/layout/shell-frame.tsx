@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { Sparkles } from "lucide-react";
 import { BrandLockup } from "@/components/layout/brand-lockup";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 type ShellFrameProps = {
   children: ReactNode;
@@ -62,6 +63,7 @@ export function ShellFrame({
         </nav>
       </header>
       <main className="flex-1">{children}</main>
+      <SiteFooter className="mt-8" />
     </div>
   );
 }
