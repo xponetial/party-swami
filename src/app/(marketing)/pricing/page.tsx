@@ -62,7 +62,7 @@ export default function PricingPage() {
   return (
     <ShellFrame
       eyebrow="Pricing"
-      title="Real plan tiers for the AI Party Genie beta."
+      title="Real plan tiers for the Party Swami beta."
       description="These tiers now mirror the AI request, budget, and per-event planning limits enforced inside the product so hosts know exactly what kind of runway they have."
     >
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">

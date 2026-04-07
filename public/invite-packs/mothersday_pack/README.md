@@ -1,4 +1,4 @@
-AI Party Genie Mother's Day Pack
+Party Swami Mother's Day Pack
 
 - 3 templates extracted from approved strip
 - 1024x1536 (2:3), vertical

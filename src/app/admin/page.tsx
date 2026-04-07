@@ -89,7 +89,7 @@ export default async function AdminOverviewPage({
             <div className="rounded-[2rem] bg-canvas p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Daily pulse</p>
               <h3 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
-                Party Genie is in active-use mode, and the admin view now needs to answer where the product is healthy versus where it needs help.
+                Party Swami is in active-use mode, and the admin view now needs to answer where the product is healthy versus where it needs help.
               </h3>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 {primaryMetrics.map((metric, index) => {

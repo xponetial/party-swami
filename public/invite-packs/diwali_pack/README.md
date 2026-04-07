@@ -1,1 +1,1 @@
-AI Party Genie Diwali Pack - 3 templates, 1024x1536, no text, Codex ready.
+Party Swami Diwali Pack - 3 templates, 1024x1536, no text, Codex ready.

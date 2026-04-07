@@ -31,7 +31,7 @@ function buildEventEmailHtml({
   emailType,
 }: InviteEmailArgs & { emailType: "invite" | "reminder" }) {
   const isReminder = emailType === "reminder";
-  const eyebrow = isReminder ? "AI Party Genie Reminder" : "AI Party Genie Invitation";
+  const eyebrow = isReminder ? "Party Swami Reminder" : "Party Swami Invitation";
   const introCopy = isReminder
     ? `Hi ${guestName}, just a quick reminder to RSVP for ${eventTitle}.`
     : `Hi ${guestName},`;
@@ -73,7 +73,7 @@ function buildEventEmailHtml({
           RSVP now
         </a>
         <p style="margin: 24px 0 0; font-size: 13px; color: #62709d;">${footerCopy} ${rsvpUrl}</p>
-        <p style="margin: 20px 0 0; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #8d97ba;">AI Party Genie</p>
+        <p style="margin: 20px 0 0; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #8d97ba;">Party Swami</p>
       </div>
     </div>
   `.trim();

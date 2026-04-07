@@ -74,7 +74,7 @@ export function AdminShell({
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Admin workspace</p>
           <p className="mt-2 text-sm font-semibold text-ink">{adminName ?? "Admin operator"}</p>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
-            Watch the live product, guide growth, and keep Party Genie healthy from one place.
+            Watch the live product, guide growth, and keep Party Swami healthy from one place.
           </p>
         </div>
 
@@ -107,7 +107,7 @@ export function AdminShell({
         <header className="rounded-[2rem] border border-white/75 bg-[linear-gradient(135deg,rgba(255,248,255,0.9)_0%,rgba(243,233,255,0.88)_38%,rgba(236,245,255,0.9)_74%,rgba(255,247,226,0.82)_100%)] px-6 py-5 shadow-party backdrop-blur">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Party Genie admin</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Party Swami admin</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{title}</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">{description}</p>
             </div>

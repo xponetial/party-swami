@@ -12,7 +12,7 @@ export default async function AdminIntegrationsPage() {
     <AdminShell
       currentSection="/admin/integrations"
       title="Integrations and health"
-      description="A simple internal health board for the external systems Party Genie depends on."
+      description="A simple internal health board for the external systems Party Swami depends on."
       adminName={profile?.full_name}
     >
       <DashboardPanel

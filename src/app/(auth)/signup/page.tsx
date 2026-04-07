@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 export default function SignupPage() {
   return (
     <AuthCard
-      title="Welcome to AI Party Genie"
+      title="Welcome to Party Swami"
       description="Create your account and connect the app to a real Supabase session."
       footer={
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

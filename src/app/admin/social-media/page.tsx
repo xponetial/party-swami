@@ -72,7 +72,7 @@ const socialMediaGuideSteps = [
   {
     title: "1. Start with Brand Voice",
     detail:
-      "Fill out the Brand voice panel first. This tells the AI how Party Genie should sound, who it is talking to, and what kind of call-to-action to use. If you skip this step, the generated content can feel too generic.",
+      "Fill out the Brand voice panel first. This tells the AI how Party Swami should sound, who it is talking to, and what kind of call-to-action to use. If you skip this step, the generated content can feel too generic.",
   },
   {
     title: "2. Create One Campaign per Party Idea",

@@ -1,1 +1,1 @@
-AI Party Genie Christmas Pack - 3 templates, 1024x1536, no text, Codex ready.
+Party Swami Christmas Pack - 3 templates, 1024x1536, no text, Codex ready.

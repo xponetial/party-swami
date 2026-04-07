@@ -1,4 +1,4 @@
-AI Party Genie Easter Pack (v2)
+Party Swami Easter Pack (v2)
 
 - 3 templates extracted from approved strip
 - 1024x1536 (2:3), vertical

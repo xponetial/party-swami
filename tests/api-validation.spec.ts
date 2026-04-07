@@ -29,7 +29,7 @@ test("public RSVP API rate limits repeated attempts", async ({ request }) => {
     const response = await request.post("/api/rsvp", {
       headers,
       data: {
-        slug: "party-genie-rate-limit-test",
+        slug: "party-swami-rate-limit-test",
         guestToken: "guest-token",
         status: "confirmed",
         plusOneCount: 0,
@@ -42,7 +42,7 @@ test("public RSVP API rate limits repeated attempts", async ({ request }) => {
   const limitedResponse = await request.post("/api/rsvp", {
     headers,
     data: {
-      slug: "party-genie-rate-limit-test",
+      slug: "party-swami-rate-limit-test",
       guestToken: "guest-token",
       status: "confirmed",
       plusOneCount: 0,

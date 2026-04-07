@@ -125,7 +125,7 @@ export async function AppShell({
           <p className="text-sm uppercase tracking-[0.18em] text-white/70">AI host operating system</p>
           <p className="mt-2 text-lg font-semibold">Plan, invite, track, and execute</p>
           <p className="mt-2 text-sm leading-6 text-white/85">
-            The workspace now carries the AI Party Genie brand through the shell so every flow feels connected.
+            The workspace now carries the Party Swami brand through the shell so every flow feels connected.
           </p>
         </div>
       </aside>
@@ -142,7 +142,7 @@ export async function AppShell({
                   </Link>
                 </Button>
               ) : null}
-              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">AI Party Genie workspace</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Party Swami workspace</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{title}</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">{description}</p>
             </div>

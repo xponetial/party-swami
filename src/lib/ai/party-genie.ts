@@ -355,7 +355,7 @@ const SOCIAL_CHANNEL_ORDER = [
 ] as const;
 
 function normalizeSocialTheme(value: string) {
-  return value.trim() || "Party Genie seasonal campaign";
+  return value.trim() || "Party Swami seasonal campaign";
 }
 
 function buildSocialContentFallbackItem(
@@ -418,7 +418,7 @@ function buildSocialContentFallbackItem(
         channel,
         title: `${normalizedTheme} landing page hero`,
         formatDetail: "Hero copy, support text, and conversion-focused CTA",
-        copy: `Headline direction: make your ${normalizedTheme.toLowerCase()} feel guest-ready fast. Support copy should frame Party Genie as the shortcut to planning, invites, inspiration, and shopping momentum in one place.`,
+        copy: `Headline direction: make your ${normalizedTheme.toLowerCase()} feel guest-ready fast. Support copy should frame Party Swami as the shortcut to planning, invites, inspiration, and shopping momentum in one place.`,
         callToAction: "Plan your version",
         publishOffsetDays: 4,
         ...base,
@@ -1144,7 +1144,7 @@ export function buildPartyPlan(event: EventSeed): GeneratedPartyPlan {
       { label: "Event day", detail: "Set the space, cue music, and follow the host checklist.", sort_order: 4 },
     ],
     rawResponse: {
-      provider: "party-genie-structured-fallback",
+      provider: "party-swami-structured-fallback",
       generatedAt: new Date().toISOString(),
       summary: `Generated a ${theme.toLowerCase()} plan for ${guestCount} guests.`,
     },
@@ -1190,7 +1190,7 @@ export function buildSocialCampaign(
     notes: `Built from the theme "${theme}" using the current brand voice. Focus on ${brandProfile.focusMetrics.toLowerCase()} and keep the tone ${brandProfile.tone.toLowerCase()}.`,
     contentItems,
     rawResponse: {
-      provider: "party-genie-social-fallback",
+      provider: "party-swami-social-fallback",
       generatedAt: new Date().toISOString(),
       summary: `Generated a fallback social campaign for ${theme}.`,
     },
@@ -1207,7 +1207,7 @@ export async function generateSocialCampaign(
     generationType: "social_campaign",
     taskType: "plan",
     systemPrompt:
-      "You are Party Genie's internal social media strategist. Build multi-channel campaign drafts that are actionable, brand-consistent, practical for admins to review, and tailored to event-driven content marketing.",
+      "You are Party Swami's internal social media strategist. Build multi-channel campaign drafts that are actionable, brand-consistent, practical for admins to review, and tailored to event-driven content marketing.",
     userPrompt: `Create a social media campaign package for this theme.
 
 Theme: ${theme}
@@ -1227,7 +1227,7 @@ Requirements:
 - Return one campaign package that admins can review immediately.
 - Include exactly one content item for each channel: tiktok, pinterest, instagram, email, landing_page.
 - Keep each item distinct and matched to the channel's native format.
-- Make the copy useful for Party Genie as an event-planning and affiliate-friendly brand.
+- Make the copy useful for Party Swami as an event-planning and affiliate-friendly brand.
 - The content should convert planning intent, not just entertain.
 - Use concrete hooks, captions, CTA ideas, and visual direction.
 - Stagger publishOffsetDays across the week, starting at 0.
@@ -1250,7 +1250,7 @@ Requirements:
           cachedInputTokens: 0,
           estimatedCostUsd: 0,
           latencyMs: 0,
-          provider: "party-genie-social-fallback",
+          provider: "party-swami-social-fallback",
           usedFallback: true,
         },
       },
@@ -1287,7 +1287,7 @@ export async function generateSocialContentItem(
     generationType: "social_content_regeneration",
     taskType: "lightweight",
     systemPrompt:
-      "You are Party Genie's internal social media copy strategist. Generate one polished channel-native content draft that is practical, clear, review-ready, and aligned to the current brand voice.",
+      "You are Party Swami's internal social media copy strategist. Generate one polished channel-native content draft that is practical, clear, review-ready, and aligned to the current brand voice.",
     userPrompt: `Create one social content draft.
 
 Theme: ${normalizeSocialTheme(input.theme)}
@@ -1306,7 +1306,7 @@ Brand profile:
 Requirements:
 - Return exactly one content item for the requested channel only.
 - Make the copy distinct and native to the channel.
-- Use Party Genie as an event-planning and affiliate-friendly brand.
+- Use Party Swami as an event-planning and affiliate-friendly brand.
 - Include title, formatDetail, copy, callToAction, hashtags, visualDirection, and publishOffsetDays.
 - Return JSON only.`,
     schema: generatedSocialContentItemSchema,
@@ -1318,7 +1318,7 @@ Requirements:
     return {
       item: fallback,
       rawResponse: {
-        provider: "party-genie-social-fallback",
+        provider: "party-swami-social-fallback",
         generatedAt: new Date().toISOString(),
         summary: `Generated fallback ${input.channel} draft for ${normalizeSocialTheme(input.theme)}.`,
         model: getOpenAIModel("lightweight"),
@@ -1331,7 +1331,7 @@ Requirements:
           cachedInputTokens: 0,
           estimatedCostUsd: 0,
           latencyMs: 0,
-          provider: "party-genie-social-fallback",
+          provider: "party-swami-social-fallback",
           usedFallback: true,
         },
       },
@@ -1399,7 +1399,7 @@ export async function revisePartyPlan({
           cachedInputTokens: 0,
           estimatedCostUsd: 0,
           latencyMs: 0,
-          provider: "party-genie-structured-fallback",
+          provider: "party-swami-structured-fallback",
           usedFallback: true,
         },
       },
@@ -1426,7 +1426,7 @@ export async function generatePartyPlan(event: EventSeed): Promise<GeneratedPart
     generationType: "party_plan",
     taskType: "plan",
     systemPrompt:
-      "You are AI Party Genie, an event planning assistant. Create practical host-ready party plans that are realistic, concise, and easy to execute.",
+      "You are Party Swami, an event planning assistant. Create practical host-ready party plans that are realistic, concise, and easy to execute.",
     userPrompt: `Create a complete event plan for this brief.\n${eventBrief(event)}\n\nRequirements:
 - Keep the plan aligned to the event type, budget, and guest count.
 - Return 3 to 5 menu items.
@@ -1456,7 +1456,7 @@ export async function generatePartyPlan(event: EventSeed): Promise<GeneratedPart
           cachedInputTokens: 0,
           estimatedCostUsd: 0,
           latencyMs: 0,
-          provider: "party-genie-structured-fallback",
+          provider: "party-swami-structured-fallback",
           usedFallback: true,
         },
       } as GeneratedPartyPlan["rawResponse"],
@@ -1509,7 +1509,7 @@ ${currentMessage ? `- Current guest message: ${currentMessage}` : ""}
     return {
       inviteCopy: fallback,
       rawResponse: {
-        provider: "party-genie-structured-fallback",
+        provider: "party-swami-structured-fallback",
         generatedAt: new Date().toISOString(),
         summary: "Generated invite copy using the local fallback planner.",
         model: getOpenAIModel("lightweight"),
@@ -1522,7 +1522,7 @@ ${currentMessage ? `- Current guest message: ${currentMessage}` : ""}
           cachedInputTokens: 0,
           estimatedCostUsd: 0,
           latencyMs: 0,
-          provider: "party-genie-structured-fallback",
+          provider: "party-swami-structured-fallback",
           usedFallback: true,
         },
       },
@@ -1580,7 +1580,7 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
     return {
       ...fallback,
       rawResponse: {
-        provider: "party-genie-structured-fallback",
+        provider: "party-swami-structured-fallback",
         generatedAt: new Date().toISOString(),
         summary: "Generated shopping list using the local fallback planner.",
         model: getOpenAIModel("lightweight"),
@@ -1593,7 +1593,7 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
           cachedInputTokens: 0,
           estimatedCostUsd: 0,
           latencyMs: 0,
-          provider: "party-genie-structured-fallback",
+          provider: "party-swami-structured-fallback",
           usedFallback: true,
         },
       },
@@ -1720,7 +1720,7 @@ Requirements:
     return {
       item: fallback,
       rawResponse: {
-        provider: "party-genie-structured-fallback",
+        provider: "party-swami-structured-fallback",
         generatedAt: new Date().toISOString(),
         summary: `Replaced shopping item "${currentItem.name}" using the local fallback planner.`,
         model: getOpenAIModel("lightweight"),
@@ -1733,7 +1733,7 @@ Requirements:
           cachedInputTokens: 0,
           estimatedCostUsd: 0,
           latencyMs: 0,
-          provider: "party-genie-structured-fallback",
+          provider: "party-swami-structured-fallback",
           usedFallback: true,
         },
       },
@@ -1749,7 +1749,7 @@ Requirements:
     return {
       item: fallback,
       rawResponse: {
-        provider: "party-genie-structured-fallback",
+        provider: "party-swami-structured-fallback",
         generatedAt: new Date().toISOString(),
         summary: `Used fallback because the generated replacement was too similar to an existing pick for "${currentItem.name}".`,
         model: getOpenAIModel("lightweight"),
@@ -1762,7 +1762,7 @@ Requirements:
           cachedInputTokens: 0,
           estimatedCostUsd: 0,
           latencyMs: 0,
-          provider: "party-genie-structured-fallback",
+          provider: "party-swami-structured-fallback",
           usedFallback: true,
         },
       },

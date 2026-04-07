@@ -1,0 +1,31 @@
+<svg width="768" height="768" viewBox="0 0 768 768" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="92" y1="88" x2="676" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07112E"/>
+      <stop offset="0.55" stop-color="#101B47"/>
+      <stop offset="1" stop-color="#112A66"/>
+    </linearGradient>
+    <linearGradient id="swirlA" x1="278" y1="118" x2="534" y2="372" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF77DB"/>
+      <stop offset="0.5" stop-color="#A066FF"/>
+      <stop offset="1" stop-color="#46C7FF"/>
+    </linearGradient>
+    <linearGradient id="swirlB" x1="251" y1="221" x2="571" y2="475" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7B61FF"/>
+      <stop offset="1" stop-color="#4DE6C6"/>
+    </linearGradient>
+    <linearGradient id="wordmark" x1="164" y1="494" x2="604" y2="494" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF7BD9"/>
+      <stop offset="0.45" stop-color="#B06EFF"/>
+      <stop offset="1" stop-color="#44C9FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="56" y="56" width="656" height="656" rx="96" fill="url(#bg)"/>
+  <path d="M376 126C311 171 290 221 327 265C347 289 382 306 408 329C450 365 450 420 393 472" stroke="url(#swirlA)" stroke-width="22" stroke-linecap="round"/>
+  <path d="M463 155C406 201 384 240 409 278C424 300 450 316 474 339C515 378 507 436 437 496" stroke="url(#swirlB)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M300 251C348 283 395 307 458 327" stroke="#F8B8FF" stroke-width="14" stroke-linecap="round" opacity="0.82"/>
+  <circle cx="512" cy="194" r="18" fill="#FDBA4D"/>
+  <circle cx="535" cy="173" r="8" fill="#FFF5B8"/>
+  <text x="384" y="535" text-anchor="middle" fill="url(#wordmark)" font-family="Arial, sans-serif" font-size="86" font-weight="700">Party Swami</text>
+  <text x="384" y="590" text-anchor="middle" fill="#D9E4FF" font-family="Arial, sans-serif" font-size="28" letter-spacing="6">AI HOST WORKSPACE</text>
+</svg>

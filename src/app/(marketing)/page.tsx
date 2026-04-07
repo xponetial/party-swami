@@ -41,8 +41,8 @@ export default function MarketingHomePage() {
           className="block overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080c24] shadow-[0_24px_70px_rgba(7,11,34,0.32)]"
         >
           <Image
-            src="/ai-party-genie-banner.png"
-            alt="AI Party Genie celebration banner"
+            src="/party-swami-banner.svg"
+            alt="Party Swami celebration banner"
             width={1120}
             height={768}
             priority
@@ -59,7 +59,7 @@ export default function MarketingHomePage() {
               Turn a party idea into a full plan, invite, shopping list, and timeline in one guided flow.
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-ink-muted">
-              AI Party Genie is the AI planning workspace for hosts who want setup, invites, commerce,
+              Party Swami is the AI planning workspace for hosts who want setup, invites, commerce,
               and event-day execution to live in the same product.
             </p>
           </div>

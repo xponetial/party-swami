@@ -1,1 +1,1 @@
-AI Party Genie Sympathy Pack - 3 templates, 1024x1536, no text, Codex ready.
+Party Swami Sympathy Pack - 3 templates, 1024x1536, no text, Codex ready.

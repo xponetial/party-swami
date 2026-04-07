@@ -12,7 +12,7 @@ export default async function ResetPasswordPage({
   return (
     <AuthCard
       title="Choose a new password"
-      description="Open the recovery link from your email, then set the new password you want to use for AI Party Genie."
+      description="Open the recovery link from your email, then set the new password you want to use for Party Swami."
       footer={
         <p className="text-sm text-ink-muted">
           Need to start over?{" "}

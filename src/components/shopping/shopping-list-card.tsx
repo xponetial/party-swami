@@ -74,7 +74,7 @@ function buildRecommendationReason(
       : "This is a higher-impact extra if you want the event to feel more polished.";
   }
 
-  return `Recommended because it supports the ${theme} plan and fits the event setup already stored in Party Genie.`;
+  return `Recommended because it supports the ${theme} plan and fits the event setup already stored in Party Swami.`;
 }
 
 function buildConfidenceTags(
@@ -330,7 +330,7 @@ export function ShoppingListCard({
             <Badge>Amazon-style recommendations</Badge>
             <p className="mt-4 text-xs uppercase tracking-[0.2em] text-ink-muted">Step 3 of 4</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-ink">
-              Party Genie Shopping
+              Party Swami Shopping
             </h2>
             <p className="mt-3 text-base leading-7 text-ink-muted">
               Based on the event parameters you gave me, here are my recommendations from Amazon.
@@ -573,7 +573,7 @@ export function ShoppingListCard({
               <div className="rounded-[1.75rem] border border-border bg-white/85 p-6">
                 <p className="text-lg font-semibold text-ink">No recommendations yet</p>
                 <p className="mt-2 text-sm leading-7 text-ink-muted">
-                  Generate the shopping list and Party Genie will turn your event plan into grouped
+                  Generate the shopping list and Party Swami will turn your event plan into grouped
                   recommendations here.
                 </p>
               </div>

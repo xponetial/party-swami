@@ -138,7 +138,7 @@ export function EventFormCard({
             <Badge>Occasion-first setup</Badge>
             <h2 className="mt-4 text-2xl font-semibold text-ink">Start with the kind of event you are hosting</h2>
             <p className="mt-2 text-sm leading-6 text-ink-muted">
-              Pick an occasion family first, then fill in a few details. AI Party Genie will use that
+              Pick an occasion family first, then fill in a few details. Party Swami will use that
               direction to create the workspace, starter plan, and matching invite experience.
             </p>
           </div>

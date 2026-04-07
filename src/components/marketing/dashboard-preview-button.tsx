@@ -85,7 +85,7 @@ export function DashboardPreviewButton() {
                   See the workspace before signup
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-ink-muted">
-                  This is a static preview of the AI Party Genie host dashboard. Signup is still the
+                  This is a static preview of the Party Swami host dashboard. Signup is still the
                   next step to create your real event workspace, save plans, and send invites.
                 </p>
 
@@ -128,7 +128,7 @@ export function DashboardPreviewButton() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
-                        AI Party Genie workspace
+                        Party Swami workspace
                       </p>
                       <h3 className="mt-2 text-3xl font-semibold text-ink">Dashboard</h3>
                       <p className="mt-2 text-sm leading-6 text-ink-muted">

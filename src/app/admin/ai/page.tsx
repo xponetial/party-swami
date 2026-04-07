@@ -36,7 +36,7 @@ export default async function AdminAiPage({
     <AdminShell
       currentSection="/admin/ai"
       title="AI control center"
-      description="Monitor model usage, cost, latency, and fallback behavior across Party Genie's AI features."
+      description="Monitor model usage, cost, latency, and fallback behavior across Party Swami's AI features."
       adminName={profile?.full_name}
       actions={
         <div className="flex flex-wrap gap-2">

@@ -12,7 +12,7 @@ export default async function EventShoppingPage({
 
   return (
     <AppShell
-      title="Party Genie Shopping"
+      title="Party Swami Shopping"
       description="Personalized shopping recommendations based on the event details you already planned."
       backHref={`/events/${eventId}`}
       eventNav={{ eventId, eventTitle: event.title, active: "shopping" }}

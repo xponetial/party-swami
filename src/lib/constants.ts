@@ -1,4 +1,4 @@
-export const APP_NAME = "AI Party Genie";
+export const APP_NAME = "Party Swami";
 
 export const EVENT_STATUSES = ["draft", "planning", "ready", "completed"] as const;
 

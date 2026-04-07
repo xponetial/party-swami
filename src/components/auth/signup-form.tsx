@@ -56,7 +56,7 @@ export function SignupForm() {
       <div className="mt-6 rounded-[1.5rem] bg-canvas p-4">
         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">What happens next</p>
         <p className="mt-2 text-sm leading-6 text-ink-muted">
-          AI Party Genie will create your account, start a session when available, and otherwise send
+          Party Swami will create your account, start a session when available, and otherwise send
           you through email confirmation before login.
         </p>
       </div>

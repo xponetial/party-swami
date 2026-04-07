@@ -1,6 +1,6 @@
-# AI Party Genie Hosting Checklist
+# Party Swami Hosting Checklist
 
-This file tracks the changes, configuration, and verification work needed to move AI Party Genie from local development to a hosted production site.
+This file tracks the changes, configuration, and verification work needed to move Party Swami from local development to a hosted production site.
 
 Update this checklist whenever a new feature adds:
 - a required environment variable
@@ -87,7 +87,7 @@ These values must be configured in the hosting provider instead of relying on lo
   - `/api/ai/generate-shopping-list`
   - `/api/ai/revise-plan`
 - Verify the fallback behavior is acceptable if OpenAI is unavailable.
-- Re-check model routing against the AI Party Genie model design docs.
+- Re-check model routing against the Party Swami model design docs.
 - Review production rate limiting and usage controls for AI endpoints.
 
 ## 7. Invite Template Hosting
