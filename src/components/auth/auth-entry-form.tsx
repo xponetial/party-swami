@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { ArrowRight, Mail, Sparkles } from "lucide-react";
+import { ArrowRight, Mail } from "lucide-react";
 import {
   continueWithGoogleAction,
   sendMagicLinkAction,
@@ -54,36 +54,21 @@ export function AuthEntryForm({ next = "/dashboard", showRecoveryLink = false }:
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3">
-        <form action={googleFormAction}>
-          <input type="hidden" name="next" value={next} />
-          <Button
-            className="w-full justify-between rounded-[1.5rem] border border-border bg-white px-5 py-4 text-left text-ink hover:bg-white"
-            disabled={googlePending}
-            type="submit"
-            variant="secondary"
-          >
-            <span className="flex items-center gap-3">
-              <GoogleIcon />
-              <span>{googlePending ? "Connecting to Google..." : "Continue with Google"}</span>
-            </span>
-            <ArrowRight className="size-4 text-ink-muted" />
-          </Button>
-        </form>
-
+      <form action={googleFormAction}>
+        <input type="hidden" name="next" value={next} />
         <Button
-          className="w-full justify-between rounded-[1.5rem] border border-border/80 bg-white/70 px-5 py-4 text-left text-ink-muted hover:bg-white/70"
-          disabled
-          type="button"
+          className="w-full justify-between rounded-[1.5rem] border border-border bg-white px-5 py-4 text-left text-ink hover:bg-white"
+          disabled={googlePending}
+          type="submit"
           variant="secondary"
         >
           <span className="flex items-center gap-3">
-            <Sparkles className="size-4" />
-            <span>Continue with Apple</span>
+            <GoogleIcon />
+            <span>{googlePending ? "Connecting to Google..." : "Continue with Google"}</span>
           </span>
-          <span className="text-xs uppercase tracking-[0.18em]">Phase 2</span>
+          <ArrowRight className="size-4 text-ink-muted" />
         </Button>
-      </div>
+      </form>
 
       {googleState.error ? (
         <p
