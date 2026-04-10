@@ -351,6 +351,19 @@ async function maybeUploadSocialAsset({
     throw new Error("Social assets must be 8MB or smaller.");
   }
 
+  // Verify actual file format via magic bytes — client-supplied file.type can be spoofed.
+  const headerBytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const isJpeg = headerBytes[0] === 0xff && headerBytes[1] === 0xd8 && headerBytes[2] === 0xff;
+  const isPng = headerBytes[0] === 0x89 && headerBytes[1] === 0x50 && headerBytes[2] === 0x4e && headerBytes[3] === 0x47;
+  const isGif = headerBytes[0] === 0x47 && headerBytes[1] === 0x49 && headerBytes[2] === 0x46 && headerBytes[3] === 0x38;
+  const isWebp =
+    headerBytes[0] === 0x52 && headerBytes[1] === 0x49 && headerBytes[2] === 0x46 && headerBytes[3] === 0x46 &&
+    headerBytes[8] === 0x57 && headerBytes[9] === 0x45 && headerBytes[10] === 0x42 && headerBytes[11] === 0x50;
+
+  if (!isJpeg && !isPng && !isGif && !isWebp) {
+    throw new Error("Social assets must be a valid JPG, PNG, WEBP, or GIF file.");
+  }
+
   return uploadSocialMediaAsset({
     campaignId,
     contentItemId,

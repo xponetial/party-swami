@@ -571,6 +571,12 @@ export async function importGuestsAction(
       };
     }
 
+    if (file.size > 1 * 1024 * 1024) {
+      return {
+        error: "CSV file must be under 1MB.",
+      };
+    }
+
     const csvText = await file.text();
     const { validRows, rowErrors } = parseGuestImportCsv(csvText);
     const { error } = await supabase.from("guests").insert(

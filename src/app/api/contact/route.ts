@@ -3,6 +3,7 @@ import { z } from "zod";
 import { buildContactFormDefaults } from "@/lib/contact-form";
 import { ContactContext, ContactFormCategory, getContactEmail } from "@/lib/contact-email";
 import { getResendClient, getResendFromEmail } from "@/lib/email/resend";
+import { buildRateLimitHeaders, checkContactRateLimit } from "@/lib/security/public-rate-limits";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
@@ -71,6 +72,15 @@ async function verifyTurnstileToken({
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await checkContactRateLimit(request.headers);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please wait a few minutes and try again." },
+      { status: 429, headers: buildRateLimitHeaders(rateLimit) },
+    );
+  }
+
   const payloadResult = contactPayloadSchema.safeParse(await request.json());
 
   if (!payloadResult.success) {

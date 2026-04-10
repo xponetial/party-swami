@@ -14,7 +14,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const rateLimit = checkPublicRsvpRateLimit(request.headers);
+  const rateLimit = await checkPublicRsvpRateLimit(request.headers);
 
   if (!rateLimit.allowed) {
     return NextResponse.json(

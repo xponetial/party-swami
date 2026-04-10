@@ -23,7 +23,7 @@ export async function submitPublicRsvpAction(
   formData: FormData,
 ): Promise<PublicRsvpState> {
   const headerStore = await headers();
-  const rateLimit = checkPublicRsvpRateLimit(headerStore, formData.get("slug")?.toString());
+  const rateLimit = await checkPublicRsvpRateLimit(headerStore, formData.get("slug")?.toString());
 
   if (!rateLimit.allowed) {
     return {
