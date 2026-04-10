@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ContactEmailKey, ContactContext, getContactEmail } from "@/lib/contact-email";
+import { ContactEmailKey, ContactContext, ContactIntent, getContactEmail } from "@/lib/contact-email";
 import { ContactLink } from "@/components/contact/contact-link";
 
 type ContactCardProps = {
@@ -7,6 +7,7 @@ type ContactCardProps = {
   description: string;
   emailKey: ContactEmailKey;
   context?: ContactContext;
+  intent?: ContactIntent;
   note?: ReactNode;
 };
 
@@ -15,6 +16,7 @@ export function ContactCard({
   description,
   emailKey,
   context,
+  intent,
   note,
 }: ContactCardProps) {
   return (
@@ -24,6 +26,8 @@ export function ContactCard({
       <ContactLink
         emailKey={emailKey}
         context={context}
+        intent={intent}
+        pageLabel={title}
         className="mt-4 inline-flex rounded-full border border-border bg-canvas px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/40 hover:text-brand"
       />
       {note ? <div className="mt-3 text-xs leading-5 text-ink-muted">{note}</div> : null}

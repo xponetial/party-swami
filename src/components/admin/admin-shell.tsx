@@ -127,7 +127,7 @@ export function AdminShell({
         </header>
 
         <main className="grid gap-4">{children}</main>
-        <SiteFooter />
+        <SiteFooter contactContext="admin" pageLabel={title} />
       </div>
     </div>
   );

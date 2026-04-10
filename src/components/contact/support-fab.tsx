@@ -1,17 +1,42 @@
 "use client";
 
-import { LifeBuoy } from "lucide-react";
-import { ContactContext, buildMailtoHref } from "@/lib/contact-email";
+import { ContactContext } from "@/lib/contact-email";
+import { ContactLink } from "@/components/contact/contact-link";
 
-export function SupportFab({ context = "support" }: { context?: ContactContext }) {
+export function SupportFab({
+  context = "support",
+  pageLabel = "Current page",
+}: {
+  context?: ContactContext;
+  pageLabel?: string;
+}) {
   return (
-    <a
-      href={buildMailtoHref("support", { context })}
-      className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-3 text-sm font-medium text-white shadow-[0_16px_30px_rgba(17,24,39,0.24)] transition hover:bg-brand sm:bottom-6 sm:right-6"
-      aria-label="Contact Party Swami support"
-    >
-      <LifeBuoy className="size-4" />
-      Support
-    </a>
+    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
+      <div className="flex flex-wrap justify-end gap-2">
+        <ContactLink
+          emailKey="support"
+          context={context}
+          intent="bug"
+          pageLabel={pageLabel}
+          label="Report bug"
+          className="inline-flex rounded-full border border-white/20 bg-white px-3 py-2 text-xs font-medium text-ink shadow-[0_10px_24px_rgba(17,24,39,0.12)] transition hover:border-brand/40 hover:text-brand"
+        />
+        <ContactLink
+          emailKey="support"
+          context={context}
+          intent="feature"
+          pageLabel={pageLabel}
+          label="Request feature"
+          className="inline-flex rounded-full border border-white/20 bg-white px-3 py-2 text-xs font-medium text-ink shadow-[0_10px_24px_rgba(17,24,39,0.12)] transition hover:border-brand/40 hover:text-brand"
+        />
+      </div>
+      <ContactLink
+        emailKey="support"
+        context={context}
+        pageLabel={pageLabel}
+        label="Support"
+        className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-3 text-sm font-medium text-white shadow-[0_16px_30px_rgba(17,24,39,0.24)] transition hover:bg-brand"
+      />
+    </div>
   );
 }

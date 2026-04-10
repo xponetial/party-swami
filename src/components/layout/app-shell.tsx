@@ -12,6 +12,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SupportFab } from "@/components/contact/support-fab";
 import { Button } from "@/components/ui/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ContactContext } from "@/lib/contact-email";
 import { cn } from "@/lib/utils";
 
 const sections = [
@@ -46,6 +47,18 @@ type AppShellProps = {
   };
 };
 
+function getAppContactContext(currentSection?: string, eventNavActive?: EventNavKey): ContactContext {
+  if (eventNavActive === "invite") {
+    return "invites";
+  }
+
+  if (currentSection === "/dashboard") {
+    return "dashboard";
+  }
+
+  return "support";
+}
+
 export async function AppShell({
   title,
   description,
@@ -71,10 +84,11 @@ export async function AppShell({
     profile?.plan_tier === "admin"
       ? [...sections, { href: "/admin", label: "Admin", icon: Sparkles }]
       : sections;
+  const contactContext = getAppContactContext(currentSection, eventNav?.active);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
-      <SupportFab context="support" />
+      <SupportFab context={contactContext} pageLabel={title} />
       <aside className="hidden w-72 shrink-0 flex-col rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,224,244,0.9)_0%,rgba(245,222,255,0.84)_28%,rgba(228,236,255,0.84)_62%,rgba(210,236,255,0.9)_100%)] p-5 shadow-party backdrop-blur lg:flex">
         <div className="rounded-3xl bg-white/30 p-4">
           <BrandLockup
@@ -156,7 +170,7 @@ export async function AppShell({
           </div>
         </header>
         <main className="grid gap-4">{children}</main>
-        <SiteFooter />
+        <SiteFooter contactContext={contactContext} pageLabel={title} />
       </div>
     </div>
   );

@@ -17,6 +17,8 @@ export type ContactContext =
   | "ai"
   | "admin";
 
+export type ContactIntent = "general" | "bug" | "feature";
+
 const CONTACT_SUBJECTS: Record<ContactContext, string> = {
   marketing: "Party Swami inquiry",
   pricing: "Party Swami pricing inquiry",
@@ -41,23 +43,124 @@ export function getContactEmail(key: ContactEmailKey) {
   return CONTACT_EMAILS[key];
 }
 
+function getContextLabel(context: ContactContext) {
+  switch (context) {
+    case "marketing":
+      return "Marketing";
+    case "pricing":
+      return "Pricing";
+    case "support":
+      return "Support";
+    case "dashboard":
+      return "Dashboard";
+    case "invites":
+      return "Invites";
+    case "ai":
+      return "AI";
+    case "admin":
+      return "Admin";
+  }
+}
+
+function buildDefaultSubject(context: ContactContext, intent: ContactIntent) {
+  const contextLabel = getContextLabel(context);
+
+  switch (intent) {
+    case "bug":
+      return `Bug report: ${contextLabel}`;
+    case "feature":
+      return `Feature request: ${contextLabel}`;
+    case "general":
+      return CONTACT_SUBJECTS[context];
+  }
+}
+
+function buildDefaultBody(options: {
+  context: ContactContext;
+  intent: ContactIntent;
+  pageLabel?: string;
+  pagePath?: string;
+  pageUrl?: string;
+  timestamp?: string;
+}) {
+  const { context, intent, pageLabel, pagePath, pageUrl, timestamp } = options;
+  const intro = CONTACT_BODY_INTROS[context];
+  const lines = [intro, ""];
+
+  if (intent === "bug") {
+    lines.push("I want to report a bug.");
+  } else if (intent === "feature") {
+    lines.push("I want to request a new feature.");
+  }
+
+  lines.push("");
+
+  if (pageLabel) {
+    lines.push(`Page: ${pageLabel}`);
+  }
+
+  if (pagePath) {
+    lines.push(`Path: ${pagePath}`);
+  }
+
+  if (pageUrl) {
+    lines.push(`URL: ${pageUrl}`);
+  }
+
+  if (timestamp) {
+    lines.push(`Timestamp: ${timestamp}`);
+  }
+
+  lines.push("");
+
+  if (intent === "bug") {
+    lines.push("What happened:");
+    lines.push("");
+    lines.push("What I expected:");
+  } else if (intent === "feature") {
+    lines.push("Feature idea:");
+    lines.push("");
+    lines.push("Why it would help:");
+  }
+
+  return lines.join("\n");
+}
+
 export function buildMailtoHref(
   key: ContactEmailKey,
   options?: {
     context?: ContactContext;
+    intent?: ContactIntent;
+    pageLabel?: string;
+    pagePath?: string;
+    pageUrl?: string;
+    timestamp?: string;
     subject?: string;
     body?: string;
   },
 ) {
   const email = getContactEmail(key);
   const params = new URLSearchParams();
+  const context = options?.context;
+  const intent = options?.intent ?? "general";
 
-  if (options?.subject ?? options?.context) {
-    params.set("subject", options?.subject ?? CONTACT_SUBJECTS[options!.context!]);
+  if (options?.subject ?? context) {
+    params.set("subject", options?.subject ?? buildDefaultSubject(context!, intent));
   }
 
-  if (options?.body ?? options?.context) {
-    params.set("body", options?.body ?? CONTACT_BODY_INTROS[options!.context!]);
+  if (options?.body ?? context) {
+    params.set(
+      "body",
+      options?.body ??
+        buildDefaultBody({
+          context: context!,
+          intent,
+          pageLabel: options?.pageLabel,
+          pagePath: options?.pagePath,
+          pageUrl: options?.pageUrl,
+          timestamp: options?.timestamp,
+        }),
+    );
   }
 
   const query = params.toString();

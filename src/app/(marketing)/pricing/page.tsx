@@ -65,6 +65,7 @@ export default function PricingPage() {
       eyebrow="Pricing"
       title="Real plan tiers for the Party Swami beta."
       description="These tiers now mirror the AI request, budget, and per-event planning limits enforced inside the product so hosts know exactly what kind of runway they have."
+      contactContext="pricing"
     >
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="bg-gradient-to-br from-white via-[rgba(244,247,255,0.96)] to-[rgba(229,236,255,0.96)]">
