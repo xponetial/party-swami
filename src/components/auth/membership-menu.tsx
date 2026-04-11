@@ -27,6 +27,10 @@ const BADGES: Record<string, MembershipBadge> = {
     label: "Vendor",
     imagePath: "/membership-badges/vendor.png",
   },
+  support: {
+    label: "Support",
+    imagePath: "/membership-badges/support.png",
+  },
   professional_party_planner: {
     label: "Professional Party Planner",
     imagePath: "/membership-badges/professional-party-planner.png",
@@ -105,7 +109,7 @@ export function MembershipMenu({ planTier, email }: MembershipMenuProps) {
         <div className="mt-4 rounded-2xl border border-border bg-canvas p-3">
           <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Upcoming memberships</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            {(["vendor", "professional_party_planner"] as const).map((tier) => (
+            {(["support", "vendor", "professional_party_planner"] as const).map((tier) => (
               <div
                 key={tier}
                 className={cn(
