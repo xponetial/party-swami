@@ -34,7 +34,7 @@ export function SupportFab({
         context={context}
         pageLabel={pageLabel}
         label="Support"
-        className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-3 text-sm font-medium text-white shadow-[0_16px_30px_rgba(17,24,39,0.24)] transition hover:bg-brand"
+        className="inline-flex items-center gap-2 rounded-full bg-brand px-4 py-3 text-sm font-medium text-white shadow-[0_16px_30px_rgba(47,143,255,0.28)] transition hover:bg-brand-dark"
       />
     </div>
   );
