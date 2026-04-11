@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ChartNoAxesCombined,
   ClipboardList,
+  CreditCard,
   Sparkles,
 } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 const sections = [
   { href: "/dashboard", label: "Dashboard", icon: ChartNoAxesCombined },
   { href: "/events/new", label: "New Event", icon: ClipboardList },
+  { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/", label: "Marketing", icon: Sparkles },
 ];
 
