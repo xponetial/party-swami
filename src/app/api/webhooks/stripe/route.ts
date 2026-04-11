@@ -17,6 +17,10 @@ type BillingPatch = {
   billing_status: string | null;
 };
 
+function isMissingSchemaError(error: { code?: string; message?: string } | null | undefined) {
+  return Boolean(error && (error.code === "42P01" || error.code === "42703"));
+}
+
 async function resolveProfileIdForBilling({
   customerId,
   subscriptionId,
@@ -55,17 +59,38 @@ async function resolveProfileIdForBilling({
 
 async function updateProfileBillingByUserId(userId: string, patch: BillingPatch) {
   const supabase = createSupabaseAdminClient();
-
-  await supabase
-    .from("profiles")
-    .update({
+  const fullWrite = await supabase.from("profiles").upsert(
+    {
+      id: userId,
       plan_tier: patch.plan_tier,
       stripe_customer_id: patch.stripe_customer_id,
       stripe_subscription_id: patch.stripe_subscription_id,
       stripe_price_id: patch.stripe_price_id,
       billing_status: patch.billing_status,
-    })
-    .eq("id", userId);
+    },
+    { onConflict: "id" },
+  );
+
+  if (!fullWrite.error) {
+    return;
+  }
+
+  if (!isMissingSchemaError(fullWrite.error)) {
+    throw new Error(`Failed to sync billing profile: ${fullWrite.error.message}`);
+  }
+
+  // Fallback for environments that have not received the full Stripe billing migration yet.
+  const minimalWrite = await supabase.from("profiles").upsert(
+    {
+      id: userId,
+      plan_tier: patch.plan_tier,
+    },
+    { onConflict: "id" },
+  );
+
+  if (minimalWrite.error) {
+    throw new Error(`Failed to sync fallback plan tier: ${minimalWrite.error.message}`);
+  }
 }
 
 async function updateProfileBillingByStripeIds({
@@ -95,6 +120,11 @@ async function markEventProcessed(event: Stripe.Event) {
     stripe_event_id: event.id,
     stripe_event_type: event.type,
   });
+
+  if (isMissingSchemaError(error)) {
+    // Environments missing stripe_webhook_events cannot dedupe yet; keep processing.
+    return { duplicate: false as const };
+  }
 
   if (error?.code === "23505") {
     return { duplicate: true as const };
