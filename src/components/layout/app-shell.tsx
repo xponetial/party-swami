@@ -89,9 +89,15 @@ export async function AppShell({
   const contactContext = getAppContactContext(currentSection, eventNav?.active);
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
-      <SupportFab context={contactContext} pageLabel={title} />
-      <aside className="hidden w-72 shrink-0 flex-col rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,224,244,0.9)_0%,rgba(245,222,255,0.84)_28%,rgba(228,236,255,0.84)_62%,rgba(210,236,255,0.9)_100%)] p-5 shadow-party backdrop-blur lg:flex">
+    <>
+      {user ? (
+        <div className="fixed right-4 top-4 z-[70] sm:right-6 sm:top-5 lg:right-8 lg:top-6">
+          <MembershipMenu email={user.email} planTier={profile?.plan_tier} />
+        </div>
+      ) : null}
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <SupportFab context={contactContext} pageLabel={title} />
+        <aside className="hidden w-72 shrink-0 flex-col rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,224,244,0.9)_0%,rgba(245,222,255,0.84)_28%,rgba(228,236,255,0.84)_62%,rgba(210,236,255,0.9)_100%)] p-5 shadow-party backdrop-blur lg:flex">
         <div className="rounded-3xl bg-white/30 p-4">
           <BrandLockup
             imageWidth={210}
@@ -147,33 +153,33 @@ export async function AppShell({
             The workspace now carries the Party Swami brand through the shell so every flow feels connected.
           </p>
         </div>
-      </aside>
+        </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-6">
-        <header className="rounded-[2rem] border border-white/75 bg-[linear-gradient(135deg,rgba(255,248,255,0.9)_0%,rgba(243,233,255,0.88)_38%,rgba(236,245,255,0.9)_74%,rgba(255,247,226,0.82)_100%)] px-6 py-5 shadow-party backdrop-blur">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              {backHref ? (
-                <Button asChild className="gap-2 text-xs uppercase tracking-[0.18em]">
-                  <Link href={backHref}>
-                    <ArrowLeft className="size-3.5" />
-                    {backLabel}
-                  </Link>
-                </Button>
-              ) : null}
-              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Party Swami workspace</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{title}</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">{description}</p>
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
+          <header className="rounded-[2rem] border border-white/75 bg-[linear-gradient(135deg,rgba(255,248,255,0.9)_0%,rgba(243,233,255,0.88)_38%,rgba(236,245,255,0.9)_74%,rgba(255,247,226,0.82)_100%)] px-6 py-5 shadow-party backdrop-blur">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                {backHref ? (
+                  <Button asChild className="gap-2 text-xs uppercase tracking-[0.18em]">
+                    <Link href={backHref}>
+                      <ArrowLeft className="size-3.5" />
+                      {backLabel}
+                    </Link>
+                  </Button>
+                ) : null}
+                <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Party Swami workspace</p>
+                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{title}</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">{description}</p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-3">
+                {actions ? actions : null}
+              </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-3">
-              {actions ? actions : null}
-              {user ? <MembershipMenu email={user.email} planTier={profile?.plan_tier} /> : null}
-            </div>
-          </div>
-        </header>
-        <main className="grid gap-4">{children}</main>
-        <SiteFooter contactContext={contactContext} pageLabel={title} />
+          </header>
+          <main className="grid gap-4">{children}</main>
+          <SiteFooter contactContext={contactContext} pageLabel={title} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
