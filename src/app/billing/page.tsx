@@ -88,6 +88,7 @@ export default async function BillingPage() {
   const planLabel = planLabelFromTier(planTier);
   const canManageBilling =
     Boolean(profile?.stripe_customer_id) && (planTier === "pro" || planTier === "admin");
+  const showStripeSyncDetails = process.env.VERCEL_ENV !== "production";
 
   return (
     <AppShell
@@ -126,25 +127,27 @@ export default async function BillingPage() {
           </div>
         </Card>
 
-        <Card className="bg-[rgba(244,247,255,0.9)]">
-          <h2 className="text-xl font-semibold text-ink">Stripe sync details</h2>
-          <div className="mt-5 grid gap-3">
-            {[
-              ["Stripe customer", profile?.stripe_customer_id ?? "Not linked yet"],
-              ["Subscription", profile?.stripe_subscription_id ?? "Not linked yet"],
-              ["Price ID", profile?.stripe_price_id ?? "Not linked yet"],
-            ].map(([label, value]) => (
-              <div key={label} className="flex items-center justify-between rounded-2xl border border-border bg-white/85 px-4 py-4">
-                <p className="text-sm text-ink-muted">{label}</p>
-                <p className="text-sm font-medium text-ink">{value}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 rounded-3xl border border-border bg-white/85 p-4 text-sm leading-6 text-ink-muted">
-            If your Stripe checkout succeeded but this page still shows Starter, wait a few seconds and refresh. The
-            webhook updates your profile as soon as Stripe confirms the event.
-          </div>
-        </Card>
+        {showStripeSyncDetails ? (
+          <Card className="bg-[rgba(244,247,255,0.9)]">
+            <h2 className="text-xl font-semibold text-ink">Stripe sync details</h2>
+            <div className="mt-5 grid gap-3">
+              {[
+                ["Stripe customer", profile?.stripe_customer_id ?? "Not linked yet"],
+                ["Subscription", profile?.stripe_subscription_id ?? "Not linked yet"],
+                ["Price ID", profile?.stripe_price_id ?? "Not linked yet"],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between rounded-2xl border border-border bg-white/85 px-4 py-4">
+                  <p className="text-sm text-ink-muted">{label}</p>
+                  <p className="text-sm font-medium text-ink">{value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 rounded-3xl border border-border bg-white/85 p-4 text-sm leading-6 text-ink-muted">
+              If your Stripe checkout succeeded but this page still shows Starter, wait a few seconds and refresh. The
+              webhook updates your profile as soon as Stripe confirms the event.
+            </div>
+          </Card>
+        ) : null}
       </div>
     </AppShell>
   );
