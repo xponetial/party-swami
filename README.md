@@ -52,6 +52,16 @@ RESEND_FROM_EMAIL="Party Swami <noreply@email.partyswami.com>"
 
 Invite email previews are uploaded to a public Supabase Storage bucket, so email delivery also requires `SUPABASE_SERVICE_ROLE_KEY`.
 
+Optional for Stripe billing (phase 2 premium tier):
+
+```bash
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+STRIPE_PRICE_ID_PRO_MONTHLY=your_stripe_pro_monthly_price_id
+```
+
+These power the upgrade checkout route and Stripe webhook sync that updates `profiles.plan_tier` automatically.
+
 Optional for the structured contact and feedback form:
 
 ```bash

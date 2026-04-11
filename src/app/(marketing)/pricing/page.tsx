@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { ContactCard } from "@/components/contact/contact-card";
+import { ProUpgradeButton } from "@/components/billing/pro-upgrade-button";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Card } from "@/components/ui/card";
 import { DEFAULT_LIMITS, type PlanTier } from "@/lib/ai/limits";
@@ -120,13 +121,19 @@ export default function PricingPage() {
                       </div>
                     ))}
                   </div>
-                  <Link
-                    href={item.ctaHref}
-                    className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/40 hover:text-brand"
-                  >
-                    {item.ctaLabel}
-                    <ArrowRight className="size-4" />
-                  </Link>
+                  <div className="mt-6">
+                    {item.tier === "pro" ? (
+                      <ProUpgradeButton />
+                    ) : (
+                      <Link
+                        href={item.ctaHref}
+                        className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/40 hover:text-brand"
+                      >
+                        {item.ctaLabel}
+                        <ArrowRight className="size-4" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
               );
             })}
