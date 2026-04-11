@@ -33,16 +33,17 @@ const tiers: Array<{
   {
     tier: "pro",
     name: "Pro Host",
-    price: "$19/mo",
+    price: "$9.99/mo",
     eyebrow: "Most popular",
-    description: "For repeat hosts and small teams who want far more AI headroom without losing the same simple workflow.",
+    description: "For repeat hosts who want more planning power, faster iterations, and a clean monthly subscription.",
     highlights: [
-      "10x more monthly AI requests than the free tier",
-      "Higher per-event planning allowance for multiple revision loops",
-      "Ideal for hosts managing several active events at once",
+      "500 AI requests per month for deeper planning and revisions",
+      "Up to 50 plan revisions per event for iterative event design",
+      "Priority path to new premium features as they launch",
+      "Self-serve billing and subscription management in-app",
     ],
     ctaHref: "/signup",
-    ctaLabel: "Join the waitlist",
+    ctaLabel: "Upgrade to Pro",
   },
   {
     tier: "admin",
@@ -145,7 +146,7 @@ export default function PricingPage() {
           <div className="mt-5 grid gap-3">
             {[
               "Free Beta keeps the whole host workflow open while deliberately capping AI spend during onboarding and early testing.",
-              "Pro Host is the natural upgrade once a host is planning frequently enough to hit the event-level revision ceiling.",
+              "Pro Host is a live $9.99/month subscription for hosts who need more AI capacity and tighter execution workflows.",
               "Concierge Admin is reserved for premium service, internal operators, and future hands-on planning workflows powered by the highest-capacity model lane.",
             ].map((item) => (
               <div key={item} className="rounded-3xl border border-border bg-white/85 p-4 text-sm leading-6 text-ink-muted">
