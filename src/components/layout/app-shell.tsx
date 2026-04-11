@@ -7,7 +7,7 @@ import {
   CreditCard,
   Sparkles,
 } from "lucide-react";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { MembershipMenu } from "@/components/auth/membership-menu";
 import { BrandLockup } from "@/components/layout/brand-lockup";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SupportFab } from "@/components/contact/support-fab";
@@ -167,7 +167,7 @@ export async function AppShell({
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-3">
               {actions ? actions : null}
-              {user ? <LogoutButton /> : null}
+              {user ? <MembershipMenu email={user.email} planTier={profile?.plan_tier} /> : null}
             </div>
           </div>
         </header>
