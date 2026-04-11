@@ -125,8 +125,14 @@ export const getEventContext = cache(async (eventId: string) => {
       .single<EventDetails>(),
     supabase
       .from("profiles")
-      .select("id, full_name, plan_tier")
-      .maybeSingle<{ id: string; full_name: string | null; plan_tier: string | null }>(),
+      .select("id, full_name, plan_tier, billing_status, stripe_customer_id")
+      .maybeSingle<{
+        id: string;
+        full_name: string | null;
+        plan_tier: string | null;
+        billing_status: string | null;
+        stripe_customer_id: string | null;
+      }>(),
   ]);
 
   if (eventError || !event) {

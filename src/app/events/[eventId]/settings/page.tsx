@@ -1,12 +1,29 @@
 import { restorePlanVersionAction, updateProfileAction } from "@/app/events/actions";
 import { getAiUsageForUser } from "@/lib/ai/usage";
+import { ManageBillingButton } from "@/components/billing/manage-billing-button";
+import { ProUpgradeButton } from "@/components/billing/pro-upgrade-button";
 import { AppShell } from "@/components/layout/app-shell";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { getEventContext } from "@/lib/events";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+function formatBillingStatus(value: string | null | undefined) {
+  if (!value) {
+    return "Not started";
+  }
+
+  return value
+    .replaceAll("_", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 export default async function EventSettingsPage({
   params,
@@ -20,6 +37,9 @@ export default async function EventSettingsPage({
   const { event, profile, plan, planVersions } = await getEventContext(eventId);
   const supabase = await createSupabaseServerClient();
   const usage = profile?.id ? await getAiUsageForUser(supabase, profile.id) : null;
+  const planTier = profile?.plan_tier ?? usage?.planTier ?? "free";
+  const canManageBilling =
+    Boolean(profile?.stripe_customer_id) && (planTier === "pro" || planTier === "admin");
 
   return (
     <AppShell
@@ -54,12 +74,19 @@ export default async function EventSettingsPage({
               ["Status", event.status],
               ["Budget", event.budget != null ? `$${event.budget}` : "Not set"],
               ["Plan tier", profile?.plan_tier ?? "free"],
+              ["Billing status", formatBillingStatus(profile?.billing_status)],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between rounded-3xl border border-border bg-white/80 px-4 py-4">
                 <p className="text-sm text-ink-muted">{label}</p>
                 <p className="text-sm font-medium text-ink">{value}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {canManageBilling ? <ManageBillingButton /> : <ProUpgradeButton />}
+            <Button asChild variant="secondary">
+              <Link href="/pricing">View plans</Link>
+            </Button>
           </div>
         </Card>
 
@@ -69,7 +96,7 @@ export default async function EventSettingsPage({
             {[
               "Guest data remains protected by row-level security and is only visible to the owning host session.",
               "Invite sharing is controlled by the event's public invite toggle and per-event public slug.",
-              "Payment methods are not yet stored in the app, keeping checkout integrations decoupled from host profile data.",
+              "Subscription state is synced from Stripe webhooks into your profile for plan enforcement and admin reporting.",
               "Profile updates on this screen write directly to the Supabase profiles table.",
             ].map((item) => (
               <div key={item} className="rounded-3xl border border-border bg-white/85 p-4 text-sm leading-6 text-ink-muted">

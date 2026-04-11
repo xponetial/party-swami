@@ -15,6 +15,8 @@ import {
 import { deleteEventAction, updateEventStatusAction } from "@/app/events/actions";
 import { DashboardMetricCard } from "@/components/dashboard/dashboard-metric-card";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { ManageBillingButton } from "@/components/billing/manage-billing-button";
+import { ProUpgradeButton } from "@/components/billing/pro-upgrade-button";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +61,12 @@ type DashboardAuditLog = {
   action: string;
   metadata: Record<string, unknown> | null;
   created_at: string;
+};
+
+type DashboardProfile = {
+  plan_tier: "free" | "pro" | "admin" | null;
+  billing_status: string | null;
+  stripe_customer_id: string | null;
 };
 
 type TelemetryEventLookup = {
@@ -161,6 +169,19 @@ function formatCost(value: number) {
 
 function formatTelemetryLabel(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function formatBillingStatus(value: string | null) {
+  if (!value) {
+    return "Not started";
+  }
+
+  return value
+    .replaceAll("_", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function getEventNameDetail(eventName: string) {
@@ -410,6 +431,11 @@ export default async function DashboardPage({
     .from("analytics_events")
     .select("*", { count: "exact", head: true })
     .eq("event_name", "task_completed");
+  const profileQuery = supabase
+    .from("profiles")
+    .select("plan_tier, billing_status, stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle<DashboardProfile>();
 
   const [
     { data: events = [], error: eventsError },
@@ -428,6 +454,7 @@ export default async function DashboardPage({
     { count: invitesSentCount = 0 },
     { count: rsvpsReceivedCount = 0 },
     { count: tasksCompletedCount = 0 },
+    { data: profile },
   ] = await Promise.all([
     scopedEventsQuery,
     eventsCountQuery,
@@ -445,6 +472,7 @@ export default async function DashboardPage({
     invitesSentCountQuery,
     rsvpsReceivedCountQuery,
     tasksCompletedCountQuery,
+    profileQuery,
   ]);
 
   if (eventsError) {
@@ -514,6 +542,11 @@ export default async function DashboardPage({
   const aiMenuCount = latestPlan?.menu?.length ?? 0;
   const aiTaskCount = latestPlan?.tasks?.length ?? 0;
   const usage = await getAiUsageForUser(supabase, user.id);
+  const planTier = profile?.plan_tier ?? usage.planTier ?? "free";
+  const billingStatus = formatBillingStatus(profile?.billing_status ?? null);
+  const hasStripeCustomer = Boolean(profile?.stripe_customer_id);
+  const canManageBilling = hasStripeCustomer && (planTier === "pro" || planTier === "admin");
+  const planLabel = planTier === "admin" ? "Concierge Admin" : planTier === "pro" ? "Pro Host" : "Starter Host";
   const safeEventsCount = eventsCount ?? 0;
   const totalEventPages = Math.max(1, Math.ceil(safeEventsCount / eventsPerPage));
   const eventsPage = Math.min(requestedEventsPage, totalEventPages);
@@ -705,6 +738,32 @@ export default async function DashboardPage({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <DashboardPanel
+          title="Plan and billing"
+          description="Your current tier and billing state. Upgrade or manage Stripe billing without leaving the workspace."
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-border bg-white/80 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Plan</p>
+              <p className="mt-2 text-base font-semibold text-ink">{planLabel}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-white/80 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Billing status</p>
+              <p className="mt-2 text-base font-semibold text-ink">{billingStatus}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-white/80 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">AI requests left</p>
+              <p className="mt-2 text-base font-semibold text-ink">{usage.remaining.requests}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {canManageBilling ? <ManageBillingButton /> : <ProUpgradeButton />}
+            <Button asChild variant="secondary">
+              <Link href="/pricing">View plans</Link>
+            </Button>
+          </div>
+        </DashboardPanel>
+
         <DashboardPanel
           title={eventListScope === "completed" ? "Completed events" : "Recent events"}
           description={
