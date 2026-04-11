@@ -32,8 +32,8 @@ const BADGES: Record<string, MembershipBadge> = {
     imagePath: "/membership-badges/professional-party-planner.png",
   },
   admin: {
-    label: "Professional Party Planner",
-    imagePath: "/membership-badges/professional-party-planner.png",
+    label: "Admin",
+    imagePath: "/membership-badges/admin.png",
   },
 };
 
