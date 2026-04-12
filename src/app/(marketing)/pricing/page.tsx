@@ -66,7 +66,7 @@ export default function PricingPage() {
     <ShellFrame
       eyebrow="Pricing"
       title="Real plan tiers for the Party Swami beta."
-      description="These tiers now mirror the AI request, budget, and per-event planning limits enforced inside the product so hosts know exactly what kind of runway they have."
+      description="These tiers now mirror AI request and per-event planning limits enforced inside the product so hosts know exactly what runway they have."
       contactContext="pricing"
     >
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -106,10 +106,6 @@ export default function PricingPage() {
                       <span className="font-semibold text-ink">{limits.monthlyRequests}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-ink-muted">Monthly AI budget</span>
-                      <span className="font-semibold text-ink">${limits.monthlyCostUsd}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
                       <span className="text-ink-muted">Plan revisions per event</span>
                       <span className="font-semibold text-ink">{limits.planRequestsPerEvent}</span>
                     </div>
@@ -145,7 +141,7 @@ export default function PricingPage() {
           <h2 className="text-xl font-semibold text-ink">What changes between tiers</h2>
           <div className="mt-5 grid gap-3">
             {[
-              "Free Beta keeps the whole host workflow open while deliberately capping AI spend during onboarding and early testing.",
+              "Free Beta keeps the whole host workflow open while capping AI requests during onboarding and early testing.",
               "Pro Host is a live $9.99/month subscription for hosts who need more AI capacity and tighter execution workflows.",
               "Concierge Admin is reserved for premium service, internal operators, and future hands-on planning workflows powered by the highest-capacity model lane.",
             ].map((item) => (
