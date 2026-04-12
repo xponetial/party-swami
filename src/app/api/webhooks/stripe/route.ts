@@ -17,6 +17,17 @@ type BillingPatch = {
   billing_status: string | null;
 };
 
+function getBillingStatusFromSubscription(subscription: Stripe.Subscription) {
+  if (
+    subscription.cancel_at_period_end &&
+    (subscription.status === "active" || subscription.status === "trialing")
+  ) {
+    return "canceling";
+  }
+
+  return subscription.status;
+}
+
 function isMissingSchemaError(error: { code?: string; message?: string } | null | undefined) {
   return Boolean(error && (error.code === "42P01" || error.code === "42703"));
 }
@@ -150,7 +161,7 @@ async function syncFromSubscription(subscription: Stripe.Subscription) {
       stripe_customer_id: customerId,
       stripe_subscription_id: subscription.id,
       stripe_price_id: priceId,
-      billing_status: subscription.status,
+      billing_status: getBillingStatusFromSubscription(subscription),
     },
   });
 }
@@ -178,7 +189,7 @@ async function handleCheckoutSessionCompleted(
     stripe_customer_id: resolvedCustomerId,
     stripe_subscription_id: subscription.id,
     stripe_price_id: priceId,
-    billing_status: subscription.status,
+    billing_status: getBillingStatusFromSubscription(subscription),
   };
 
   if (userId) {
@@ -270,6 +281,9 @@ export async function POST(request: NextRequest) {
       case "invoice.paid":
       case "invoice.payment_failed":
         await handleInvoiceEvent(stripe, event.data.object as Stripe.Invoice);
+        break;
+      case "customer.subscription.updated":
+        await syncFromSubscription(event.data.object as Stripe.Subscription);
         break;
       case "customer.subscription.deleted":
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
