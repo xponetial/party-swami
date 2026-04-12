@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { CheckCircle2, Sparkles } from "lucide-react";
-import { ProUpgradeButton } from "@/components/billing/pro-upgrade-button";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Card } from "@/components/ui/card";
 
@@ -54,7 +53,7 @@ export default function PricingPage() {
     <ShellFrame
       eyebrow="Pricing"
       title="Simple plans, clear value."
-      description="Choose the tier that matches how much message and image generation power you need."
+      description="Every account starts on Free. Upgrade to Pro from your Billing page when you need more generation power."
       contactContext="pricing"
     >
       <section className="grid gap-4 md:grid-cols-3">
@@ -91,13 +90,18 @@ export default function PricingPage() {
 
             <div className="mt-6">
               {tier.key === "pro" ? (
-                <ProUpgradeButton className="w-full justify-center" />
+                <Link
+                  href="/billing"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/40 hover:text-brand"
+                >
+                  Upgrade from Billing
+                </Link>
               ) : tier.key === "free" ? (
                 <Link
                   href="/signup"
                   className="inline-flex w-full items-center justify-center rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/40 hover:text-brand"
                 >
-                  Get started free
+                  Start on Free
                 </Link>
               ) : (
                 <button
