@@ -94,9 +94,11 @@ export default async function BillingPage() {
   const rawBillingStatus = profile?.billing_status ?? null;
   const billingStatus = formatBillingStatus(profile?.billing_status ?? null);
   const planLabel = planLabelFromTier(planTier);
-  const canManageBilling = Boolean(profile?.stripe_customer_id);
   const showPaymentIssueMessage =
     planTier === "free" && rawBillingStatus !== null && PAYMENT_ISSUE_STATUSES.has(rawBillingStatus);
+  const canManageBilling =
+    Boolean(profile?.stripe_customer_id) &&
+    (planTier === "pro" || planTier === "admin" || showPaymentIssueMessage);
   const showStripeSyncDetails = process.env.VERCEL_ENV !== "production";
 
   return (
