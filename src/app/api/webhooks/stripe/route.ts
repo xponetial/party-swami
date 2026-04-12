@@ -18,19 +18,14 @@ type BillingPatch = {
 };
 
 function getBillingStatusFromSubscription(subscription: Stripe.Subscription) {
-  const isActiveOrTrialing =
-    subscription.status === "active" || subscription.status === "trialing";
+  return subscription.status;
+}
+
+function isCancellationScheduled(subscription: Stripe.Subscription) {
   const hasFutureCancel =
     typeof subscription.cancel_at === "number" && subscription.cancel_at * 1000 > Date.now();
 
-  if (
-    isActiveOrTrialing &&
-    (subscription.cancel_at_period_end || hasFutureCancel)
-  ) {
-    return "canceling";
-  }
-
-  return subscription.status;
+  return subscription.cancel_at_period_end || hasFutureCancel;
 }
 
 function isMissingSchemaError(error: { code?: string; message?: string } | null | undefined) {
@@ -157,12 +152,15 @@ async function syncFromSubscription(subscription: Stripe.Subscription) {
   const priceId = subscription.items.data[0]?.price?.id ?? null;
   const customerId =
     typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id ?? null;
+  const planTier = isCancellationScheduled(subscription)
+    ? "free"
+    : getPlanTierFromSubscription(priceId, subscription.status);
 
   await updateProfileBillingByStripeIds({
     customerId,
     subscriptionId: subscription.id,
     patch: {
-      plan_tier: getPlanTierFromSubscription(priceId, subscription.status),
+      plan_tier: planTier,
       stripe_customer_id: customerId,
       stripe_subscription_id: subscription.id,
       stripe_price_id: priceId,

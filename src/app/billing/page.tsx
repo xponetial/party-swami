@@ -16,6 +16,13 @@ type BillingProfile = {
   stripe_price_id: string | null;
 };
 
+const PAYMENT_ISSUE_STATUSES = new Set([
+  "past_due",
+  "unpaid",
+  "incomplete",
+  "incomplete_expired",
+]);
+
 function formatBillingStatus(value: string | null) {
   if (!value) {
     return "Not started";
@@ -84,10 +91,12 @@ export default async function BillingPage() {
   ]);
 
   const planTier = profile?.plan_tier ?? usage.planTier ?? "free";
+  const rawBillingStatus = profile?.billing_status ?? null;
   const billingStatus = formatBillingStatus(profile?.billing_status ?? null);
   const planLabel = planLabelFromTier(planTier);
-  const canManageBilling =
-    Boolean(profile?.stripe_customer_id) && (planTier === "pro" || planTier === "admin");
+  const canManageBilling = Boolean(profile?.stripe_customer_id);
+  const showPaymentIssueMessage =
+    planTier === "free" && rawBillingStatus !== null && PAYMENT_ISSUE_STATUSES.has(rawBillingStatus);
   const showStripeSyncDetails = process.env.VERCEL_ENV !== "production";
 
   return (
@@ -125,6 +134,14 @@ export default async function BillingPage() {
               <Link href="/pricing">View plans</Link>
             </Button>
           </div>
+
+          {showPaymentIssueMessage ? (
+            <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Your card payment did not go through, so your membership was downgraded to Free. Update your card in
+              <span className="font-semibold"> Manage billing </span>
+              to restore Pro access.
+            </div>
+          ) : null}
         </Card>
 
         {showStripeSyncDetails ? (
