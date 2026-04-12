@@ -18,9 +18,14 @@ type BillingPatch = {
 };
 
 function getBillingStatusFromSubscription(subscription: Stripe.Subscription) {
+  const isActiveOrTrialing =
+    subscription.status === "active" || subscription.status === "trialing";
+  const hasFutureCancel =
+    typeof subscription.cancel_at === "number" && subscription.cancel_at * 1000 > Date.now();
+
   if (
-    subscription.cancel_at_period_end &&
-    (subscription.status === "active" || subscription.status === "trialing")
+    isActiveOrTrialing &&
+    (subscription.cancel_at_period_end || hasFutureCancel)
   ) {
     return "canceling";
   }
