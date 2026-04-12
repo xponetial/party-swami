@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       customer: profile?.stripe_customer_id || undefined,
       customer_email: profile?.stripe_customer_id ? undefined : user.email ?? undefined,
       allow_promotion_codes: true,
-      success_url: `${baseUrl}/dashboard?billing=success`,
+      success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing?billing=cancelled`,
       metadata: {
         supabase_user_id: user.id,

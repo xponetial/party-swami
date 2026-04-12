@@ -45,5 +45,11 @@ export function getPlanTierFromSubscription(
     return "free";
   }
 
+  // Temporary fallback while Phase 2 only supports one paid host tier.
+  // If Stripe price IDs rotate but subscription remains active/trialing, keep paid users on Pro.
+  if (priceId && !isPremiumStripePrice(priceId)) {
+    return "pro";
+  }
+
   return getPlanTierFromStripePrice(priceId);
 }
