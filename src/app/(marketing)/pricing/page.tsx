@@ -1,164 +1,111 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
-import { ContactCard } from "@/components/contact/contact-card";
+import { CheckCircle2, Sparkles } from "lucide-react";
 import { ProUpgradeButton } from "@/components/billing/pro-upgrade-button";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Card } from "@/components/ui/card";
-import { DEFAULT_LIMITS, type PlanTier } from "@/lib/ai/limits";
 
-const tiers: Array<{
-  tier: PlanTier;
-  name: string;
-  price: string;
-  eyebrow: string;
-  description: string;
-  highlights: string[];
-  ctaHref: string;
-  ctaLabel: string;
-}> = [
+const tiers = [
   {
-    tier: "free",
-    name: "Free Beta",
-    price: "$0",
-    eyebrow: "Start here",
-    description: "Best for hosts validating one event flow end to end while the product is still in active beta.",
-    highlights: [
-      "Protected event workspace, invite builder, public RSVP, and email sending",
-      "AI planning with enough room to generate, revise, and test a real event",
-      "Great fit for personal parties and founder-led onboarding",
+    key: "free",
+    name: "Free",
+    price: "$0/month",
+    badge: "Start here",
+    recommended: false,
+    features: [
+      "Basic templates",
+      "No AI generation",
+      "Low-res download",
     ],
-    ctaHref: "/signup",
-    ctaLabel: "Start free",
   },
   {
-    tier: "pro",
-    name: "Pro Host",
-    price: "$9.99/mo",
-    eyebrow: "Most popular",
-    description: "For repeat hosts who want more planning power, faster iterations, and a clean monthly subscription.",
-    highlights: [
-      "500 AI requests per month for deeper planning and revisions",
-      "Up to 50 plan revisions per event for iterative event design",
-      "Priority path to new premium features as they launch",
-      "Self-serve billing and subscription management in-app",
+    key: "pro",
+    name: "Pro",
+    price: "$12.99/month",
+    badge: "Recommended",
+    recommended: true,
+    features: [
+      "100 AI images / month",
+      "Upload + edit images",
+      "High-res downloads",
+      "No watermark",
     ],
-    ctaHref: "/signup",
-    ctaLabel: "Upgrade to Pro",
   },
   {
-    tier: "admin",
-    name: "Concierge Admin",
-    price: "Custom",
-    eyebrow: "Premium",
-    description: "Reserved for internal operators, premium concierge workflows, and future white-glove execution support.",
-    highlights: [
-      "Highest AI capacity for premium service or internal support operations",
-      "Built to support advanced routing and concierge-grade generation tasks",
-      "Best for managed experiences rather than self-serve event hosting",
+    key: "premium",
+    name: "Premium",
+    price: "Custom pricing",
+    badge: "Future",
+    recommended: false,
+    features: [
+      "500 AI images / month",
+      "Priority generation",
+      "Premium templates",
     ],
-    ctaHref: "/login",
-    ctaLabel: "Talk to us",
   },
-];
+] as const;
 
 export default function PricingPage() {
   return (
     <ShellFrame
       eyebrow="Pricing"
-      title="Real plan tiers for the Party Swami beta."
-      description="These tiers now mirror AI request and per-event planning limits enforced inside the product so hosts know exactly what runway they have."
+      title="Simple plans, clear value."
+      description="Choose the tier that matches how much creative power and output you need."
       contactContext="pricing"
     >
-      <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="bg-gradient-to-br from-white via-[rgba(244,247,255,0.96)] to-[rgba(229,236,255,0.96)]">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-ink">
-              <Sparkles className="size-3.5 text-brand" />
-              Live tiering
-            </span>
-            <p className="text-sm text-ink-muted">The limits below come directly from the app&apos;s AI usage guardrails.</p>
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {tiers.map((item) => {
-              const limits = DEFAULT_LIMITS[item.tier];
+      <section className="grid gap-4 md:grid-cols-3">
+        {tiers.map((tier) => (
+          <Card
+            key={tier.key}
+            className={
+              tier.recommended
+                ? "border-brand/35 bg-white shadow-party"
+                : "bg-white/85"
+            }
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">{tier.badge}</p>
+              {tier.recommended ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-brand/25 bg-brand/10 px-2 py-1 text-xs font-semibold text-brand">
+                  <Sparkles className="size-3.5" />
+                  Recommended
+                </span>
+              ) : null}
+            </div>
 
-              return (
-                <div
-                  key={item.tier}
-                  data-testid={`pricing-card-${item.tier}`}
-                  className={`rounded-[2rem] border p-5 ${
-                    item.tier === "pro"
-                      ? "border-brand/30 bg-white shadow-party"
-                      : "border-border bg-white/80"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">{item.eyebrow}</p>
-                      <h2 className="mt-2 text-2xl font-semibold text-ink">{item.name}</h2>
-                    </div>
-                    <p className="text-sm font-semibold text-brand">{item.price}</p>
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-ink-muted">{item.description}</p>
-                  <div className="mt-5 grid gap-3 rounded-[1.5rem] border border-border bg-canvas px-4 py-4 text-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-ink-muted">Monthly AI requests</span>
-                      <span className="font-semibold text-ink">{limits.monthlyRequests}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-ink-muted">Plan revisions per event</span>
-                      <span className="font-semibold text-ink">{limits.planRequestsPerEvent}</span>
-                    </div>
-                  </div>
-                  <div className="mt-5 grid gap-3">
-                    {item.highlights.map((highlight) => (
-                      <div key={highlight} className="flex items-start gap-3 text-sm leading-6 text-ink-muted">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-brand" />
-                        <span>{highlight}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-6">
-                    {item.tier === "pro" ? (
-                      <ProUpgradeButton />
-                    ) : (
-                      <Link
-                        href={item.ctaHref}
-                        className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/40 hover:text-brand"
-                      >
-                        {item.ctaLabel}
-                        <ArrowRight className="size-4" />
-                      </Link>
-                    )}
-                  </div>
+            <h2 className="mt-3 text-3xl font-semibold text-ink">{tier.name}</h2>
+            <p className="mt-1 text-lg font-medium text-brand">{tier.price}</p>
+
+            <div className="mt-5 grid gap-3">
+              {tier.features.map((feature) => (
+                <div key={feature} className="flex items-start gap-3 rounded-2xl border border-border bg-canvas px-3 py-3 text-sm text-ink">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-brand" />
+                  <span>{feature}</span>
                 </div>
-              );
-            })}
-          </div>
-        </Card>
+              ))}
+            </div>
 
-        <Card className="bg-[rgba(244,247,255,0.9)]">
-          <h2 className="text-xl font-semibold text-ink">What changes between tiers</h2>
-          <div className="mt-5 grid gap-3">
-            {[
-              "Free Beta keeps the whole host workflow open while capping AI requests during onboarding and early testing.",
-              "Pro Host is a live $9.99/month subscription for hosts who need more AI capacity and tighter execution workflows.",
-              "Concierge Admin is reserved for premium service, internal operators, and future hands-on planning workflows powered by the highest-capacity model lane.",
-            ].map((item) => (
-              <div key={item} className="rounded-3xl border border-border bg-white/85 p-4 text-sm leading-6 text-ink-muted">
-                {item}
-              </div>
-            ))}
-          </div>
-          <div className="mt-5">
-            <ContactCard
-              title="Sales and partnerships"
-              description="Need custom pricing, concierge planning, or a business conversation? Reach the Party Swami sales inbox directly."
-              emailKey="sales"
-              context="pricing"
-            />
-          </div>
-        </Card>
+            <div className="mt-6">
+              {tier.key === "pro" ? (
+                <ProUpgradeButton className="w-full justify-center" />
+              ) : tier.key === "free" ? (
+                <Link
+                  href="/signup"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/40 hover:text-brand"
+                >
+                  Get started free
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex w-full items-center justify-center rounded-full border border-border bg-white/70 px-4 py-2 text-sm font-medium text-ink-muted"
+                >
+                  Coming soon
+                </button>
+              )}
+            </div>
+          </Card>
+        ))}
       </section>
     </ShellFrame>
   );
