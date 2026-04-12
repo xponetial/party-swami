@@ -13,7 +13,8 @@ const tiers = [
     recommended: false,
     features: [
       "Basic templates",
-      "No AI generation",
+      "50 AI message ideas / month",
+      "No AI image generation",
       "Low-res download",
     ],
   },
@@ -24,22 +25,26 @@ const tiers = [
     badge: "Recommended",
     recommended: true,
     features: [
+      "1000 AI message ideas / month",
       "100 AI images / month",
       "Upload + edit images",
       "High-res downloads",
       "No watermark",
+      "Save & reuse designs",
     ],
   },
   {
     key: "premium",
     name: "Premium",
-    price: "Custom pricing",
+    price: "Coming Soon",
     badge: "Future",
     recommended: false,
     features: [
+      "3000+ AI message ideas / month",
       "500 AI images / month",
       "Priority generation",
       "Premium templates",
+      "Print-ready exports",
     ],
   },
 ] as const;
@@ -49,7 +54,7 @@ export default function PricingPage() {
     <ShellFrame
       eyebrow="Pricing"
       title="Simple plans, clear value."
-      description="Choose the tier that matches how much creative power and output you need."
+      description="Choose the tier that matches how much message and image generation power you need."
       contactContext="pricing"
     >
       <section className="grid gap-4 md:grid-cols-3">
