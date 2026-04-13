@@ -16,6 +16,8 @@ export default async function EventInvitePage({
     getInviteTemplateCatalog(),
   ]);
   const userId = profile?.id ?? undefined;
+  const planTier = profile?.plan_tier ?? "free";
+  const isPaidPlan = planTier === "pro" || planTier === "admin";
 
   const [
     aiGenerationEnabled,
@@ -42,10 +44,11 @@ export default async function EventInvitePage({
   ]);
 
   const featureAccess: InviteFeatureAccess = {
+    isPaidPlan,
     aiGenerationEnabled,
-    uploadEditingEnabled,
-    highResDownloadEnabled,
-    printingEnabled,
+    uploadEditingEnabled: isPaidPlan && uploadEditingEnabled,
+    highResDownloadEnabled: isPaidPlan && highResDownloadEnabled,
+    printingEnabled: isPaidPlan && printingEnabled,
   };
 
   return (

@@ -34,6 +34,40 @@ export async function GET(
   }
 
   const invite = inviteRows[0] as PublicInviteRecord;
+
+  if (shouldDownload) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return Response.json({ ok: false, message: "Authentication required." }, { status: 401 });
+    }
+
+    const [{ data: ownedEvent }, { data: profile }] = await Promise.all([
+      supabase
+        .from("events")
+        .select("id")
+        .eq("id", invite.event_id)
+        .eq("owner_id", user.id)
+        .maybeSingle<{ id: string }>(),
+      supabase
+        .from("profiles")
+        .select("plan_tier")
+        .eq("id", user.id)
+        .maybeSingle<{ plan_tier: string | null }>(),
+    ]);
+
+    const isPaidPlan = profile?.plan_tier === "pro" || profile?.plan_tier === "admin";
+
+    if (!ownedEvent || !isPaidPlan) {
+      return Response.json(
+        { ok: false, message: "High-res downloads are available on Pro and Admin plans." },
+        { status: 403 },
+      );
+    }
+  }
+
   const png = await createInviteCardImagePng(invite);
 
   const headers = new Headers({

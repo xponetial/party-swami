@@ -346,7 +346,19 @@ export function InviteTemplateStudio({
 
         <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
           <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Invite media tools</p>
-          <div className="mt-3 space-y-3">
+          {!featureAccess.isPaidPlan ? (
+            <div className="mt-3 rounded-[1.5rem] border border-border bg-white/80 p-4">
+              <p className="text-sm font-semibold text-ink">Pro feature</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                High-res downloads, print-ready exports, and image editing tools are available on
+                Pro and Admin plans.
+              </p>
+              <Button asChild className="mt-3" variant="secondary">
+                <Link href="/billing">Upgrade to Pro</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-3 space-y-3">
             <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
               <p className="text-sm font-semibold text-ink">High-res download</p>
               <p className="mt-1 text-sm text-ink-muted">
@@ -392,6 +404,7 @@ export function InviteTemplateStudio({
               </p>
             </div>
           </div>
+          )}
         </div>
 
         <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
