@@ -29,8 +29,6 @@ type GeneratedInviteImageOption = {
   id: string;
   previewUrl: string;
   previewPath: string;
-  highResUrl: string;
-  highResPath: string;
 };
 
 function slugify(value: string) {
@@ -215,8 +213,8 @@ export function InviteTemplateStudio({
         body: JSON.stringify({
           eventId: event.id,
           inviteId: invite.id,
-          highResPath: selected.highResPath,
-          highResUrl: selected.highResUrl,
+          previewPath: selected.previewPath,
+          previewUrl: selected.previewUrl,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -230,8 +228,8 @@ export function InviteTemplateStudio({
         ...current,
         fields: {
           ...current.fields,
-          backgroundImageUrl: selected.highResUrl,
-          backgroundImagePath: selected.highResPath,
+          backgroundImageUrl: payload?.imageUrl ?? selected.previewUrl,
+          backgroundImagePath: null,
         },
       }));
       setImageGenerationMessage(payload?.message ?? "Selected image finalized.");

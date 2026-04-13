@@ -131,41 +131,74 @@ export async function uploadInviteGeneratedImageOption({
   const supabase = createSupabaseAdminClient();
   const timestamp = Date.now();
   const basePath = `user-assets/${userId}/${eventId}/${inviteId}-${timestamp}-option-${optionIndex + 1}`;
-  const highResPath = `${basePath}-high.png`;
   const previewPath = `${basePath}-preview.png`;
   const previewPng = await sharp(png).resize(320, 480, { fit: "cover" }).png().toBuffer();
 
-  const [{ error: highResError }, { error: previewError }] = await Promise.all([
-    supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(highResPath, png, {
+  const { error: previewError } = await supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(
+    previewPath,
+    previewPng,
+    {
       cacheControl: "3600",
       contentType: "image/png",
       upsert: false,
-    }),
-    supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(previewPath, previewPng, {
-      cacheControl: "3600",
-      contentType: "image/png",
-      upsert: false,
-    }),
-  ]);
-
-  if (highResError) {
-    throw new Error(`Failed to upload generated high-res image: ${highResError.message}`);
-  }
+    },
+  );
   if (previewError) {
     throw new Error(`Failed to upload generated preview image: ${previewError.message}`);
   }
 
-  const { data: highResPublic } = supabase.storage
-    .from(INVITE_PREVIEW_BUCKET)
-    .getPublicUrl(highResPath);
   const { data: previewPublic } = supabase.storage
     .from(INVITE_PREVIEW_BUCKET)
     .getPublicUrl(previewPath);
 
   return {
-    highResPath,
-    highResUrl: `${highResPublic.publicUrl}?v=${timestamp}`,
     previewPath,
     previewUrl: `${previewPublic.publicUrl}?v=${timestamp}`,
+  };
+}
+
+export async function finalizeInviteGeneratedImageFromPreview({
+  userId,
+  eventId,
+  inviteId,
+  previewPath,
+}: {
+  userId: string;
+  eventId: string;
+  inviteId: string;
+  previewPath: string;
+}) {
+  const supabase = createSupabaseAdminClient();
+  const { data: previewBlob, error: downloadError } = await supabase.storage
+    .from(INVITE_PREVIEW_BUCKET)
+    .download(previewPath);
+
+  if (downloadError || !previewBlob) {
+    throw new Error("Unable to load the selected preview image.");
+  }
+
+  const previewBuffer = Buffer.from(await previewBlob.arrayBuffer());
+  const highResPng = await sharp(previewBuffer).resize(1024, 1536, { fit: "cover" }).png().toBuffer();
+  const highResPath = `user-assets/${userId}/${eventId}/${inviteId}-${Date.now()}-selected-high.png`;
+
+  const { error: uploadError } = await supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(
+    highResPath,
+    highResPng,
+    {
+      cacheControl: "3600",
+      contentType: "image/png",
+      upsert: false,
+    },
+  );
+
+  if (uploadError) {
+    throw new Error(`Failed to finalize high-res image: ${uploadError.message}`);
+  }
+
+  const { data } = supabase.storage.from(INVITE_PREVIEW_BUCKET).getPublicUrl(highResPath);
+
+  return {
+    highResPath,
+    highResUrl: `${data.publicUrl}?v=${Date.now()}`,
   };
 }

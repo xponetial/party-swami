@@ -199,8 +199,6 @@ export async function POST(request: Request) {
         id: `option-${index + 1}`,
         previewUrl: option.previewUrl,
         previewPath: option.previewPath,
-        highResUrl: option.highResUrl,
-        highResPath: option.highResPath,
       })),
       message: "Generated 3 invite background options.",
     });

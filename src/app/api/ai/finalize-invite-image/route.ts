@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { normalizeInviteDesignData } from "@/lib/invite-design";
+import { finalizeInviteGeneratedImageFromPreview } from "@/lib/invite-preview-storage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
   inviteId: z.string().uuid(),
-  highResPath: z.string().min(1),
-  highResUrl: z.url(),
+  previewPath: z.string().min(1),
+  previewUrl: z.url(),
 });
 
 export async function POST(request: Request) {
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
   const expectedPrefix = `user-assets/${user.id}/${parsed.data.eventId}/`;
 
-  if (!parsed.data.highResPath.startsWith(expectedPrefix)) {
+  if (!parsed.data.previewPath.startsWith(expectedPrefix)) {
     return NextResponse.json(
       { ok: false, message: "Selected image is invalid for this account." },
       { status: 403 },
@@ -76,6 +77,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Invite not found." }, { status: 404 });
   }
 
+  const finalized = await finalizeInviteGeneratedImageFromPreview({
+    userId: user.id,
+    eventId: parsed.data.eventId,
+    inviteId: parsed.data.inviteId,
+    previewPath: parsed.data.previewPath,
+  });
+
   const fallback = {
     templateId: "default-template",
     packSlug: "default-pack",
@@ -97,8 +105,8 @@ export async function POST(request: Request) {
     ...normalized,
     fields: {
       ...normalized.fields,
-      backgroundImageUrl: parsed.data.highResUrl,
-      backgroundImagePath: parsed.data.highResPath,
+      backgroundImageUrl: finalized.highResUrl,
+      backgroundImagePath: finalized.highResPath,
     },
   };
 
@@ -110,7 +118,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    imageUrl: parsed.data.highResUrl,
+    imageUrl: finalized.highResUrl,
     message: "Selected image finalized and applied.",
   });
 }
