@@ -3,7 +3,9 @@ import { InvitePreviewCard } from "@/components/invite/invite-preview-card";
 import { getEventContext } from "@/lib/events";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import type { InviteFeatureAccess } from "@/lib/invite-feature-access";
+import { getInviteImageLibraryForUser } from "@/lib/invite-image-library";
 import { getInviteTemplateCatalog } from "@/lib/invite-template-catalog";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function EventInvitePage({
   params,
@@ -50,6 +52,10 @@ export default async function EventInvitePage({
     highResDownloadEnabled: isPaidPlan && highResDownloadEnabled,
     printingEnabled: isPaidPlan && printingEnabled,
   };
+  const libraryImages =
+    isPaidPlan && userId
+      ? await getInviteImageLibraryForUser(await createSupabaseServerClient(), userId, { limit: 60 })
+      : [];
 
   return (
     <AppShell
@@ -62,6 +68,7 @@ export default async function EventInvitePage({
         event={event}
         invite={invite}
         featureAccess={featureAccess}
+        libraryImages={libraryImages}
         templateCategories={templateCategories}
       />
     </AppShell>

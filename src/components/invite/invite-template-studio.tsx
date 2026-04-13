@@ -20,6 +20,7 @@ import {
 } from "@/lib/invite-design";
 import type { EventDetails, InviteDetails } from "@/lib/events";
 import type { InviteFeatureAccess } from "@/lib/invite-feature-access";
+import type { InviteLibraryImage } from "@/lib/invite-image-library";
 import {
   findInviteTemplate,
   type InviteTemplateCategory,
@@ -94,11 +95,13 @@ export function InviteTemplateStudio({
   event,
   invite,
   featureAccess,
+  libraryImages,
 }: {
   categories: InviteTemplateCategory[];
   event: EventDetails;
   invite: InviteDetails;
   featureAccess: InviteFeatureAccess;
+  libraryImages: InviteLibraryImage[];
 }) {
   const initialDesign = useMemo(
     () => buildDefaultDesign(event, invite, categories),
@@ -648,6 +651,50 @@ export function InviteTemplateStudio({
               ) : (
                 <p className="mt-2 text-xs text-ink-muted">
                   AI image generation is currently unavailable in this workspace.
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
+              <p className="text-sm font-semibold text-ink">Your generated image library</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Reuse any previously generated image as the invitation background.
+              </p>
+              {libraryImages.length ? (
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    {libraryImages.slice(0, 9).map((image) => (
+                      <button
+                        className="overflow-hidden rounded-xl border border-border transition hover:border-brand/40"
+                        key={image.id}
+                        onClick={() =>
+                          setDesign((current) => ({
+                            ...current,
+                            fields: {
+                              ...current.fields,
+                              backgroundImageUrl: image.publicUrl,
+                              backgroundImagePath: image.storagePath,
+                            },
+                          }))
+                        }
+                        type="button"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          alt="Previously generated invite background"
+                          className="h-24 w-full object-cover"
+                          src={image.publicUrl}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <Button asChild type="button" variant="ghost">
+                    <Link href="/images">View full image library</Link>
+                  </Button>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-ink-muted">
+                  No saved images yet. Generate your first set above.
                 </p>
               )}
             </div>

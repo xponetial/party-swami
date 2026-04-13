@@ -5,6 +5,7 @@ import {
   ChartNoAxesCombined,
   ClipboardList,
   CreditCard,
+  Images,
   Sparkles,
 } from "lucide-react";
 import { MembershipMenu } from "@/components/auth/membership-menu";
@@ -12,6 +13,7 @@ import { BrandLockup } from "@/components/layout/brand-lockup";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SupportFab } from "@/components/contact/support-fab";
 import { Button } from "@/components/ui/button";
+import { getInviteImageUsageForUser } from "@/lib/ai/usage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ContactContext } from "@/lib/contact-email";
 import { cn } from "@/lib/utils";
@@ -22,6 +24,15 @@ const sections = [
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/", label: "Marketing", icon: Sparkles },
 ];
+
+function formatUsd(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
 
 const eventSections = [
   { key: "overview", href: "", label: "Overview" },
@@ -82,10 +93,22 @@ export async function AppShell({
         .eq("id", user.id)
         .maybeSingle<{ plan_tier: string | null }>()
     : { data: null };
-  const visibleSections =
-    profile?.plan_tier === "admin"
-      ? [...sections, { href: "/admin", label: "Admin", icon: Sparkles }]
-      : sections;
+  const planTier = profile?.plan_tier ?? "free";
+  const hasImageAccess = planTier === "pro" || planTier === "admin";
+  const imageUsage =
+    user && hasImageAccess
+      ? await getInviteImageUsageForUser(supabase, user.id, planTier === "admin" ? "admin" : "pro")
+      : null;
+  const usagePct =
+    imageUsage && imageUsage.monthlyBudgetUsd > 0
+      ? Math.min(100, Math.round((imageUsage.usedBudgetUsd / imageUsage.monthlyBudgetUsd) * 100))
+      : 0;
+  const visibleSections = [
+    ...sections.slice(0, 3),
+    ...(hasImageAccess ? [{ href: "/images", label: "Image Library", icon: Images }] : []),
+    ...sections.slice(3),
+    ...(planTier === "admin" ? [{ href: "/admin", label: "Admin", icon: Sparkles }] : []),
+  ];
   const contactContext = getAppContactContext(currentSection, eventNav?.active);
 
   return (
@@ -146,12 +169,34 @@ export async function AppShell({
             </nav>
           </div>
         ) : null}
-        <div className="mt-auto rounded-3xl bg-[linear-gradient(135deg,_rgba(38,146,255,0.96),_rgba(139,70,255,0.92))] px-4 py-5 text-white">
-          <p className="text-sm uppercase tracking-[0.18em] text-white/70">AI host operating system</p>
-          <p className="mt-2 text-lg font-semibold">Plan, invite, track, and execute</p>
-          <p className="mt-2 text-sm leading-6 text-white/85">
-            The workspace now carries the Party Swami brand through the shell so every flow feels connected.
-          </p>
+        <div className="mt-auto space-y-3">
+          {imageUsage ? (
+            <div className="rounded-3xl border border-white/70 bg-white/45 px-4 py-4 text-ink backdrop-blur">
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Pro image budget</p>
+              <p className="mt-1 text-sm font-semibold">
+                {formatUsd(imageUsage.usedBudgetUsd)} / {formatUsd(imageUsage.monthlyBudgetUsd)}
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/70">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,rgba(38,146,255,0.96),rgba(139,70,255,0.92))]"
+                  style={{ width: `${usagePct}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-ink-muted">
+                {imageUsage.generatedImagesCount} images generated this month
+              </p>
+              <p className="text-xs text-ink-muted">
+                {formatUsd(imageUsage.remainingBudgetUsd)} remaining
+              </p>
+            </div>
+          ) : null}
+          <div className="rounded-3xl bg-[linear-gradient(135deg,_rgba(38,146,255,0.96),_rgba(139,70,255,0.92))] px-4 py-5 text-white">
+            <p className="text-sm uppercase tracking-[0.18em] text-white/70">AI host operating system</p>
+            <p className="mt-2 text-lg font-semibold">Plan, invite, track, and execute</p>
+            <p className="mt-2 text-sm leading-6 text-white/85">
+              The workspace now carries the Party Swami brand through the shell so every flow feels connected.
+            </p>
+          </div>
         </div>
         </aside>
 

@@ -116,6 +116,28 @@ export async function POST(request: Request) {
       .eq("id", parsed.data.inviteId)
       .eq("event_id", parsed.data.eventId);
 
+    const { error: libraryInsertError } = await supabase.from("invite_generated_images").insert({
+      user_id: user.id,
+      event_id: parsed.data.eventId,
+      invite_id: parsed.data.inviteId,
+      status: "finalized",
+      storage_path: finalized.highResPath,
+      public_url: finalized.highResUrl,
+      width: finalized.highResWidth,
+      height: finalized.highResHeight,
+      estimated_cost_usd: 0,
+      prompt_excerpt: "Finalized from selected option",
+    });
+
+    if (libraryInsertError) {
+      console.error("Failed to persist finalized invite image record", {
+        userId: user.id,
+        eventId: parsed.data.eventId,
+        inviteId: parsed.data.inviteId,
+        message: libraryInsertError.message,
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       imageUrl: finalized.highResUrl,

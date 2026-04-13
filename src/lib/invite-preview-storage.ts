@@ -180,6 +180,10 @@ export async function uploadInviteGeneratedImageOption({
     sourceUrl: `${sourcePublic.publicUrl}?v=${timestamp}`,
     previewPath,
     previewUrl: `${previewPublic.publicUrl}?v=${timestamp}`,
+    sourceWidth: INVITE_CARD_WIDTH,
+    sourceHeight: INVITE_CARD_HEIGHT,
+    previewWidth: 320,
+    previewHeight: 480,
   };
 }
 
@@ -239,5 +243,7 @@ export async function finalizeInviteGeneratedImageFromSource({
   return {
     highResPath,
     highResUrl: `${data.publicUrl}?v=${Date.now()}`,
+    highResWidth: INVITE_EXPORT_WIDTH,
+    highResHeight: INVITE_EXPORT_HEIGHT,
   };
 }

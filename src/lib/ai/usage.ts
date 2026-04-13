@@ -19,6 +19,30 @@ export type GenerationSummary = {
   createdAt: string;
 };
 
+export type InviteImageMonthlyUsage = {
+  usageMonth: string;
+  monthlyBudgetUsd: number;
+  usedBudgetUsd: number;
+  remainingBudgetUsd: number;
+  generatedImagesCount: number;
+};
+
+function readImageBudgetEnv(tier: PlanTier) {
+  if (tier === "admin") {
+    const value = Number(process.env.INVITE_IMAGE_ADMIN_MAX_MONTHLY_COST_USD);
+    if (Number.isFinite(value) && value > 0) return value;
+    return 250;
+  }
+
+  if (tier === "pro") {
+    const value = Number(process.env.INVITE_IMAGE_PRO_MAX_MONTHLY_COST_USD);
+    if (Number.isFinite(value) && value > 0) return value;
+    return 10;
+  }
+
+  return 0;
+}
+
 function currentMonthBucket() {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
@@ -105,4 +129,61 @@ export async function getAiUsageForUser(supabase: SupabaseClient, userId: string
     cacheReuseRate,
     recent,
   };
+}
+
+export async function getInviteImageUsageForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  planTier: PlanTier,
+) {
+  const usageMonth = currentMonthBucket();
+  const monthStartIso = `${usageMonth}T00:00:00.000Z`;
+  const monthlyBudgetUsd = readImageBudgetEnv(planTier);
+
+  if (monthlyBudgetUsd <= 0) {
+    const zero: InviteImageMonthlyUsage = {
+      usageMonth,
+      monthlyBudgetUsd: 0,
+      usedBudgetUsd: 0,
+      remainingBudgetUsd: 0,
+      generatedImagesCount: 0,
+    };
+    return zero;
+  }
+
+  const [{ data: generations = [] }, { data: images = [] }] = await Promise.all([
+    supabase
+      .from("ai_generations")
+      .select("estimated_cost_usd")
+      .eq("user_id", userId)
+      .eq("generation_type", "invitation_image")
+      .eq("status", "success")
+      .gte("created_at", monthStartIso)
+      .returns<Array<{ estimated_cost_usd: number }>>(),
+    supabase
+      .from("invite_generated_images")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("status", "option")
+      .gte("created_at", monthStartIso)
+      .returns<Array<{ id: string }>>(),
+  ]);
+
+  const safeGenerations = generations ?? [];
+  const safeImages = images ?? [];
+
+  const usedBudgetUsd = Number(
+    safeGenerations
+      .reduce((sum, row) => sum + Number(row.estimated_cost_usd ?? 0), 0)
+      .toFixed(6),
+  );
+  const remainingBudgetUsd = Math.max(0, Number((monthlyBudgetUsd - usedBudgetUsd).toFixed(6)));
+
+  return {
+    usageMonth,
+    monthlyBudgetUsd,
+    usedBudgetUsd,
+    remainingBudgetUsd,
+    generatedImagesCount: safeImages.length,
+  } satisfies InviteImageMonthlyUsage;
 }

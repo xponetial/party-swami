@@ -37,7 +37,7 @@ const INVITE_IMAGE_DEFAULT_CAPS: Record<"pro" | "admin", InviteImageHardCaps> = 
     maxImagesPerRequest: 3,
     maxImagesPerDay: 30,
     maxImagesPerMonth: 300,
-    maxMonthlyCostUsd: 25,
+    maxMonthlyCostUsd: 10,
   },
   admin: {
     maxImagesPerRequest: 3,
@@ -219,6 +219,55 @@ async function trackInviteImageGeneration({
   await supabase.from("user_usage_monthly").insert(payload);
 }
 
+async function storeInviteImageOptions({
+  supabase,
+  userId,
+  eventId,
+  inviteId,
+  options,
+  perImageEstimatedCostUsd,
+  promptExcerpt,
+}: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  eventId: string;
+  inviteId: string;
+  options: Array<{
+    sourcePath: string;
+    sourceUrl: string;
+    sourceWidth: number;
+    sourceHeight: number;
+  }>;
+  perImageEstimatedCostUsd: number;
+  promptExcerpt: string;
+}) {
+  if (!options.length) return;
+
+  const { error } = await supabase.from("invite_generated_images").insert(
+    options.map((option) => ({
+      user_id: userId,
+      event_id: eventId,
+      invite_id: inviteId,
+      status: "option",
+      storage_path: option.sourcePath,
+      public_url: option.sourceUrl,
+      width: option.sourceWidth,
+      height: option.sourceHeight,
+      estimated_cost_usd: perImageEstimatedCostUsd,
+      prompt_excerpt: promptExcerpt,
+    })),
+  );
+
+  if (error) {
+    console.error("Failed to persist invite image library records", {
+      userId,
+      eventId,
+      inviteId,
+      message: error.message,
+    });
+  }
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(body);
@@ -344,6 +393,24 @@ export async function POST(request: Request) {
     const estimatedCostUsd = estimateInviteImageCostUsd({
       generatedCandidates: generated.metrics.generatedCandidates,
       textChecksRun: generated.metrics.textChecksRun,
+    });
+    const perImageEstimatedCostUsd = Number(
+      (estimatedCostUsd / Math.max(options.length, 1)).toFixed(6),
+    );
+
+    await storeInviteImageOptions({
+      supabase,
+      userId: user.id,
+      eventId: parsed.data.eventId,
+      inviteId: parsed.data.inviteId,
+      options: options.map((option) => ({
+        sourcePath: option.sourcePath,
+        sourceUrl: option.sourceUrl,
+        sourceWidth: option.sourceWidth,
+        sourceHeight: option.sourceHeight,
+      })),
+      perImageEstimatedCostUsd,
+      promptExcerpt: sanitizedPrompt.slice(0, 180),
     });
 
     await trackInviteImageGeneration({
