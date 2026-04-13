@@ -5,8 +5,8 @@ import sharp from "sharp";
 export const INVITE_PREVIEW_BUCKET = "invite-previews";
 const INVITE_CARD_WIDTH = 1024;
 const INVITE_CARD_HEIGHT = 1536;
-const INVITE_EXPORT_WIDTH = 1536;
-const INVITE_EXPORT_HEIGHT = 2304;
+const INVITE_EXPORT_WIDTH = 1500;
+const INVITE_EXPORT_HEIGHT = 2100;
 
 export function getInvitePreviewPath(eventId: string, inviteId: string) {
   return `${eventId}/${inviteId}.png`;
@@ -206,6 +206,7 @@ export async function finalizeInviteGeneratedImageFromSource({
   const sourceBuffer = Buffer.from(await sourceBlob.arrayBuffer());
   const highResPng = await sharp(sourceBuffer)
     .resize(INVITE_EXPORT_WIDTH, INVITE_EXPORT_HEIGHT, { fit: "cover" })
+    .withMetadata({ density: 300 })
     .png()
     .toBuffer();
   const highResPath = `user-assets/${userId}/${eventId}/${inviteId}-${Date.now()}-selected-high.png`;
