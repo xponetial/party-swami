@@ -402,6 +402,10 @@ export function InviteTemplateStudio({
                   ? "Enabled for rollout. The upload/edit surface is next in this Phase 2 stream."
                   : "Currently disabled by feature flag."}
               </p>
+              <p className="mt-2 text-xs text-ink-muted">
+                Uploaded assets are kept short-term for active editing workflows and may be
+                automatically removed.
+              </p>
             </div>
           </div>
           )}
