@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 
 export type PlanTier = "free" | "pro" | "admin";
 type GenerationType = "party_plan" | "plan_revision" | "invitation_text" | "shopping_list_transform";
+type ExtendedGenerationType = GenerationType | "invitation_image";
 
 type LimitDecision = {
   allowed: boolean;
@@ -37,7 +38,7 @@ export async function enforceAiLimits(
   }: {
     userId: string;
     eventId: string;
-    generationType: GenerationType;
+    generationType: ExtendedGenerationType;
   },
 ): Promise<LimitDecision> {
   const usageMonth = monthBucket();

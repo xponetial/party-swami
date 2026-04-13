@@ -65,6 +65,9 @@ export async function generateInviteBackgroundImageOptions(prompt: string, count
   const requestedCount = Math.max(1, Math.min(4, count));
   const promptWithGuards = buildInviteBackgroundPrompt(prompt);
   const items: Buffer[] = [];
+  let generatedCandidates = 0;
+  let rejectedForText = 0;
+  let textChecksRun = 0;
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS && items.length < requestedCount; attempt += 1) {
     const missing = requestedCount - items.length;
@@ -79,16 +82,20 @@ export async function generateInviteBackgroundImageOptions(prompt: string, count
       .map((item) => item.b64_json)
       .filter((value): value is string => Boolean(value))
       .map((b64) => Buffer.from(b64, "base64"));
+    generatedCandidates += candidates.length;
 
     if (!candidates.length) {
       continue;
     }
 
     const checks = await Promise.all(candidates.map((candidate) => imageContainsText(client, candidate)));
+    textChecksRun += checks.length;
     for (let index = 0; index < candidates.length; index += 1) {
       if (!checks[index]) {
         items.push(candidates[index]);
         if (items.length >= requestedCount) break;
+      } else {
+        rejectedForText += 1;
       }
     }
   }
@@ -100,5 +107,12 @@ export async function generateInviteBackgroundImageOptions(prompt: string, count
   return {
     model,
     pngs: items.slice(0, requestedCount),
+    metrics: {
+      requestedCount,
+      acceptedCount: items.length,
+      generatedCandidates,
+      rejectedForText,
+      textChecksRun,
+    },
   };
 }

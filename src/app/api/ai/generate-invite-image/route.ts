@@ -2,6 +2,10 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enforceAiLimits } from "@/lib/ai/limits";
+import {
+  buildPartySwamiInviteImagePrompt,
+  sanitizeInviteImagePrompt,
+} from "@/lib/ai/invite-image-policy";
 import { generateInviteBackgroundImageOptions } from "@/lib/ai/invite-image";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { uploadInviteGeneratedImageOption } from "@/lib/invite-preview-storage";
@@ -21,30 +25,163 @@ function monthBucket() {
     .slice(0, 10);
 }
 
+type InviteImageHardCaps = {
+  maxImagesPerRequest: number;
+  maxImagesPerDay: number;
+  maxImagesPerMonth: number;
+  maxMonthlyCostUsd: number;
+};
+
+const INVITE_IMAGE_DEFAULT_CAPS: Record<"pro" | "admin", InviteImageHardCaps> = {
+  pro: {
+    maxImagesPerRequest: 3,
+    maxImagesPerDay: 30,
+    maxImagesPerMonth: 300,
+    maxMonthlyCostUsd: 25,
+  },
+  admin: {
+    maxImagesPerRequest: 3,
+    maxImagesPerDay: 500,
+    maxImagesPerMonth: 5000,
+    maxMonthlyCostUsd: 250,
+  },
+};
+
+function readNumberEnv(name: string, fallback: number) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function getInviteImageCaps(planTier: "pro" | "admin"): InviteImageHardCaps {
+  const defaults = INVITE_IMAGE_DEFAULT_CAPS[planTier];
+  const prefix = `INVITE_IMAGE_${planTier.toUpperCase()}`;
+
+  return {
+    maxImagesPerRequest: Math.max(
+      1,
+      Math.min(3, readNumberEnv(`${prefix}_MAX_IMAGES_PER_REQUEST`, defaults.maxImagesPerRequest)),
+    ),
+    maxImagesPerDay: readNumberEnv(`${prefix}_MAX_IMAGES_PER_DAY`, defaults.maxImagesPerDay),
+    maxImagesPerMonth: readNumberEnv(`${prefix}_MAX_IMAGES_PER_MONTH`, defaults.maxImagesPerMonth),
+    maxMonthlyCostUsd: readNumberEnv(`${prefix}_MAX_MONTHLY_COST_USD`, defaults.maxMonthlyCostUsd),
+  };
+}
+
+async function enforceInviteImageHardCaps({
+  supabase,
+  userId,
+  tier,
+  requestedImageCount,
+}: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  tier: "pro" | "admin";
+  requestedImageCount: number;
+}) {
+  const caps = getInviteImageCaps(tier);
+
+  if (requestedImageCount > caps.maxImagesPerRequest) {
+    return {
+      allowed: false,
+      message: `Image generation is capped at ${caps.maxImagesPerRequest} options per request.`,
+    };
+  }
+
+  const now = new Date();
+  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+
+  const [{ data: dayRows }, { data: monthRows }] = await Promise.all([
+    supabase
+      .from("ai_generations")
+      .select("output_tokens")
+      .eq("user_id", userId)
+      .eq("generation_type", "invitation_image")
+      .eq("status", "success")
+      .gte("created_at", dayStart),
+    supabase
+      .from("ai_generations")
+      .select("output_tokens, estimated_cost_usd")
+      .eq("user_id", userId)
+      .eq("generation_type", "invitation_image")
+      .eq("status", "success")
+      .gte("created_at", monthStart),
+  ]);
+
+  const dayImages = (dayRows ?? []).reduce((sum, row) => sum + Math.max(Number(row.output_tokens ?? 0), 0), 0);
+  const monthImages = (monthRows ?? []).reduce(
+    (sum, row) => sum + Math.max(Number(row.output_tokens ?? 0), 0),
+    0,
+  );
+  const monthCost = (monthRows ?? []).reduce((sum, row) => sum + Number(row.estimated_cost_usd ?? 0), 0);
+
+  if (dayImages + requestedImageCount > caps.maxImagesPerDay) {
+    return {
+      allowed: false,
+      message: `Daily image cap reached (${caps.maxImagesPerDay}). Try again tomorrow.`,
+    };
+  }
+
+  if (monthImages + requestedImageCount > caps.maxImagesPerMonth) {
+    return {
+      allowed: false,
+      message: `Monthly image cap reached (${caps.maxImagesPerMonth}).`,
+    };
+  }
+
+  if (monthCost >= caps.maxMonthlyCostUsd) {
+    return {
+      allowed: false,
+      message: "Monthly image generation budget has been reached for your plan.",
+    };
+  }
+
+  return { allowed: true, caps };
+}
+
+function estimateInviteImageCostUsd({
+  generatedCandidates,
+  textChecksRun,
+}: {
+  generatedCandidates: number;
+  textChecksRun: number;
+}) {
+  const perImageUsd = readNumberEnv("OPENAI_INVITE_IMAGE_COST_PER_IMAGE_USD", 0.04);
+  const perTextCheckUsd = readNumberEnv("OPENAI_INVITE_IMAGE_TEXT_CHECK_COST_USD", 0.0015);
+  const total = generatedCandidates * perImageUsd + textChecksRun * perTextCheckUsd;
+  return Number(total.toFixed(6));
+}
+
 async function trackInviteImageGeneration({
   supabase,
   userId,
   eventId,
   model,
   fingerprint,
+  acceptedCount,
+  rejectedForText,
+  estimatedCostUsd,
 }: {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   userId: string;
   eventId: string;
   model: string;
   fingerprint: string;
+  acceptedCount: number;
+  rejectedForText: number;
+  estimatedCostUsd: number;
 }) {
   await supabase.from("ai_generations").insert({
     user_id: userId,
     event_id: eventId,
-    generation_type: "invitation_text",
+    generation_type: "invitation_image",
     model,
     request_fingerprint: fingerprint,
-    prompt_version: "invite-image-v1",
+    prompt_version: "invite-image-v2",
     input_tokens: 0,
-    output_tokens: 0,
-    cached_input_tokens: 0,
-    estimated_cost_usd: 0,
+    output_tokens: acceptedCount,
+    cached_input_tokens: rejectedForText,
+    estimated_cost_usd: estimatedCostUsd,
     latency_ms: null,
     status: "success",
   });
@@ -69,9 +206,9 @@ async function trackInviteImageGeneration({
     usage_month: usageMonth,
     requests_count: (existingUsage?.requests_count ?? 0) + 1,
     input_tokens: existingUsage?.input_tokens ?? 0,
-    output_tokens: existingUsage?.output_tokens ?? 0,
-    cached_input_tokens: existingUsage?.cached_input_tokens ?? 0,
-    estimated_cost_usd: Number((existingUsage?.estimated_cost_usd ?? 0).toFixed(6)),
+    output_tokens: (existingUsage?.output_tokens ?? 0) + acceptedCount,
+    cached_input_tokens: (existingUsage?.cached_input_tokens ?? 0) + rejectedForText,
+    estimated_cost_usd: Number(((existingUsage?.estimated_cost_usd ?? 0) + estimatedCostUsd).toFixed(6)),
   };
 
   if (existingUsage) {
@@ -128,6 +265,9 @@ export async function POST(request: Request) {
     );
   }
 
+  const planTier = profile?.plan_tier === "admin" ? "admin" : "pro";
+  const requestedOptionCount = parsed.data.optionCount ?? 3;
+
   const [{ data: ownedEvent }, { data: inviteRow }] = await Promise.all([
     supabase
       .from("events")
@@ -150,31 +290,47 @@ export async function POST(request: Request) {
   const limit = await enforceAiLimits(supabase, {
     userId: user.id,
     eventId: parsed.data.eventId,
-    generationType: "invitation_text",
+    generationType: "invitation_image",
   });
 
   if (!limit.allowed) {
     return NextResponse.json({ ok: false, message: limit.message }, { status: 429 });
   }
 
+  const imageCaps = await enforceInviteImageHardCaps({
+    supabase,
+    userId: user.id,
+    tier: planTier,
+    requestedImageCount: requestedOptionCount,
+  });
+
+  if (!imageCaps.allowed) {
+    return NextResponse.json({ ok: false, message: imageCaps.message }, { status: 429 });
+  }
+
   try {
+    const { sanitizedPrompt, hadTextIntent } = sanitizeInviteImagePrompt(parsed.data.prompt);
     const fingerprint = crypto
       .createHash("sha256")
       .update(
         JSON.stringify({
           eventId: parsed.data.eventId,
           inviteId: parsed.data.inviteId,
-          prompt: parsed.data.prompt.trim().toLowerCase(),
+          prompt: sanitizedPrompt.toLowerCase(),
         }),
       )
       .digest("hex");
-    const generationPrompt = `Create a festive 2:3 vertical invitation background image for "${ownedEvent.title}" (${ownedEvent.event_type}). Style request: ${parsed.data.prompt}. No readable text. Keep center areas usable for overlay typography.`;
+    const generationPrompt = buildPartySwamiInviteImagePrompt({
+      eventTitle: ownedEvent.title,
+      eventType: ownedEvent.event_type,
+      sanitizedStylePrompt: sanitizedPrompt,
+    });
     const generated = await generateInviteBackgroundImageOptions(
       generationPrompt,
-      parsed.data.optionCount ?? 3,
+      requestedOptionCount,
     );
     const options = await Promise.all(
-      generated.pngs.slice(0, parsed.data.optionCount ?? 3).map((png, index) =>
+      generated.pngs.slice(0, requestedOptionCount).map((png, index) =>
         uploadInviteGeneratedImageOption({
           userId: user.id,
           eventId: parsed.data.eventId,
@@ -185,12 +341,20 @@ export async function POST(request: Request) {
       ),
     );
 
+    const estimatedCostUsd = estimateInviteImageCostUsd({
+      generatedCandidates: generated.metrics.generatedCandidates,
+      textChecksRun: generated.metrics.textChecksRun,
+    });
+
     await trackInviteImageGeneration({
       supabase,
       userId: user.id,
       eventId: parsed.data.eventId,
       model: generated.model,
       fingerprint,
+      acceptedCount: generated.metrics.acceptedCount,
+      rejectedForText: generated.metrics.rejectedForText,
+      estimatedCostUsd,
     });
 
     return NextResponse.json({
@@ -201,7 +365,9 @@ export async function POST(request: Request) {
         previewUrl: option.previewUrl,
         previewPath: option.previewPath,
       })),
-      message: "Generated 3 invite background options.",
+      message: hadTextIntent
+        ? "Generated text-free invite background options (text requests were automatically removed)."
+        : "Generated 3 invite background options.",
     });
   } catch (error) {
     return NextResponse.json(
