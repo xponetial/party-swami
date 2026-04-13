@@ -1,5 +1,6 @@
 import { createInviteCardImagePng, type PublicInviteImageRecord } from "@/lib/invite-card-image";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import sharp from "sharp";
 
 export const INVITE_PREVIEW_BUCKET = "invite-previews";
 
@@ -111,5 +112,60 @@ export async function uploadInviteGeneratedImage({
   return {
     filePath,
     publicUrl: `${data.publicUrl}?v=${Date.now()}`,
+  };
+}
+
+export async function uploadInviteGeneratedImageOption({
+  userId,
+  eventId,
+  inviteId,
+  optionIndex,
+  png,
+}: {
+  userId: string;
+  eventId: string;
+  inviteId: string;
+  optionIndex: number;
+  png: Buffer;
+}) {
+  const supabase = createSupabaseAdminClient();
+  const timestamp = Date.now();
+  const basePath = `user-assets/${userId}/${eventId}/${inviteId}-${timestamp}-option-${optionIndex + 1}`;
+  const highResPath = `${basePath}-high.png`;
+  const previewPath = `${basePath}-preview.png`;
+  const previewPng = await sharp(png).resize(320, 480, { fit: "cover" }).png().toBuffer();
+
+  const [{ error: highResError }, { error: previewError }] = await Promise.all([
+    supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(highResPath, png, {
+      cacheControl: "3600",
+      contentType: "image/png",
+      upsert: false,
+    }),
+    supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(previewPath, previewPng, {
+      cacheControl: "3600",
+      contentType: "image/png",
+      upsert: false,
+    }),
+  ]);
+
+  if (highResError) {
+    throw new Error(`Failed to upload generated high-res image: ${highResError.message}`);
+  }
+  if (previewError) {
+    throw new Error(`Failed to upload generated preview image: ${previewError.message}`);
+  }
+
+  const { data: highResPublic } = supabase.storage
+    .from(INVITE_PREVIEW_BUCKET)
+    .getPublicUrl(highResPath);
+  const { data: previewPublic } = supabase.storage
+    .from(INVITE_PREVIEW_BUCKET)
+    .getPublicUrl(previewPath);
+
+  return {
+    highResPath,
+    highResUrl: `${highResPublic.publicUrl}?v=${timestamp}`,
+    previewPath,
+    previewUrl: `${previewPublic.publicUrl}?v=${timestamp}`,
   };
 }

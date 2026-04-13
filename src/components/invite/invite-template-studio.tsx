@@ -25,6 +25,14 @@ import {
   type InviteTemplateCategory,
 } from "@/lib/invite-template-types";
 
+type GeneratedInviteImageOption = {
+  id: string;
+  previewUrl: string;
+  previewPath: string;
+  highResUrl: string;
+  highResPath: string;
+};
+
 function slugify(value: string) {
   return value
     .trim()
@@ -106,6 +114,9 @@ export function InviteTemplateStudio({
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [imageGenerationMessage, setImageGenerationMessage] = useState<string | null>(null);
   const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
+  const [generatedOptions, setGeneratedOptions] = useState<GeneratedInviteImageOption[]>([]);
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [isFinalizingGeneratedImage, setIsFinalizingGeneratedImage] = useState(false);
 
   useEffect(() => {
     if (!uploadState.imageUrl) return;
@@ -127,7 +138,6 @@ export function InviteTemplateStudio({
     }) ?? selectedCategory.templates[0];
 
   const nextDesignJson = JSON.stringify(design);
-  const inviteImageLowResDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=low`;
   const inviteImageDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=high`;
   const invitePrintDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=print`;
 
@@ -144,6 +154,7 @@ export function InviteTemplateStudio({
           eventId: event.id,
           inviteId: invite.id,
           prompt: imagePrompt,
+          optionCount: 3,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -153,12 +164,31 @@ export function InviteTemplateStudio({
         return;
       }
 
-      if (payload.imageUrl) {
+      const options: GeneratedInviteImageOption[] = Array.isArray(payload.options)
+        ? payload.options
+        : [];
+
+      if (options.length) {
+        setGeneratedOptions(options);
+        setSelectedOptionId(options[0].id);
         setDesign((current) => ({
           ...current,
           fields: {
             ...current.fields,
-            backgroundImageUrl: payload.imageUrl,
+            backgroundImageUrl: options[0].previewUrl,
+          },
+        }));
+      } else {
+        setGeneratedOptions([]);
+        setSelectedOptionId(null);
+      }
+
+      if (options[0]?.previewUrl) {
+        setDesign((current) => ({
+          ...current,
+          fields: {
+            ...current.fields,
+            backgroundImageUrl: options[0].previewUrl,
           },
         }));
       }
@@ -166,6 +196,47 @@ export function InviteTemplateStudio({
       setImageGenerationMessage(payload?.message ?? "Generated a new invite background image.");
     } finally {
       setIsGeneratingImage(false);
+    }
+  }
+
+  async function handleFinalizeGeneratedImage() {
+    const selected = generatedOptions.find((option) => option.id === selectedOptionId);
+
+    if (!selected) return;
+
+    setIsFinalizingGeneratedImage(true);
+    setImageGenerationError(null);
+    setImageGenerationMessage(null);
+
+    try {
+      const response = await fetch("/api/ai/finalize-invite-image", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          inviteId: invite.id,
+          highResPath: selected.highResPath,
+          highResUrl: selected.highResUrl,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        setImageGenerationError(payload?.message ?? "Could not finalize selected image.");
+        return;
+      }
+
+      setDesign((current) => ({
+        ...current,
+        fields: {
+          ...current.fields,
+          backgroundImageUrl: selected.highResUrl,
+          backgroundImagePath: selected.highResPath,
+        },
+      }));
+      setImageGenerationMessage(payload?.message ?? "Selected image finalized.");
+    } finally {
+      setIsFinalizingGeneratedImage(false);
     }
   }
 
@@ -412,17 +483,6 @@ export function InviteTemplateStudio({
           {!featureAccess.isPaidPlan ? (
             <div className="mt-3 space-y-3">
               <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
-                <p className="text-sm font-semibold text-ink">Low-res download</p>
-                <p className="mt-1 text-sm text-ink-muted">
-                  Export a shareable low-resolution PNG available on every plan.
-                </p>
-                <Button asChild className="mt-3" variant="secondary">
-                  <a download href={inviteImageLowResDownloadHref}>
-                    Download low-res PNG
-                  </a>
-                </Button>
-              </div>
-              <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
                 <p className="text-sm font-semibold text-ink">Pro feature</p>
               <p className="mt-1 text-sm text-ink-muted">
                 High-res downloads, print-ready exports, and image editing tools are available on
@@ -436,26 +496,14 @@ export function InviteTemplateStudio({
           ) : (
             <div className="mt-3 space-y-3">
             <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
-              <p className="text-sm font-semibold text-ink">Low-res download</p>
-              <p className="mt-1 text-sm text-ink-muted">
-                Export a lightweight PNG for quick sharing.
-              </p>
-              <Button asChild className="mt-3" variant="secondary">
-                <a download href={inviteImageLowResDownloadHref}>
-                  Download low-res PNG
-                </a>
-              </Button>
-            </div>
-
-            <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
-              <p className="text-sm font-semibold text-ink">High-res download</p>
+              <p className="text-sm font-semibold text-ink">Image download</p>
               <p className="mt-1 text-sm text-ink-muted">
                 Download a PNG of this invitation card for sharing outside Party Swami.
               </p>
               {featureAccess.highResDownloadEnabled ? (
                 <Button asChild className="mt-3" variant="secondary">
                   <a download href={inviteImageDownloadHref}>
-                    Download high-res PNG
+                    Download PNG
                   </a>
                 </Button>
               ) : (
@@ -529,7 +577,8 @@ export function InviteTemplateStudio({
             <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
               <p className="text-sm font-semibold text-ink">AI image generation</p>
               <p className="mt-1 text-sm text-ink-muted">
-                Describe a style and generate a fresh invite background with AI.
+                Generate 3 low-res background options, preview each, then finalize one high-res
+                image.
               </p>
               {featureAccess.aiGenerationEnabled && featureAccess.uploadEditingEnabled ? (
                 <div className="mt-3 space-y-3">
@@ -545,8 +594,52 @@ export function InviteTemplateStudio({
                     type="button"
                     variant="secondary"
                   >
-                    {isGeneratingImage ? "Generating image..." : "Generate invite background"}
+                    {isGeneratingImage ? "Generating options..." : "Generate invite background"}
                   </Button>
+                  {generatedOptions.length ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-3">
+                        {generatedOptions.map((option) => (
+                          <button
+                            className={`overflow-hidden rounded-xl border transition ${
+                              option.id === selectedOptionId
+                                ? "border-brand shadow-party"
+                                : "border-border hover:border-brand/40"
+                            }`}
+                            key={option.id}
+                            onClick={() => {
+                              setSelectedOptionId(option.id);
+                              setDesign((current) => ({
+                                ...current,
+                                fields: {
+                                  ...current.fields,
+                                  backgroundImageUrl: option.previewUrl,
+                                },
+                              }));
+                            }}
+                            type="button"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              alt={`Generated invite option ${option.id}`}
+                              className="h-28 w-full object-cover"
+                              src={option.previewUrl}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      <Button
+                        disabled={!selectedOptionId || isFinalizingGeneratedImage}
+                        onClick={handleFinalizeGeneratedImage}
+                        type="button"
+                        variant="secondary"
+                      >
+                        {isFinalizingGeneratedImage
+                          ? "Finalizing selected image..."
+                          : "Finalize selected image"}
+                      </Button>
+                    </div>
+                  ) : null}
                   {imageGenerationMessage ? (
                     <p className="text-xs text-accent">{imageGenerationMessage}</p>
                   ) : null}

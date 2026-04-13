@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-export async function generateInviteBackgroundImage(prompt: string) {
+export async function generateInviteBackgroundImageOptions(prompt: string, count = 3) {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -13,16 +13,20 @@ export async function generateInviteBackgroundImage(prompt: string) {
     model,
     prompt,
     size: "1024x1536",
+    n: Math.max(1, Math.min(4, count)),
   });
 
-  const b64 = result.data?.[0]?.b64_json;
+  const items = (result.data ?? [])
+    .map((item) => item.b64_json)
+    .filter((value): value is string => Boolean(value))
+    .map((b64) => Buffer.from(b64, "base64"));
 
-  if (!b64) {
+  if (!items.length) {
     throw new Error("Image generation did not return an image payload.");
   }
 
   return {
     model,
-    png: Buffer.from(b64, "base64"),
+    pngs: items,
   };
 }

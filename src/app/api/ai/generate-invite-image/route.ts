@@ -2,16 +2,16 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enforceAiLimits } from "@/lib/ai/limits";
-import { generateInviteBackgroundImage } from "@/lib/ai/invite-image";
+import { generateInviteBackgroundImageOptions } from "@/lib/ai/invite-image";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
-import { normalizeInviteDesignData } from "@/lib/invite-design";
-import { uploadInviteGeneratedImage } from "@/lib/invite-preview-storage";
+import { uploadInviteGeneratedImageOption } from "@/lib/invite-preview-storage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
   inviteId: z.string().uuid(),
   prompt: z.string().trim().min(8).max(500),
+  optionCount: z.number().int().min(1).max(3).optional(),
 });
 
 function monthBucket() {
@@ -137,10 +137,10 @@ export async function POST(request: Request) {
       .maybeSingle<{ id: string; title: string; event_type: string }>(),
     supabase
       .from("invites")
-      .select("id, design_json")
+      .select("id")
       .eq("id", parsed.data.inviteId)
       .eq("event_id", parsed.data.eventId)
-      .maybeSingle<{ id: string; design_json: unknown }>(),
+      .maybeSingle<{ id: string }>(),
   ]);
 
   if (!ownedEvent || !inviteRow) {
@@ -169,59 +169,40 @@ export async function POST(request: Request) {
       )
       .digest("hex");
     const generationPrompt = `Create a festive 2:3 vertical invitation background image for "${ownedEvent.title}" (${ownedEvent.event_type}). Style request: ${parsed.data.prompt}. No readable text. Keep center areas usable for overlay typography.`;
-    const generated = await generateInviteBackgroundImage(generationPrompt);
-    const uploaded = await uploadInviteGeneratedImage({
+    const generated = await generateInviteBackgroundImageOptions(
+      generationPrompt,
+      parsed.data.optionCount ?? 3,
+    );
+    const options = await Promise.all(
+      generated.pngs.slice(0, parsed.data.optionCount ?? 3).map((png, index) =>
+        uploadInviteGeneratedImageOption({
+          userId: user.id,
+          eventId: parsed.data.eventId,
+          inviteId: parsed.data.inviteId,
+          optionIndex: index,
+          png,
+        }),
+      ),
+    );
+
+    await trackInviteImageGeneration({
+      supabase,
       userId: user.id,
       eventId: parsed.data.eventId,
-      inviteId: parsed.data.inviteId,
-      png: generated.png,
+      model: generated.model,
+      fingerprint,
     });
-
-    const fallback = {
-      templateId: "default-template",
-      packSlug: "default-pack",
-      categoryKey: "general",
-      categoryLabel: "General",
-      fields: {
-        title: "Party Swami Invite",
-        subtitle: "Celebration",
-        dateText: "Date coming soon",
-        locationText: "Location coming soon",
-        messageText: "You're invited.",
-        ctaText: "RSVP now",
-        backgroundImageUrl: null,
-        backgroundImagePath: null,
-      },
-    };
-    const normalized = normalizeInviteDesignData(inviteRow.design_json, fallback);
-    const nextDesign = {
-      ...normalized,
-      fields: {
-        ...normalized.fields,
-        backgroundImageUrl: uploaded.publicUrl,
-        backgroundImagePath: uploaded.filePath,
-      },
-    };
-
-    await Promise.all([
-      supabase
-        .from("invites")
-        .update({ design_json: nextDesign })
-        .eq("id", parsed.data.inviteId)
-        .eq("event_id", parsed.data.eventId),
-      trackInviteImageGeneration({
-        supabase,
-        userId: user.id,
-        eventId: parsed.data.eventId,
-        model: generated.model,
-        fingerprint,
-      }),
-    ]);
 
     return NextResponse.json({
       ok: true,
-      imageUrl: uploaded.publicUrl,
-      message: "Generated a new invite background image.",
+      options: options.map((option, index) => ({
+        id: `option-${index + 1}`,
+        previewUrl: option.previewUrl,
+        previewPath: option.previewPath,
+        highResUrl: option.highResUrl,
+        highResPath: option.highResPath,
+      })),
+      message: "Generated 3 invite background options.",
     });
   } catch (error) {
     return NextResponse.json(
