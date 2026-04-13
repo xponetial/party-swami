@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { saveInviteAction } from "@/app/events/actions";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import {
+  clearInviteImageAction,
+  saveInviteAction,
+  uploadInviteImageAction,
+  type InviteImageActionState,
+} from "@/app/events/actions";
 import { AiGenerateButton } from "@/components/ai/ai-generate-button";
 import { InviteCardCanvas } from "@/components/invite/invite-card-canvas";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +98,25 @@ export function InviteTemplateStudio({
     [categories, event, invite],
   );
   const [design, setDesign] = useState<InviteDesignData>(initialDesign);
+  const [uploadState, uploadAction] = useActionState<InviteImageActionState, FormData>(
+    uploadInviteImageAction,
+    {},
+  );
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageGenerationMessage, setImageGenerationMessage] = useState<string | null>(null);
+  const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!uploadState.imageUrl) return;
+    setDesign((current) => ({
+      ...current,
+      fields: {
+        ...current.fields,
+        backgroundImageUrl: uploadState.imageUrl,
+      },
+    }));
+  }, [uploadState.imageUrl]);
 
   const selectedCategory =
     categories.find((category) => category.key === design.categoryKey) ?? categories[0];
@@ -103,8 +127,47 @@ export function InviteTemplateStudio({
     }) ?? selectedCategory.templates[0];
 
   const nextDesignJson = JSON.stringify(design);
-  const inviteImageDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1`;
+  const inviteImageLowResDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=low`;
+  const inviteImageDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=high`;
   const invitePrintDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=print`;
+
+  async function handleGenerateImage() {
+    setImageGenerationError(null);
+    setImageGenerationMessage(null);
+    setIsGeneratingImage(true);
+
+    try {
+      const response = await fetch("/api/ai/generate-invite-image", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          inviteId: invite.id,
+          prompt: imagePrompt,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        setImageGenerationError(payload?.message ?? "Could not generate image right now.");
+        return;
+      }
+
+      if (payload.imageUrl) {
+        setDesign((current) => ({
+          ...current,
+          fields: {
+            ...current.fields,
+            backgroundImageUrl: payload.imageUrl,
+          },
+        }));
+      }
+
+      setImageGenerationMessage(payload?.message ?? "Generated a new invite background image.");
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -347,8 +410,20 @@ export function InviteTemplateStudio({
         <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
           <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Invite media tools</p>
           {!featureAccess.isPaidPlan ? (
-            <div className="mt-3 rounded-[1.5rem] border border-border bg-white/80 p-4">
-              <p className="text-sm font-semibold text-ink">Pro feature</p>
+            <div className="mt-3 space-y-3">
+              <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
+                <p className="text-sm font-semibold text-ink">Low-res download</p>
+                <p className="mt-1 text-sm text-ink-muted">
+                  Export a shareable low-resolution PNG available on every plan.
+                </p>
+                <Button asChild className="mt-3" variant="secondary">
+                  <a download href={inviteImageLowResDownloadHref}>
+                    Download low-res PNG
+                  </a>
+                </Button>
+              </div>
+              <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
+                <p className="text-sm font-semibold text-ink">Pro feature</p>
               <p className="mt-1 text-sm text-ink-muted">
                 High-res downloads, print-ready exports, and image editing tools are available on
                 Pro and Admin plans.
@@ -356,9 +431,22 @@ export function InviteTemplateStudio({
               <Button asChild className="mt-3" variant="secondary">
                 <Link href="/billing">Upgrade to Pro</Link>
               </Button>
+              </div>
             </div>
           ) : (
             <div className="mt-3 space-y-3">
+            <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
+              <p className="text-sm font-semibold text-ink">Low-res download</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Export a lightweight PNG for quick sharing.
+              </p>
+              <Button asChild className="mt-3" variant="secondary">
+                <a download href={inviteImageLowResDownloadHref}>
+                  Download low-res PNG
+                </a>
+              </Button>
+            </div>
+
             <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
               <p className="text-sm font-semibold text-ink">High-res download</p>
               <p className="mt-1 text-sm text-ink-muted">
@@ -399,13 +487,78 @@ export function InviteTemplateStudio({
               <p className="text-sm font-semibold text-ink">Upload and edit images</p>
               <p className="mt-1 text-sm text-ink-muted">
                 {featureAccess.uploadEditingEnabled
-                  ? "Enabled for rollout. The upload/edit surface is next in this Phase 2 stream."
+                  ? "Upload your own invite background and instantly preview the new design."
                   : "Currently disabled by feature flag."}
               </p>
               <p className="mt-2 text-xs text-ink-muted">
                 Invite images are retained for 6 to 12 months and may be automatically removed
                 after that window.
               </p>
+              {featureAccess.uploadEditingEnabled ? (
+                <div className="mt-3 space-y-3">
+                  <form action={uploadAction} className="space-y-3">
+                    <input name="eventId" type="hidden" value={event.id} />
+                    <input name="inviteId" type="hidden" value={invite.id} />
+                    <input
+                      accept="image/png,image/jpeg,image/webp"
+                      className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink"
+                      name="backgroundImage"
+                      type="file"
+                    />
+                    <SubmitButton pendingLabel="Uploading..." variant="secondary">
+                      Upload image
+                    </SubmitButton>
+                  </form>
+                  <form action={clearInviteImageAction}>
+                    <input name="eventId" type="hidden" value={event.id} />
+                    <input name="inviteId" type="hidden" value={invite.id} />
+                    <SubmitButton pendingLabel="Removing..." variant="ghost">
+                      Remove uploaded image
+                    </SubmitButton>
+                  </form>
+                  {uploadState.success ? (
+                    <p className="text-xs text-accent">{uploadState.success}</p>
+                  ) : null}
+                  {uploadState.error ? (
+                    <p className="text-xs text-brand">{uploadState.error}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
+              <p className="text-sm font-semibold text-ink">AI image generation</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Describe a style and generate a fresh invite background with AI.
+              </p>
+              {featureAccess.aiGenerationEnabled && featureAccess.uploadEditingEnabled ? (
+                <div className="mt-3 space-y-3">
+                  <textarea
+                    className="min-h-20 w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                    onChange={(eventValue) => setImagePrompt(eventValue.target.value)}
+                    placeholder="Example: Elegant garden evening with soft lights and floral bokeh"
+                    value={imagePrompt}
+                  />
+                  <Button
+                    disabled={isGeneratingImage || imagePrompt.trim().length < 8}
+                    onClick={handleGenerateImage}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {isGeneratingImage ? "Generating image..." : "Generate invite background"}
+                  </Button>
+                  {imageGenerationMessage ? (
+                    <p className="text-xs text-accent">{imageGenerationMessage}</p>
+                  ) : null}
+                  {imageGenerationError ? (
+                    <p className="text-xs text-brand">{imageGenerationError}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-ink-muted">
+                  AI image generation is currently unavailable in this workspace.
+                </p>
+              )}
             </div>
           </div>
           )}

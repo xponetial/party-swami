@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { InviteDesignData } from "@/lib/invite-design";
 import { compactInviteCopy, getInviteCardLayout } from "@/lib/invite-card-layout";
 import type { InviteTemplate } from "@/lib/invite-template-types";
@@ -23,7 +22,14 @@ export function InviteCardCanvas({
       className="relative mx-auto aspect-[2/3] w-full overflow-hidden rounded-[2rem] border border-white/60 shadow-party"
       style={{ maxWidth }}
     >
-      <Image alt={alt} className="object-cover" fill sizes={`${maxWidth}px`} src={template.assetPath} />
+      <div
+        aria-label={alt}
+        className="absolute inset-0 bg-cover bg-center"
+        role="img"
+        style={{
+          backgroundImage: `url(${design.fields.backgroundImageUrl || template.assetPath})`,
+        }}
+      />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,10,30,0.12)_0%,rgba(14,19,60,0.06)_30%,rgba(8,12,36,0.34)_100%)]" />
 
       <div

@@ -1,6 +1,8 @@
+import sharp from "sharp";
 import { notFound } from "next/navigation";
 import { type InviteDesignData } from "@/lib/invite-design";
 import { createInviteCardImagePng } from "@/lib/invite-card-image";
+import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -24,6 +26,7 @@ export async function GET(
   const { slug } = await params;
   const { searchParams } = new URL(request.url);
   const shouldDownload = searchParams.get("download") === "1";
+  const preset = searchParams.get("preset") === "low" ? "low" : searchParams.get("preset") === "print" ? "print" : "high";
   const supabase = await createSupabaseServerClient();
   const { data: inviteRows, error } = await supabase.rpc("get_public_invite_by_slug", {
     p_slug: slug,
@@ -60,15 +63,57 @@ export async function GET(
 
     const isPaidPlan = profile?.plan_tier === "pro" || profile?.plan_tier === "admin";
 
-    if (!ownedEvent || !isPaidPlan) {
+    if (!ownedEvent) {
       return Response.json(
-        { ok: false, message: "High-res downloads are available on Pro and Admin plans." },
+        { ok: false, message: "This invite is not available for your account." },
         { status: 403 },
       );
     }
+
+    if (preset === "high") {
+      const highResEnabled = await isFeatureFlagEnabled("high_res_download", {
+        userId: user.id,
+        fallbackEnabled: false,
+      });
+
+      if (!isPaidPlan || !highResEnabled) {
+        return Response.json(
+          { ok: false, message: "High-res downloads are available on Pro and Admin plans." },
+          { status: 403 },
+        );
+      }
+    }
+
+    if (preset === "print") {
+      const printingEnabled = await isFeatureFlagEnabled("printing", {
+        userId: user.id,
+        fallbackEnabled: false,
+      });
+
+      if (!isPaidPlan || !printingEnabled) {
+        return Response.json(
+          { ok: false, message: "Print-ready export is not enabled for this workspace yet." },
+          { status: 403 },
+        );
+      }
+    }
   }
 
-  const png = await createInviteCardImagePng(invite);
+  let png = await createInviteCardImagePng(invite);
+
+  if (preset === "low") {
+    png = await sharp(png)
+      .resize(400, 600, { fit: "cover" })
+      .png()
+      .toBuffer();
+  }
+
+  if (preset === "print") {
+    png = await sharp(png)
+      .resize(1600, 2400, { fit: "cover" })
+      .png()
+      .toBuffer();
+  }
 
   const headers = new Headers({
     "cache-control": "public, max-age=300, stale-while-revalidate=86400",
@@ -76,7 +121,11 @@ export async function GET(
   });
 
   if (shouldDownload) {
-    headers.set("content-disposition", `attachment; filename="party-swami-invite-${slug}.png"`);
+    const suffix = preset === "low" ? "low-res" : preset === "print" ? "print-ready" : "high-res";
+    headers.set(
+      "content-disposition",
+      `attachment; filename="party-swami-invite-${slug}-${suffix}.png"`,
+    );
   }
 
   return new Response(new Uint8Array(png), { headers });

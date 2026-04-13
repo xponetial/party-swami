@@ -94,6 +94,17 @@ async function getTemplateBackground(assetPath: string) {
   return readFile(absoluteAssetPath);
 }
 
+async function getRemoteBackground(url: string) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch uploaded invite image (${response.status}).`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
 function getInviteFontPath() {
   return path.join(
     process.cwd(),
@@ -255,18 +266,40 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
   const ctaColor = layout?.accents[1] ?? "#ffd869";
   const fontPath = getInviteFontPath();
   const message = compactInviteCopy(design.fields.messageText, 140);
-  const backgroundBuffer = template
-    ? await getTemplateBackground(template.assetPath)
-    : await sharp({
-        create: {
-          width: IMAGE_WIDTH,
-          height: IMAGE_HEIGHT,
-          channels: 4,
-          background: "#28366f",
-        },
-      })
-        .png()
-        .toBuffer();
+  const uploadedBackgroundUrl = design.fields.backgroundImageUrl?.trim() || null;
+  let backgroundBuffer: Buffer;
+
+  if (uploadedBackgroundUrl) {
+    try {
+      backgroundBuffer = await getRemoteBackground(uploadedBackgroundUrl);
+    } catch {
+      backgroundBuffer = template
+        ? await getTemplateBackground(template.assetPath)
+        : await sharp({
+            create: {
+              width: IMAGE_WIDTH,
+              height: IMAGE_HEIGHT,
+              channels: 4,
+              background: "#28366f",
+            },
+          })
+            .png()
+            .toBuffer();
+    }
+  } else {
+    backgroundBuffer = template
+      ? await getTemplateBackground(template.assetPath)
+      : await sharp({
+          create: {
+            width: IMAGE_WIDTH,
+            height: IMAGE_HEIGHT,
+            channels: 4,
+            background: "#28366f",
+          },
+        })
+          .png()
+          .toBuffer();
+  }
 
   const resizedBackground = await sharp(backgroundBuffer)
     .resize(IMAGE_WIDTH, IMAGE_HEIGHT, { fit: "cover" })

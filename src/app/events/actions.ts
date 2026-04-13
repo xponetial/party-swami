@@ -9,7 +9,9 @@ import {
   replaceShoppingItemForEvent,
   restorePlanVersionForEvent,
 } from "@/lib/ai/workflows";
-import { inviteDesignSchema } from "@/lib/invite-design";
+import { isFeatureFlagEnabled } from "@/lib/feature-flags";
+import { inviteDesignSchema, normalizeInviteDesignData } from "@/lib/invite-design";
+import { uploadInviteEditableImage } from "@/lib/invite-preview-storage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
@@ -77,6 +79,12 @@ export type BulkGuestActionState = {
   affectedCount?: number;
 };
 
+export type InviteImageActionState = {
+  error?: string;
+  success?: string;
+  imageUrl?: string;
+};
+
 const bulkGuestActionSchema = z.object({
   eventId: z.string().uuid(),
   guestIds: z.array(z.string().uuid()).min(1, "Select at least one guest."),
@@ -97,6 +105,11 @@ const inviteSchema = z.object({
   inviteId: z.string().uuid(),
   inviteCopy: z.string().trim().min(10),
   designJson: z.string().optional(),
+});
+
+const inviteImageSchema = z.object({
+  eventId: z.string().uuid(),
+  inviteId: z.string().uuid(),
 });
 
 const shoppingItemSchema = z.object({
@@ -266,6 +279,28 @@ async function requireUser() {
   }
 
   return { supabase, user };
+}
+
+async function getInviteMediaEntitlement(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan_tier")
+    .eq("id", userId)
+    .maybeSingle<{ plan_tier: string | null }>();
+
+  const isPaidPlan = profile?.plan_tier === "pro" || profile?.plan_tier === "admin";
+  const uploadEditingEnabled = await isFeatureFlagEnabled("upload_editing", {
+    userId,
+    fallbackEnabled: false,
+  });
+
+  return {
+    isPaidPlan,
+    uploadEditingEnabled,
+  };
 }
 
 async function updateShoppingListEstimate(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>, shoppingListId: string) {
@@ -460,6 +495,182 @@ export async function saveInviteAction(formData: FormData) {
       })
       .eq("event_id", parsed.data.eventId),
   ]);
+
+  revalidatePath(`/events/${parsed.data.eventId}`);
+  revalidatePath(`/events/${parsed.data.eventId}/invite`);
+}
+
+export async function uploadInviteImageAction(
+  _prevState: InviteImageActionState,
+  formData: FormData,
+): Promise<InviteImageActionState> {
+  try {
+    const { supabase, user } = await requireUser();
+    const parsed = inviteImageSchema.safeParse({
+      eventId: formData.get("eventId"),
+      inviteId: formData.get("inviteId"),
+    });
+
+    if (!parsed.success) {
+      return { error: "Invalid invite reference." };
+    }
+
+    const file = formData.get("backgroundImage");
+
+    if (!(file instanceof File) || file.size <= 0) {
+      return { error: "Select an image before uploading." };
+    }
+
+    const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+    if (!allowedMimeTypes.has(file.type)) {
+      return { error: "Use a JPG, PNG, or WEBP image." };
+    }
+
+    if (file.size > 6 * 1024 * 1024) {
+      return { error: "Image must be 6MB or smaller." };
+    }
+
+    const [{ data: ownedEvent }, entitlement] = await Promise.all([
+      supabase
+        .from("events")
+        .select("id")
+        .eq("id", parsed.data.eventId)
+        .eq("owner_id", user.id)
+        .maybeSingle<{ id: string }>(),
+      getInviteMediaEntitlement(supabase, user.id),
+    ]);
+
+    if (!ownedEvent) {
+      return { error: "Event not found." };
+    }
+
+    if (!entitlement.isPaidPlan || !entitlement.uploadEditingEnabled) {
+      return { error: "Image upload is available on Pro and Admin plans only." };
+    }
+
+    const { data: inviteRow } = await supabase
+      .from("invites")
+      .select("id, design_json")
+      .eq("id", parsed.data.inviteId)
+      .eq("event_id", parsed.data.eventId)
+      .maybeSingle<{ id: string; design_json: unknown }>();
+
+    if (!inviteRow) {
+      return { error: "Invite not found." };
+    }
+
+    const upload = await uploadInviteEditableImage({
+      userId: user.id,
+      eventId: parsed.data.eventId,
+      inviteId: parsed.data.inviteId,
+      file,
+    });
+
+    const fallback = {
+      templateId: "default-template",
+      packSlug: "default-pack",
+      categoryKey: "general",
+      categoryLabel: "General",
+      fields: {
+        title: "Party Swami Invite",
+        subtitle: "Celebration",
+        dateText: "Date coming soon",
+        locationText: "Location coming soon",
+        messageText: "You're invited.",
+        ctaText: "RSVP now",
+        backgroundImageUrl: null,
+        backgroundImagePath: null,
+      },
+    };
+    const normalized = normalizeInviteDesignData(inviteRow.design_json, fallback);
+    const nextDesign = {
+      ...normalized,
+      fields: {
+        ...normalized.fields,
+        backgroundImageUrl: upload.publicUrl,
+        backgroundImagePath: upload.filePath,
+      },
+    };
+
+    await supabase
+      .from("invites")
+      .update({ design_json: nextDesign })
+      .eq("id", parsed.data.inviteId)
+      .eq("event_id", parsed.data.eventId);
+
+    revalidatePath(`/events/${parsed.data.eventId}`);
+    revalidatePath(`/events/${parsed.data.eventId}/invite`);
+
+    return {
+      success: "Image uploaded and applied to this invite.",
+      imageUrl: upload.publicUrl,
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not upload image right now.",
+    };
+  }
+}
+
+export async function clearInviteImageAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = inviteImageSchema.safeParse({
+    eventId: formData.get("eventId"),
+    inviteId: formData.get("inviteId"),
+  });
+
+  if (!parsed.success) return;
+
+  const [{ data: ownedEvent }, { data: inviteRow }] = await Promise.all([
+    supabase
+      .from("events")
+      .select("id")
+      .eq("id", parsed.data.eventId)
+      .eq("owner_id", user.id)
+      .maybeSingle<{ id: string }>(),
+    supabase
+      .from("invites")
+      .select("id, design_json")
+      .eq("id", parsed.data.inviteId)
+      .eq("event_id", parsed.data.eventId)
+      .maybeSingle<{ id: string; design_json: unknown }>(),
+  ]);
+
+  if (!ownedEvent || !inviteRow) return;
+
+  const fallback = {
+    templateId: "default-template",
+    packSlug: "default-pack",
+    categoryKey: "general",
+    categoryLabel: "General",
+    fields: {
+      title: "Party Swami Invite",
+      subtitle: "Celebration",
+      dateText: "Date coming soon",
+      locationText: "Location coming soon",
+      messageText: "You're invited.",
+      ctaText: "RSVP now",
+      backgroundImageUrl: null,
+      backgroundImagePath: null,
+    },
+  };
+
+  const normalized = normalizeInviteDesignData(inviteRow.design_json, fallback);
+  const nextDesign = {
+    ...normalized,
+    fields: {
+      ...normalized.fields,
+      backgroundImageUrl: null,
+      backgroundImagePath: null,
+    },
+  };
+
+  await supabase
+    .from("invites")
+    .update({ design_json: nextDesign })
+    .eq("id", parsed.data.inviteId)
+    .eq("event_id", parsed.data.eventId);
 
   revalidatePath(`/events/${parsed.data.eventId}`);
   revalidatePath(`/events/${parsed.data.eventId}/invite`);

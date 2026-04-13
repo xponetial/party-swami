@@ -12,6 +12,8 @@ export const inviteDesignSchema = z.object({
     locationText: z.string(),
     messageText: z.string(),
     ctaText: z.string(),
+    backgroundImageUrl: z.url().nullable().optional(),
+    backgroundImagePath: z.string().nullable().optional(),
   }),
 });
 
@@ -46,6 +48,10 @@ export function normalizeInviteDesignData(
       locationText: partial?.fields?.locationText || fallback.fields.locationText,
       messageText: partial?.fields?.messageText || fallback.fields.messageText,
       ctaText: partial?.fields?.ctaText || fallback.fields.ctaText,
+      backgroundImageUrl:
+        partial?.fields?.backgroundImageUrl ?? fallback.fields.backgroundImageUrl ?? null,
+      backgroundImagePath:
+        partial?.fields?.backgroundImagePath ?? fallback.fields.backgroundImagePath ?? null,
     },
   };
 }
