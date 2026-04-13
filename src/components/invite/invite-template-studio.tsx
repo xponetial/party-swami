@@ -403,8 +403,8 @@ export function InviteTemplateStudio({
                   : "Currently disabled by feature flag."}
               </p>
               <p className="mt-2 text-xs text-ink-muted">
-                Uploaded assets are kept short-term for active editing workflows and may be
-                automatically removed.
+                Invite images are retained for 6 to 12 months and may be automatically removed
+                after that window.
               </p>
             </div>
           </div>
