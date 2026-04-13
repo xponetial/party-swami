@@ -197,6 +197,7 @@ export async function POST(request: Request) {
       ok: true,
       options: options.map((option, index) => ({
         id: `option-${index + 1}`,
+        sourcePath: option.sourcePath,
         previewUrl: option.previewUrl,
         previewPath: option.previewPath,
       })),

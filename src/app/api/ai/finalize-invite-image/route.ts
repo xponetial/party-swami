@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { normalizeInviteDesignData } from "@/lib/invite-design";
-import { finalizeInviteGeneratedImageFromPreview } from "@/lib/invite-preview-storage";
+import { finalizeInviteGeneratedImageFromSource } from "@/lib/invite-preview-storage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
   inviteId: z.string().uuid(),
-  previewPath: z.string().min(1),
-  previewUrl: z.url(),
+  sourcePath: z.string().min(1),
 });
 
 export async function POST(request: Request) {
@@ -51,7 +50,7 @@ export async function POST(request: Request) {
 
   const expectedPrefix = `user-assets/${user.id}/${parsed.data.eventId}/`;
 
-  if (!parsed.data.previewPath.startsWith(expectedPrefix)) {
+  if (!parsed.data.sourcePath.startsWith(expectedPrefix)) {
     return NextResponse.json(
       { ok: false, message: "Selected image is invalid for this account." },
       { status: 403 },
@@ -77,11 +76,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Invite not found." }, { status: 404 });
   }
 
-  const finalized = await finalizeInviteGeneratedImageFromPreview({
+  const finalized = await finalizeInviteGeneratedImageFromSource({
     userId: user.id,
     eventId: parsed.data.eventId,
     inviteId: parsed.data.inviteId,
-    previewPath: parsed.data.previewPath,
+    sourcePath: parsed.data.sourcePath,
   });
 
   const fallback = {

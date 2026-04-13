@@ -3,6 +3,10 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import sharp from "sharp";
 
 export const INVITE_PREVIEW_BUCKET = "invite-previews";
+const INVITE_CARD_WIDTH = 1024;
+const INVITE_CARD_HEIGHT = 1536;
+const INVITE_EXPORT_WIDTH = 1536;
+const INVITE_EXPORT_HEIGHT = 2304;
 
 export function getInvitePreviewPath(eventId: string, inviteId: string) {
   return `${eventId}/${inviteId}.png`;
@@ -131,8 +135,27 @@ export async function uploadInviteGeneratedImageOption({
   const supabase = createSupabaseAdminClient();
   const timestamp = Date.now();
   const basePath = `user-assets/${userId}/${eventId}/${inviteId}-${timestamp}-option-${optionIndex + 1}`;
+  const sourcePath = `${basePath}-source.png`;
   const previewPath = `${basePath}-preview.png`;
-  const previewPng = await sharp(png).resize(320, 480, { fit: "cover" }).png().toBuffer();
+  const sourcePng = await sharp(png)
+    .resize(INVITE_CARD_WIDTH, INVITE_CARD_HEIGHT, { fit: "cover" })
+    .png()
+    .toBuffer();
+  const previewPng = await sharp(sourcePng).resize(320, 480, { fit: "cover" }).png().toBuffer();
+
+  const { error: sourceError } = await supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(
+    sourcePath,
+    sourcePng,
+    {
+      cacheControl: "3600",
+      contentType: "image/png",
+      upsert: false,
+    },
+  );
+
+  if (sourceError) {
+    throw new Error(`Failed to upload generated source image: ${sourceError.message}`);
+  }
 
   const { error: previewError } = await supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(
     previewPath,
@@ -150,35 +173,41 @@ export async function uploadInviteGeneratedImageOption({
   const { data: previewPublic } = supabase.storage
     .from(INVITE_PREVIEW_BUCKET)
     .getPublicUrl(previewPath);
+  const { data: sourcePublic } = supabase.storage.from(INVITE_PREVIEW_BUCKET).getPublicUrl(sourcePath);
 
   return {
+    sourcePath,
+    sourceUrl: `${sourcePublic.publicUrl}?v=${timestamp}`,
     previewPath,
     previewUrl: `${previewPublic.publicUrl}?v=${timestamp}`,
   };
 }
 
-export async function finalizeInviteGeneratedImageFromPreview({
+export async function finalizeInviteGeneratedImageFromSource({
   userId,
   eventId,
   inviteId,
-  previewPath,
+  sourcePath,
 }: {
   userId: string;
   eventId: string;
   inviteId: string;
-  previewPath: string;
+  sourcePath: string;
 }) {
   const supabase = createSupabaseAdminClient();
-  const { data: previewBlob, error: downloadError } = await supabase.storage
+  const { data: sourceBlob, error: downloadError } = await supabase.storage
     .from(INVITE_PREVIEW_BUCKET)
-    .download(previewPath);
+    .download(sourcePath);
 
-  if (downloadError || !previewBlob) {
-    throw new Error("Unable to load the selected preview image.");
+  if (downloadError || !sourceBlob) {
+    throw new Error("Unable to load the selected source image.");
   }
 
-  const previewBuffer = Buffer.from(await previewBlob.arrayBuffer());
-  const highResPng = await sharp(previewBuffer).resize(1024, 1536, { fit: "cover" }).png().toBuffer();
+  const sourceBuffer = Buffer.from(await sourceBlob.arrayBuffer());
+  const highResPng = await sharp(sourceBuffer)
+    .resize(INVITE_EXPORT_WIDTH, INVITE_EXPORT_HEIGHT, { fit: "cover" })
+    .png()
+    .toBuffer();
   const highResPath = `user-assets/${userId}/${eventId}/${inviteId}-${Date.now()}-selected-high.png`;
 
   const { error: uploadError } = await supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(

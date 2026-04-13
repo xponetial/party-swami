@@ -27,6 +27,7 @@ import {
 
 type GeneratedInviteImageOption = {
   id: string;
+  sourcePath: string;
   previewUrl: string;
   previewPath: string;
 };
@@ -213,8 +214,7 @@ export function InviteTemplateStudio({
         body: JSON.stringify({
           eventId: event.id,
           inviteId: invite.id,
-          previewPath: selected.previewPath,
-          previewUrl: selected.previewUrl,
+          sourcePath: selected.sourcePath,
         }),
       });
       const payload = await response.json().catch(() => null);
