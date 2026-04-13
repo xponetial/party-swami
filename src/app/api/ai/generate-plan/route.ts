@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enforceAiLimits } from "@/lib/ai/limits";
 import { generatePlanForEvent } from "@/lib/ai/workflows";
+import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
@@ -31,6 +32,17 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ ok: false, message: "You must be signed in." }, { status: 401 });
+  }
+  const aiGenerationEnabled = await isFeatureFlagEnabled("ai_generation", {
+    userId: user.id,
+    fallbackEnabled: true,
+  });
+
+  if (!aiGenerationEnabled) {
+    return NextResponse.json(
+      { ok: false, message: "AI generation is temporarily unavailable." },
+      { status: 503 },
+    );
   }
 
   const limit = await enforceAiLimits(supabase, {
