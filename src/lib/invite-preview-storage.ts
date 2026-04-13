@@ -204,11 +204,20 @@ export async function finalizeInviteGeneratedImageFromSource({
   }
 
   const sourceBuffer = Buffer.from(await sourceBlob.arrayBuffer());
-  const highResPng = await sharp(sourceBuffer)
-    .resize(INVITE_EXPORT_WIDTH, INVITE_EXPORT_HEIGHT, { fit: "cover" })
-    .withMetadata({ density: 300 })
-    .png()
-    .toBuffer();
+  let highResPng: Buffer;
+  try {
+    highResPng = await sharp(sourceBuffer)
+      .resize(INVITE_EXPORT_WIDTH, INVITE_EXPORT_HEIGHT, { fit: "cover" })
+      .withMetadata({ density: 300 })
+      .png()
+      .toBuffer();
+  } catch {
+    // Fallback if metadata embedding fails in the runtime image pipeline.
+    highResPng = await sharp(sourceBuffer)
+      .resize(INVITE_EXPORT_WIDTH, INVITE_EXPORT_HEIGHT, { fit: "cover" })
+      .png()
+      .toBuffer();
+  }
   const highResPath = `user-assets/${userId}/${eventId}/${inviteId}-${Date.now()}-selected-high.png`;
 
   const { error: uploadError } = await supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(

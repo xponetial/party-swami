@@ -76,48 +76,59 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Invite not found." }, { status: 404 });
   }
 
-  const finalized = await finalizeInviteGeneratedImageFromSource({
-    userId: user.id,
-    eventId: parsed.data.eventId,
-    inviteId: parsed.data.inviteId,
-    sourcePath: parsed.data.sourcePath,
-  });
+  try {
+    const finalized = await finalizeInviteGeneratedImageFromSource({
+      userId: user.id,
+      eventId: parsed.data.eventId,
+      inviteId: parsed.data.inviteId,
+      sourcePath: parsed.data.sourcePath,
+    });
 
-  const fallback = {
-    templateId: "default-template",
-    packSlug: "default-pack",
-    categoryKey: "general",
-    categoryLabel: "General",
-    fields: {
-      title: "Party Swami Invite",
-      subtitle: "Celebration",
-      dateText: "Date coming soon",
-      locationText: "Location coming soon",
-      messageText: "You're invited.",
-      ctaText: "RSVP now",
-      backgroundImageUrl: null,
-      backgroundImagePath: null,
-    },
-  };
-  const normalized = normalizeInviteDesignData(inviteRow.design_json, fallback);
-  const nextDesign = {
-    ...normalized,
-    fields: {
-      ...normalized.fields,
-      backgroundImageUrl: finalized.highResUrl,
-      backgroundImagePath: finalized.highResPath,
-    },
-  };
+    const fallback = {
+      templateId: "default-template",
+      packSlug: "default-pack",
+      categoryKey: "general",
+      categoryLabel: "General",
+      fields: {
+        title: "Party Swami Invite",
+        subtitle: "Celebration",
+        dateText: "Date coming soon",
+        locationText: "Location coming soon",
+        messageText: "You're invited.",
+        ctaText: "RSVP now",
+        backgroundImageUrl: null,
+        backgroundImagePath: null,
+      },
+    };
+    const normalized = normalizeInviteDesignData(inviteRow.design_json, fallback);
+    const nextDesign = {
+      ...normalized,
+      fields: {
+        ...normalized.fields,
+        backgroundImageUrl: finalized.highResUrl,
+        backgroundImagePath: finalized.highResPath,
+      },
+    };
 
-  await supabase
-    .from("invites")
-    .update({ design_json: nextDesign })
-    .eq("id", parsed.data.inviteId)
-    .eq("event_id", parsed.data.eventId);
+    await supabase
+      .from("invites")
+      .update({ design_json: nextDesign })
+      .eq("id", parsed.data.inviteId)
+      .eq("event_id", parsed.data.eventId);
 
-  return NextResponse.json({
-    ok: true,
-    imageUrl: finalized.highResUrl,
-    message: "Selected image finalized and applied.",
-  });
+    return NextResponse.json({
+      ok: true,
+      imageUrl: finalized.highResUrl,
+      message: "Selected image finalized and applied.",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not finalize selected image.";
+    console.error("Finalize invite image failed", {
+      userId: user.id,
+      eventId: parsed.data.eventId,
+      inviteId: parsed.data.inviteId,
+      message,
+    });
+    return NextResponse.json({ ok: false, message }, { status: 400 });
+  }
 }
