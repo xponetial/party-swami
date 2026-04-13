@@ -18,10 +18,12 @@ type PublicInviteRecord = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
+  const { searchParams } = new URL(request.url);
+  const shouldDownload = searchParams.get("download") === "1";
   const supabase = await createSupabaseServerClient();
   const { data: inviteRows, error } = await supabase.rpc("get_public_invite_by_slug", {
     p_slug: slug,
@@ -34,10 +36,14 @@ export async function GET(
   const invite = inviteRows[0] as PublicInviteRecord;
   const png = await createInviteCardImagePng(invite);
 
-  return new Response(new Uint8Array(png), {
-    headers: {
-      "cache-control": "public, max-age=300, stale-while-revalidate=86400",
-      "content-type": "image/png",
-    },
+  const headers = new Headers({
+    "cache-control": "public, max-age=300, stale-while-revalidate=86400",
+    "content-type": "image/png",
   });
+
+  if (shouldDownload) {
+    headers.set("content-disposition", `attachment; filename="party-swami-invite-${slug}.png"`);
+  }
+
+  return new Response(new Uint8Array(png), { headers });
 }

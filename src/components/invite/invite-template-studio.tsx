@@ -14,6 +14,7 @@ import {
   type InviteDesignData,
 } from "@/lib/invite-design";
 import type { EventDetails, InviteDetails } from "@/lib/events";
+import type { InviteFeatureAccess } from "@/lib/invite-feature-access";
 import {
   findInviteTemplate,
   type InviteTemplateCategory,
@@ -80,10 +81,12 @@ export function InviteTemplateStudio({
   categories,
   event,
   invite,
+  featureAccess,
 }: {
   categories: InviteTemplateCategory[];
   event: EventDetails;
   invite: InviteDetails;
+  featureAccess: InviteFeatureAccess;
 }) {
   const initialDesign = useMemo(
     () => buildDefaultDesign(event, invite, categories),
@@ -100,6 +103,8 @@ export function InviteTemplateStudio({
     }) ?? selectedCategory.templates[0];
 
   const nextDesignJson = JSON.stringify(design);
+  const inviteImageDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1`;
+  const invitePrintDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=print`;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -114,13 +119,17 @@ export function InviteTemplateStudio({
                 invite.
               </p>
             </div>
-            <AiGenerateButton
-              endpoint="/api/ai/generate-invite-copy"
-              eventId={event.id}
-              label="Refresh wording with AI"
-              pendingLabel="Refreshing wording..."
-              variant="ghost"
-            />
+            {featureAccess.aiGenerationEnabled ? (
+              <AiGenerateButton
+                endpoint="/api/ai/generate-invite-copy"
+                eventId={event.id}
+                label="Refresh wording with AI"
+                pendingLabel="Refreshing wording..."
+                variant="ghost"
+              />
+            ) : (
+              <p className="text-xs text-ink-muted">AI wording refresh is currently unavailable.</p>
+            )}
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -267,13 +276,19 @@ export function InviteTemplateStudio({
             <label className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Label htmlFor="card-message">Message to guests</Label>
-                <AiGenerateButton
-                  endpoint="/api/ai/generate-invite-copy"
-                  eventId={event.id}
-                  label="Rewrite with AI"
-                  pendingLabel="Rewriting..."
-                  variant="secondary"
-                />
+                {featureAccess.aiGenerationEnabled ? (
+                  <AiGenerateButton
+                    endpoint="/api/ai/generate-invite-copy"
+                    eventId={event.id}
+                    label="Rewrite with AI"
+                    pendingLabel="Rewriting..."
+                    variant="secondary"
+                  />
+                ) : (
+                  <p className="text-xs text-ink-muted">
+                    AI rewrite is currently unavailable for this workspace.
+                  </p>
+                )}
               </div>
               <textarea
                 id="card-message"
@@ -326,6 +341,56 @@ export function InviteTemplateStudio({
               design={design}
               template={selectedTemplate}
             />
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
+          <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Invite media tools</p>
+          <div className="mt-3 space-y-3">
+            <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
+              <p className="text-sm font-semibold text-ink">High-res download</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Download a PNG of this invitation card for sharing outside Party Swami.
+              </p>
+              {featureAccess.highResDownloadEnabled ? (
+                <Button asChild className="mt-3" variant="secondary">
+                  <a download href={inviteImageDownloadHref}>
+                    Download high-res PNG
+                  </a>
+                </Button>
+              ) : (
+                <Button className="mt-3" disabled type="button" variant="secondary">
+                  High-res download disabled
+                </Button>
+              )}
+            </div>
+
+            <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
+              <p className="text-sm font-semibold text-ink">Print-ready export</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Export a print-oriented PNG for local print workflows.
+              </p>
+              {featureAccess.printingEnabled ? (
+                <Button asChild className="mt-3" variant="secondary">
+                  <a download href={invitePrintDownloadHref}>
+                    Download print-ready PNG
+                  </a>
+                </Button>
+              ) : (
+                <Button className="mt-3" disabled type="button" variant="secondary">
+                  Printing is coming soon
+                </Button>
+              )}
+            </div>
+
+            <div className="rounded-[1.5rem] border border-border bg-white/80 p-4">
+              <p className="text-sm font-semibold text-ink">Upload and edit images</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                {featureAccess.uploadEditingEnabled
+                  ? "Enabled for rollout. The upload/edit surface is next in this Phase 2 stream."
+                  : "Currently disabled by feature flag."}
+              </p>
+            </div>
           </div>
         </div>
 
