@@ -6,6 +6,8 @@ import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+const HIGH_RES_WIDTH = 1500;
+const HIGH_RES_HEIGHT = 2100;
 
 type PublicInviteRecord = {
   event_id: string;
@@ -100,6 +102,14 @@ export async function GET(
   }
 
   let png = await createInviteCardImagePng(invite);
+
+  if (preset === "high") {
+    png = await sharp(png)
+      .resize(HIGH_RES_WIDTH, HIGH_RES_HEIGHT, { fit: "cover" })
+      .withMetadata({ density: 300 })
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
+      .toBuffer();
+  }
 
   if (preset === "low") {
     png = await sharp(png)

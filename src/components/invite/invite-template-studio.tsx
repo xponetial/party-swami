@@ -347,6 +347,12 @@ export function InviteTemplateStudio({
                     packSlug: template.packSlug,
                     categoryKey: template.categoryKey,
                     categoryLabel: template.categoryLabel,
+                    fields: {
+                      ...current.fields,
+                      // When a host picks a template, switch preview back to template artwork.
+                      backgroundImageUrl: null,
+                      backgroundImagePath: null,
+                    },
                   }))
                 }
                 type="button"

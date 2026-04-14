@@ -61,7 +61,7 @@ function readImageCountCapEnv(tier: PlanTier) {
   if (tier === "pro") {
     const value = Number(process.env.INVITE_IMAGE_PRO_MAX_IMAGES_PER_MONTH);
     if (Number.isFinite(value) && value > 0) return value;
-    return 300;
+    return 30;
   }
 
   return 0;

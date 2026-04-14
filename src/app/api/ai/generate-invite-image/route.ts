@@ -36,8 +36,8 @@ const INVITE_IMAGE_DEFAULT_CAPS: Record<"pro" | "admin", InviteImageHardCaps> = 
   pro: {
     maxImagesPerRequest: 3,
     maxImagesPerDay: 30,
-    maxImagesPerMonth: 300,
-    maxMonthlyCostUsd: 10,
+    maxImagesPerMonth: 30,
+    maxMonthlyCostUsd: 1000,
   },
   admin: {
     maxImagesPerRequest: 3,
