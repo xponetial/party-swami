@@ -1016,6 +1016,11 @@ export default async function DashboardPage({
         <div className="mt-3 rounded-2xl border border-border bg-[rgba(255,255,255,0.32)] px-4 py-3 text-sm text-ink-muted">
           Monthly image budget: <span className="font-semibold text-ink">{formatCost(imageUsage.monthlyBudgetUsd)}</span> |
           Monthly image cap: <span className="font-semibold text-ink">{imageUsage.monthlyImageCap}</span>
+          {imageUsage.purchasedImagePackCount > 0
+            ? (
+              <> | Purchased packs: <span className="font-semibold text-ink">{imageUsage.purchasedImagePackCount}</span></>
+            )
+            : null}
         </div>
       </DashboardPanel>
 

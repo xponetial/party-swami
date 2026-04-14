@@ -24,9 +24,14 @@ export type InviteImageMonthlyUsage = {
   monthlyBudgetUsd: number;
   usedBudgetUsd: number;
   remainingBudgetUsd: number;
+  baseMonthlyBudgetUsd: number;
+  additionalBudgetUsd: number;
   generatedImagesCount: number;
+  baseMonthlyImageCap: number;
+  additionalImagesPurchased: number;
   monthlyImageCap: number;
   imagesLeftThisMonth: number;
+  purchasedImagePackCount: number;
 };
 
 function readImageBudgetEnv(tier: PlanTier) {
@@ -49,6 +54,12 @@ function readInviteImageRequestCostUsd() {
   const value = Number(process.env.OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD);
   if (Number.isFinite(value) && value > 0) return value;
   return 0.86;
+}
+
+function readImagePackSize() {
+  const value = Number(process.env.INVITE_IMAGE_PACK_SIZE);
+  if (Number.isFinite(value) && value > 0) return Math.floor(value);
+  return 30;
 }
 
 function readImageCountCapEnv(tier: PlanTier) {
@@ -170,14 +181,19 @@ export async function getInviteImageUsageForUser(
       monthlyBudgetUsd: 0,
       usedBudgetUsd: 0,
       remainingBudgetUsd: 0,
+      baseMonthlyBudgetUsd: 0,
+      additionalBudgetUsd: 0,
       generatedImagesCount: 0,
+      baseMonthlyImageCap: 0,
+      additionalImagesPurchased: 0,
       monthlyImageCap: 0,
       imagesLeftThisMonth: 0,
+      purchasedImagePackCount: 0,
     };
     return zero;
   }
 
-  const [{ data: generations = [] }, { data: images = [] }] = await Promise.all([
+  const [{ data: generations = [] }, { data: images = [] }, { data: allowance }] = await Promise.all([
     supabase
       .from("ai_generations")
       .select("id, estimated_cost_usd")
@@ -193,29 +209,47 @@ export async function getInviteImageUsageForUser(
       .eq("status", "option")
       .gte("created_at", monthStartIso)
       .returns<Array<{ id: string }>>(),
+    supabase
+      .from("user_image_monthly_allowances")
+      .select("additional_images, additional_budget_usd")
+      .eq("user_id", userId)
+      .eq("usage_month", usageMonth)
+      .maybeSingle<{ additional_images: number; additional_budget_usd: number }>(),
   ]);
 
   const safeGenerations = generations ?? [];
   const safeImages = images ?? [];
   const requestCostUsd = readInviteImageRequestCostUsd();
+  const additionalImagesPurchased = Math.max(0, Number(allowance?.additional_images ?? 0));
+  const additionalBudgetUsd = Math.max(0, Number(allowance?.additional_budget_usd ?? 0));
+  const baseMonthlyImageCap = readImageCountCapEnv(planTier);
+  const monthlyImageCap = baseMonthlyImageCap + additionalImagesPurchased;
+  const totalMonthlyBudgetUsd = Number((monthlyBudgetUsd + additionalBudgetUsd).toFixed(2));
+  const packSize = readImagePackSize();
+  const purchasedImagePackCount =
+    packSize > 0 ? Math.floor(additionalImagesPurchased / packSize) : 0;
 
   const usedBudgetUsd = Number(
     safeGenerations
       .reduce((sum, row) => sum + Math.max(Number(row.estimated_cost_usd ?? 0), requestCostUsd), 0)
       .toFixed(6),
   );
-  const remainingBudgetUsd = Math.max(0, Number((monthlyBudgetUsd - usedBudgetUsd).toFixed(6)));
+  const remainingBudgetUsd = Math.max(0, Number((totalMonthlyBudgetUsd - usedBudgetUsd).toFixed(6)));
 
-  const monthlyImageCap = readImageCountCapEnv(planTier);
   const imagesLeftThisMonth = Math.max(0, monthlyImageCap - safeImages.length);
 
   return {
     usageMonth,
-    monthlyBudgetUsd,
+    monthlyBudgetUsd: totalMonthlyBudgetUsd,
     usedBudgetUsd,
     remainingBudgetUsd,
+    baseMonthlyBudgetUsd: monthlyBudgetUsd,
+    additionalBudgetUsd,
     generatedImagesCount: safeImages.length,
+    baseMonthlyImageCap,
+    additionalImagesPurchased,
     monthlyImageCap,
     imagesLeftThisMonth,
+    purchasedImagePackCount,
   } satisfies InviteImageMonthlyUsage;
 }

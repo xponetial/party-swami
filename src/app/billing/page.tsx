@@ -5,8 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 import { ProUpgradeButton } from "@/components/billing/pro-upgrade-button";
+import { BuyImagePackButton } from "@/components/billing/buy-image-pack-button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getAiUsageForUser } from "@/lib/ai/usage";
+import { getAiUsageForUser, getInviteImageUsageForUser } from "@/lib/ai/usage";
 
 type BillingProfile = {
   plan_tier: "free" | "pro" | "admin" | null;
@@ -96,6 +97,10 @@ export default async function BillingPage() {
   const planLabel = planLabelFromTier(planTier);
   const showPaymentIssueMessage =
     planTier === "free" && rawBillingStatus !== null && PAYMENT_ISSUE_STATUSES.has(rawBillingStatus);
+  const hasImageAccess = planTier === "pro" || planTier === "admin";
+  const inviteImageUsage = hasImageAccess
+    ? await getInviteImageUsageForUser(supabase, user.id, planTier === "admin" ? "admin" : "pro")
+    : null;
   const canManageBilling =
     Boolean(profile?.stripe_customer_id) &&
     (planTier === "pro" || planTier === "admin" || showPaymentIssueMessage);
@@ -129,9 +134,26 @@ export default async function BillingPage() {
               <p className="mt-2 text-base font-semibold text-ink">{usage.remaining.requests}</p>
             </div>
           </div>
+          {inviteImageUsage ? (
+            <div className="mt-3 rounded-2xl border border-border bg-white/80 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">AI images this month</p>
+              <p className="mt-2 text-sm text-ink">
+                <span className="font-semibold">{inviteImageUsage.generatedImagesCount}</span> used |
+                <span className="font-semibold"> {inviteImageUsage.imagesLeftThisMonth}</span> left from cap
+                <span className="font-semibold"> {inviteImageUsage.monthlyImageCap}</span>
+              </p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Budget used: ${inviteImageUsage.usedBudgetUsd.toFixed(2)} / ${inviteImageUsage.monthlyBudgetUsd.toFixed(2)}
+                {inviteImageUsage.purchasedImagePackCount > 0
+                  ? ` | ${inviteImageUsage.purchasedImagePackCount} image pack${inviteImageUsage.purchasedImagePackCount === 1 ? "" : "s"} purchased`
+                  : ""}
+              </p>
+            </div>
+          ) : null}
 
           <div className="mt-5 flex flex-wrap gap-2">
             {canManageBilling ? <ManageBillingButton /> : <ProUpgradeButton />}
+            {hasImageAccess ? <BuyImagePackButton /> : null}
             <Button asChild variant="secondary">
               <Link href="/pricing">View plans</Link>
             </Button>

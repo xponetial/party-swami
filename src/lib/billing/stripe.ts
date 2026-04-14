@@ -19,6 +19,22 @@ export function getProMonthlyPriceId() {
   return process.env.STRIPE_PRICE_ID_PRO_MONTHLY?.trim() ?? null;
 }
 
+export function getImagePackPriceId() {
+  return process.env.STRIPE_PRICE_ID_IMAGE_PACK?.trim() ?? null;
+}
+
+export function getImagePackSize() {
+  const value = Number(process.env.INVITE_IMAGE_PACK_SIZE);
+  if (Number.isFinite(value) && value > 0) return Math.floor(value);
+  return 30;
+}
+
+export function getImagePackBudgetUsd() {
+  const value = Number(process.env.INVITE_IMAGE_PACK_BUDGET_USD);
+  if (Number.isFinite(value) && value > 0) return Number(value.toFixed(2));
+  return 10;
+}
+
 export function getStripeWebhookSecret() {
   return process.env.STRIPE_WEBHOOK_SECRET?.trim() ?? null;
 }

@@ -24,10 +24,18 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       usage: {
+        usageMonth: "",
         monthlyBudgetUsd: 0,
         usedBudgetUsd: 0,
         remainingBudgetUsd: 0,
+        baseMonthlyBudgetUsd: 0,
+        additionalBudgetUsd: 0,
         generatedImagesCount: 0,
+        baseMonthlyImageCap: 0,
+        additionalImagesPurchased: 0,
+        monthlyImageCap: 0,
+        imagesLeftThisMonth: 0,
+        purchasedImagePackCount: 0,
       },
     });
   }
@@ -35,4 +43,3 @@ export async function GET() {
   const usage = await getInviteImageUsageForUser(supabase, user.id, tier);
   return NextResponse.json({ ok: true, usage });
 }
-

@@ -32,6 +32,11 @@ type InviteImageHardCaps = {
   maxMonthlyCostUsd: number;
 };
 
+type InviteImageAllowance = {
+  additional_images: number;
+  additional_budget_usd: number;
+} | null;
+
 const INVITE_IMAGE_DEFAULT_CAPS: Record<"pro" | "admin", InviteImageHardCaps> = {
   pro: {
     maxImagesPerRequest: 3,
@@ -83,6 +88,7 @@ async function enforceInviteImageHardCaps({
   requestedImageCount: number;
 }) {
   const caps = getInviteImageCaps(tier);
+  const usageMonth = monthBucket();
 
   if (requestedImageCount > caps.maxImagesPerRequest) {
     return {
@@ -95,7 +101,7 @@ async function enforceInviteImageHardCaps({
   const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 
-  const [{ data: dayRows }, { data: monthRows }] = await Promise.all([
+  const [{ data: dayRows }, { data: monthRows }, { data: allowance }] = await Promise.all([
     supabase
       .from("ai_generations")
       .select("output_tokens")
@@ -110,6 +116,12 @@ async function enforceInviteImageHardCaps({
       .eq("generation_type", "invitation_image")
       .eq("status", "success")
       .gte("created_at", monthStart),
+    supabase
+      .from("user_image_monthly_allowances")
+      .select("additional_images, additional_budget_usd")
+      .eq("user_id", userId)
+      .eq("usage_month", usageMonth)
+      .maybeSingle<InviteImageAllowance>(),
   ]);
 
   const dayImages = (dayRows ?? []).reduce((sum, row) => sum + Math.max(Number(row.output_tokens ?? 0), 0), 0);
@@ -118,6 +130,10 @@ async function enforceInviteImageHardCaps({
     0,
   );
   const requestCostUsd = readInviteImageRequestCostUsd();
+  const additionalImagesPurchased = Math.max(0, Number(allowance?.additional_images ?? 0));
+  const additionalBudgetUsd = Math.max(0, Number(allowance?.additional_budget_usd ?? 0));
+  const effectiveMonthlyImageCap = caps.maxImagesPerMonth + additionalImagesPurchased;
+  const effectiveMonthlyCostCap = Number((caps.maxMonthlyCostUsd + additionalBudgetUsd).toFixed(2));
   const monthCost = (monthRows ?? []).reduce(
     (sum, row) => sum + Math.max(Number(row.estimated_cost_usd ?? 0), requestCostUsd),
     0,
@@ -130,14 +146,17 @@ async function enforceInviteImageHardCaps({
     };
   }
 
-  if (monthImages + requestedImageCount > caps.maxImagesPerMonth) {
+  if (monthImages + requestedImageCount > effectiveMonthlyImageCap) {
     return {
       allowed: false,
-      message: `Monthly image cap reached (${caps.maxImagesPerMonth}).`,
+      message:
+        additionalImagesPurchased > 0
+          ? `Monthly image cap reached (${effectiveMonthlyImageCap}).`
+          : `Monthly image cap reached (${caps.maxImagesPerMonth}). Purchase a $10 image pack to unlock more images.`,
     };
   }
 
-  if (monthCost >= caps.maxMonthlyCostUsd) {
+  if (monthCost >= effectiveMonthlyCostCap) {
     return {
       allowed: false,
       message: "Monthly image generation budget has been reached for your plan.",

@@ -7,6 +7,9 @@ type ImageBudgetUsage = {
   usedBudgetUsd: number;
   remainingBudgetUsd: number;
   generatedImagesCount: number;
+  monthlyImageCap: number;
+  imagesLeftThisMonth: number;
+  purchasedImagePackCount: number;
 };
 
 function formatUsd(value: number) {
@@ -62,10 +65,13 @@ export function ImageBudgetMeter({ initialUsage }: { initialUsage: ImageBudgetUs
         />
       </div>
       <p className="mt-2 text-xs text-ink-muted">
-        {usage.generatedImagesCount} images generated this month
+        {usage.generatedImagesCount} generated | {usage.imagesLeftThisMonth} left this month
       </p>
-      <p className="text-xs text-ink-muted">{formatUsd(usage.remainingBudgetUsd)} remaining</p>
+      <p className="text-xs text-ink-muted">
+        Cap {usage.monthlyImageCap} images
+        {usage.purchasedImagePackCount > 0 ? ` (${usage.purchasedImagePackCount} pack${usage.purchasedImagePackCount === 1 ? "" : "s"} added)` : ""}
+      </p>
+      <p className="text-xs text-ink-muted">{formatUsd(usage.remainingBudgetUsd)} budget remaining</p>
     </div>
   );
 }
-
