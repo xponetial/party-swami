@@ -139,17 +139,10 @@ async function enforceInviteImageHardCaps({
   return { allowed: true, caps };
 }
 
-function estimateInviteImageCostUsd({
-  generatedCandidates,
-  textChecksRun,
-}: {
-  generatedCandidates: number;
-  textChecksRun: number;
-}) {
-  const perImageUsd = readNumberEnv("OPENAI_INVITE_IMAGE_COST_PER_IMAGE_USD", 0.04);
-  const perTextCheckUsd = readNumberEnv("OPENAI_INVITE_IMAGE_TEXT_CHECK_COST_USD", 0.0015);
-  const total = generatedCandidates * perImageUsd + textChecksRun * perTextCheckUsd;
-  return Number(total.toFixed(6));
+function estimateInviteImageCostUsd() {
+  // Temporary business rule: treat every invite-image generation request as a flat $0.86 cost.
+  // This keeps in-app budgeting aligned with observed spend until full cost reconciliation is in place.
+  return Number(readNumberEnv("OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD", 0.86).toFixed(6));
 }
 
 async function trackInviteImageGeneration({
@@ -390,10 +383,7 @@ export async function POST(request: Request) {
       ),
     );
 
-    const estimatedCostUsd = estimateInviteImageCostUsd({
-      generatedCandidates: generated.metrics.generatedCandidates,
-      textChecksRun: generated.metrics.textChecksRun,
-    });
+    const estimatedCostUsd = estimateInviteImageCostUsd();
     const perImageEstimatedCostUsd = Number(
       (estimatedCostUsd / Math.max(options.length, 1)).toFixed(6),
     );
