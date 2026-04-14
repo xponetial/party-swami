@@ -118,6 +118,7 @@ export function InviteTemplateStudio({
   const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
   const [generatedOptions, setGeneratedOptions] = useState<GeneratedInviteImageOption[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedLibraryImageId, setSelectedLibraryImageId] = useState<string | null>(null);
   const [isFinalizingGeneratedImage, setIsFinalizingGeneratedImage] = useState(false);
 
   function notifyImageUsageUpdated() {
@@ -206,10 +207,16 @@ export function InviteTemplateStudio({
     }
   }
 
-  async function handleFinalizeGeneratedImage() {
-    const selected = generatedOptions.find((option) => option.id === selectedOptionId);
-
-    if (!selected) return;
+  async function finalizeFromSourcePath({
+    sourcePath,
+    previewUrl,
+    successMessage,
+  }: {
+    sourcePath: string;
+    previewUrl: string;
+    successMessage: string;
+  }) {
+    if (!sourcePath) return;
 
     setIsFinalizingGeneratedImage(true);
     setImageGenerationError(null);
@@ -222,7 +229,7 @@ export function InviteTemplateStudio({
         body: JSON.stringify({
           eventId: event.id,
           inviteId: invite.id,
-          sourcePath: selected.sourcePath,
+          sourcePath,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -236,15 +243,37 @@ export function InviteTemplateStudio({
         ...current,
         fields: {
           ...current.fields,
-          backgroundImageUrl: payload?.imageUrl ?? selected.previewUrl,
-          backgroundImagePath: null,
+          backgroundImageUrl: payload?.imageUrl ?? previewUrl,
+          backgroundImagePath: sourcePath,
         },
       }));
-      setImageGenerationMessage(payload?.message ?? "Selected image finalized.");
+      setImageGenerationMessage(payload?.message ?? successMessage);
       notifyImageUsageUpdated();
     } finally {
       setIsFinalizingGeneratedImage(false);
     }
+  }
+
+  async function handleFinalizeGeneratedImage() {
+    const selected = generatedOptions.find((option) => option.id === selectedOptionId);
+
+    if (!selected) return;
+    await finalizeFromSourcePath({
+      sourcePath: selected.sourcePath,
+      previewUrl: selected.previewUrl,
+      successMessage: "Selected image finalized.",
+    });
+  }
+
+  async function handleFinalizeLibraryImage() {
+    const selected = libraryImages.find((image) => image.id === selectedLibraryImageId);
+    if (!selected) return;
+
+    await finalizeFromSourcePath({
+      sourcePath: selected.storagePath,
+      previewUrl: selected.publicUrl,
+      successMessage: "Library image finalized and applied.",
+    });
   }
 
   return (
@@ -616,6 +645,7 @@ export function InviteTemplateStudio({
                             key={option.id}
                             onClick={() => {
                               setSelectedOptionId(option.id);
+                              setSelectedLibraryImageId(null);
                               setDesign((current) => ({
                                 ...current,
                                 fields: {
@@ -671,9 +701,15 @@ export function InviteTemplateStudio({
                   <div className="grid grid-cols-3 gap-3">
                     {libraryImages.slice(0, 9).map((image) => (
                       <button
-                        className="overflow-hidden rounded-xl border border-border transition hover:border-brand/40"
+                        className={`overflow-hidden rounded-xl border transition ${
+                          image.id === selectedLibraryImageId
+                            ? "border-brand shadow-party"
+                            : "border-border hover:border-brand/40"
+                        }`}
                         key={image.id}
-                        onClick={() =>
+                        onClick={() => {
+                          setSelectedLibraryImageId(image.id);
+                          setSelectedOptionId(null);
                           setDesign((current) => ({
                             ...current,
                             fields: {
@@ -681,8 +717,8 @@ export function InviteTemplateStudio({
                               backgroundImageUrl: image.publicUrl,
                               backgroundImagePath: image.storagePath,
                             },
-                          }))
-                        }
+                          }));
+                        }}
                         type="button"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -694,6 +730,16 @@ export function InviteTemplateStudio({
                       </button>
                     ))}
                   </div>
+                  <Button
+                    disabled={!selectedLibraryImageId || isFinalizingGeneratedImage}
+                    onClick={handleFinalizeLibraryImage}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {isFinalizingGeneratedImage
+                      ? "Finalizing selected image..."
+                      : "Finalize selected image"}
+                  </Button>
                   <Button asChild type="button" variant="ghost">
                     <Link href="/images">View full image library</Link>
                   </Button>
