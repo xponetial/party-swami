@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { startTransition, useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import {
   clearInviteImageAction,
   saveInviteAction,
@@ -104,7 +103,6 @@ export function InviteTemplateStudio({
   featureAccess: InviteFeatureAccess;
   libraryImages: InviteLibraryImage[];
 }) {
-  const router = useRouter();
   const initialDesign = useMemo(
     () => buildDefaultDesign(event, invite, categories),
     [categories, event, invite],
@@ -122,10 +120,8 @@ export function InviteTemplateStudio({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [isFinalizingGeneratedImage, setIsFinalizingGeneratedImage] = useState(false);
 
-  function refreshWorkspaceMeters() {
-    startTransition(() => {
-      router.refresh();
-    });
+  function notifyImageUsageUpdated() {
+    window.dispatchEvent(new Event("party-swami:image-usage-updated"));
   }
 
   useEffect(() => {
@@ -204,7 +200,7 @@ export function InviteTemplateStudio({
       }
 
       setImageGenerationMessage(payload?.message ?? "Generated a new invite background image.");
-      refreshWorkspaceMeters();
+      notifyImageUsageUpdated();
     } finally {
       setIsGeneratingImage(false);
     }
@@ -245,7 +241,7 @@ export function InviteTemplateStudio({
         },
       }));
       setImageGenerationMessage(payload?.message ?? "Selected image finalized.");
-      refreshWorkspaceMeters();
+      notifyImageUsageUpdated();
     } finally {
       setIsFinalizingGeneratedImage(false);
     }
