@@ -52,6 +52,10 @@ function readNumberEnv(name: string, fallback: number) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function readInviteImageRequestCostUsd() {
+  return readNumberEnv("OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD", 0.86);
+}
+
 function getInviteImageCaps(planTier: "pro" | "admin"): InviteImageHardCaps {
   const defaults = INVITE_IMAGE_DEFAULT_CAPS[planTier];
   const prefix = `INVITE_IMAGE_${planTier.toUpperCase()}`;
@@ -113,7 +117,11 @@ async function enforceInviteImageHardCaps({
     (sum, row) => sum + Math.max(Number(row.output_tokens ?? 0), 0),
     0,
   );
-  const monthCost = (monthRows ?? []).reduce((sum, row) => sum + Number(row.estimated_cost_usd ?? 0), 0);
+  const requestCostUsd = readInviteImageRequestCostUsd();
+  const monthCost = (monthRows ?? []).reduce(
+    (sum, row) => sum + Math.max(Number(row.estimated_cost_usd ?? 0), requestCostUsd),
+    0,
+  );
 
   if (dayImages + requestedImageCount > caps.maxImagesPerDay) {
     return {
@@ -142,7 +150,7 @@ async function enforceInviteImageHardCaps({
 function estimateInviteImageCostUsd() {
   // Temporary business rule: treat every invite-image generation request as a flat $0.86 cost.
   // This keeps in-app budgeting aligned with observed spend until full cost reconciliation is in place.
-  return Number(readNumberEnv("OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD", 0.86).toFixed(6));
+  return Number(readInviteImageRequestCostUsd().toFixed(6));
 }
 
 async function trackInviteImageGeneration({

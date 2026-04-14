@@ -43,6 +43,12 @@ function readImageBudgetEnv(tier: PlanTier) {
   return 0;
 }
 
+function readInviteImageRequestCostUsd() {
+  const value = Number(process.env.OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD);
+  if (Number.isFinite(value) && value > 0) return value;
+  return 0.86;
+}
+
 function currentMonthBucket() {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
@@ -154,12 +160,12 @@ export async function getInviteImageUsageForUser(
   const [{ data: generations = [] }, { data: images = [] }] = await Promise.all([
     supabase
       .from("ai_generations")
-      .select("estimated_cost_usd")
+      .select("id, estimated_cost_usd")
       .eq("user_id", userId)
       .eq("generation_type", "invitation_image")
       .eq("status", "success")
       .gte("created_at", monthStartIso)
-      .returns<Array<{ estimated_cost_usd: number }>>(),
+      .returns<Array<{ id: string; estimated_cost_usd: number }>>(),
     supabase
       .from("invite_generated_images")
       .select("id")
@@ -171,10 +177,11 @@ export async function getInviteImageUsageForUser(
 
   const safeGenerations = generations ?? [];
   const safeImages = images ?? [];
+  const requestCostUsd = readInviteImageRequestCostUsd();
 
   const usedBudgetUsd = Number(
     safeGenerations
-      .reduce((sum, row) => sum + Number(row.estimated_cost_usd ?? 0), 0)
+      .reduce((sum, row) => sum + Math.max(Number(row.estimated_cost_usd ?? 0), requestCostUsd), 0)
       .toFixed(6),
   );
   const remainingBudgetUsd = Math.max(0, Number((monthlyBudgetUsd - usedBudgetUsd).toFixed(6)));
