@@ -213,13 +213,13 @@ export async function finalizeInviteGeneratedImageFromSource({
     highResPng = await sharp(sourceBuffer)
       .resize(INVITE_EXPORT_WIDTH, INVITE_EXPORT_HEIGHT, { fit: "cover" })
       .withMetadata({ density: 300 })
-      .png()
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
       .toBuffer();
   } catch {
     // Fallback if metadata embedding fails in the runtime image pipeline.
     highResPng = await sharp(sourceBuffer)
       .resize(INVITE_EXPORT_WIDTH, INVITE_EXPORT_HEIGHT, { fit: "cover" })
-      .png()
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
       .toBuffer();
   }
   const highResPath = `user-assets/${userId}/${eventId}/${inviteId}-${Date.now()}-selected-high.png`;
