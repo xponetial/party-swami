@@ -3,7 +3,6 @@ import path from "node:path";
 import sharp from "sharp";
 import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
 import {
-  compactInviteCopy,
   formatTitleForCard,
   getInviteCardLayout,
   getTitleFontSize,
@@ -231,6 +230,53 @@ async function getBufferSize(buffer: Buffer) {
   };
 }
 
+async function renderFittedTextBuffer(params: {
+  text: string;
+  width: number;
+  maxHeight: number;
+  initialFontSize: number;
+  minFontSize: number;
+  color: string;
+  fontPath: string;
+}) {
+  const {
+    text,
+    width,
+    maxHeight,
+    initialFontSize,
+    minFontSize,
+    color,
+    fontPath,
+  } = params;
+
+  let currentSize = initialFontSize;
+  let selectedBuffer = await renderTextBuffer({
+    text,
+    width,
+    fontSize: currentSize,
+    color,
+    fontPath,
+  });
+  let selectedSize = await getBufferSize(selectedBuffer);
+
+  while (currentSize > minFontSize && selectedSize.height > maxHeight) {
+    currentSize -= 2;
+    selectedBuffer = await renderTextBuffer({
+      text,
+      width,
+      fontSize: currentSize,
+      color,
+      fontPath,
+    });
+    selectedSize = await getBufferSize(selectedBuffer);
+  }
+
+  return {
+    buffer: selectedBuffer,
+    size: selectedSize,
+  };
+}
+
 export async function createInviteCardImagePng(invite: PublicInviteImageRecord) {
   const templateCategories = await getInviteTemplateCatalog();
   const fallbackDesign: InviteDesignData = {
@@ -265,7 +311,7 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
   const titleColor = layout?.accents[0] ?? "#ffffff";
   const ctaColor = layout?.accents[1] ?? "#ffd869";
   const fontPath = getInviteFontPath();
-  const message = compactInviteCopy(design.fields.messageText, 140);
+  const message = design.fields.messageText.trim() || `You're invited to ${design.fields.title}.`;
   const uploadedBackgroundUrl = design.fields.backgroundImageUrl?.trim() || null;
   let backgroundBuffer: Buffer;
 
@@ -317,8 +363,9 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
   const subtitleTop = Math.round(IMAGE_Y + (IMAGE_HEIGHT * titleTop) / 100 - 34);
   const titleTopY = subtitleTop + 44;
   const detailsBoxWidth = Math.round(IMAGE_WIDTH * 0.84);
+  const detailsBoxHeight = 188;
   const detailsBoxX = Math.round((CANVAS_WIDTH - detailsBoxWidth) / 2);
-  const detailsBoxY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * detailsTop) / 100 - 94);
+  const detailsBoxY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * detailsTop) / 100 - detailsBoxHeight / 2);
   const ctaWidth = Math.round(IMAGE_WIDTH * 0.7);
   const ctaX = Math.round((CANVAS_WIDTH - ctaWidth) / 2);
   const ctaY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * ctaTop) / 100 - 42);
@@ -329,17 +376,23 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
     color: titleColor,
     fontPath,
   });
-  const titleBuffer = await renderTextBuffer({
+  const titleMaxHeight = Math.max(120, detailsBoxY - titleTopY - 28);
+  const titleRender = await renderFittedTextBuffer({
     text: titleLines.join("\n"),
     width: IMAGE_WIDTH - 60,
-    fontSize: titleFontSize,
+    maxHeight: titleMaxHeight,
+    initialFontSize: titleFontSize,
+    minFontSize: 40,
     color: titleColor,
     fontPath,
   });
-  const messageBuffer = await renderTextBuffer({
+  const detailsInnerHeight = detailsBoxHeight - 56;
+  const messageRender = await renderFittedTextBuffer({
     text: message,
     width: detailsBoxWidth - 56,
-    fontSize: 21,
+    maxHeight: detailsInnerHeight,
+    initialFontSize: 21,
+    minFontSize: 15,
     color: titleColor,
     fontPath,
   });
@@ -351,8 +404,8 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
     fontPath,
   });
   const eyebrowSize = await getBufferSize(eyebrowBuffer);
-  const titleSize = await getBufferSize(titleBuffer);
-  const messageSize = await getBufferSize(messageBuffer);
+  const titleSize = titleRender.size;
+  const messageSize = messageRender.size;
   const ctaSize = await getBufferSize(ctaBuffer);
   const eyebrowLeft = Math.round(titleCenterX - eyebrowSize.width / 2);
   const titleLeft = Math.round(titleCenterX - titleSize.width / 2);
@@ -389,12 +442,12 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
         top: subtitleTop,
       },
       {
-        input: titleBuffer,
+        input: titleRender.buffer,
         left: titleLeft,
         top: titleTopY,
       },
       {
-        input: messageBuffer,
+        input: messageRender.buffer,
         left: messageLeft,
         top: detailsBoxY + 28,
       },
