@@ -25,11 +25,12 @@ const tiers = [
     recommended: true,
     features: [
       "1000 AI message ideas / month",
-      "100 AI images / month",
+      "30 AI images / month",
       "Upload + edit images",
       "High-res downloads",
       "No watermark",
       "Save & reuse designs",
+      "Additional AI packs available for purchase in app",
     ],
   },
   {
@@ -40,7 +41,7 @@ const tiers = [
     recommended: false,
     features: [
       "3000+ AI message ideas / month",
-      "500 AI images / month",
+      "300 AI images / month",
       "Priority generation",
       "Premium templates",
       "Print-ready exports",
