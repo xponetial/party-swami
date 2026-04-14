@@ -25,6 +25,8 @@ export type InviteImageMonthlyUsage = {
   usedBudgetUsd: number;
   remainingBudgetUsd: number;
   generatedImagesCount: number;
+  monthlyImageCap: number;
+  imagesLeftThisMonth: number;
 };
 
 function readImageBudgetEnv(tier: PlanTier) {
@@ -47,6 +49,22 @@ function readInviteImageRequestCostUsd() {
   const value = Number(process.env.OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD);
   if (Number.isFinite(value) && value > 0) return value;
   return 0.86;
+}
+
+function readImageCountCapEnv(tier: PlanTier) {
+  if (tier === "admin") {
+    const value = Number(process.env.INVITE_IMAGE_ADMIN_MAX_IMAGES_PER_MONTH);
+    if (Number.isFinite(value) && value > 0) return value;
+    return 5000;
+  }
+
+  if (tier === "pro") {
+    const value = Number(process.env.INVITE_IMAGE_PRO_MAX_IMAGES_PER_MONTH);
+    if (Number.isFinite(value) && value > 0) return value;
+    return 300;
+  }
+
+  return 0;
 }
 
 function currentMonthBucket() {
@@ -153,6 +171,8 @@ export async function getInviteImageUsageForUser(
       usedBudgetUsd: 0,
       remainingBudgetUsd: 0,
       generatedImagesCount: 0,
+      monthlyImageCap: 0,
+      imagesLeftThisMonth: 0,
     };
     return zero;
   }
@@ -186,11 +206,16 @@ export async function getInviteImageUsageForUser(
   );
   const remainingBudgetUsd = Math.max(0, Number((monthlyBudgetUsd - usedBudgetUsd).toFixed(6)));
 
+  const monthlyImageCap = readImageCountCapEnv(planTier);
+  const imagesLeftThisMonth = Math.max(0, monthlyImageCap - safeImages.length);
+
   return {
     usageMonth,
     monthlyBudgetUsd,
     usedBudgetUsd,
     remainingBudgetUsd,
     generatedImagesCount: safeImages.length,
+    monthlyImageCap,
+    imagesLeftThisMonth,
   } satisfies InviteImageMonthlyUsage;
 }

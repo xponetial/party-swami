@@ -19,7 +19,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { getAiUsageForUser } from "@/lib/ai/usage";
+import { getAiUsageForUser, getInviteImageUsageForUser } from "@/lib/ai/usage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DashboardEvent = {
@@ -514,6 +514,7 @@ export default async function DashboardPage({
   const aiMenuCount = latestPlan?.menu?.length ?? 0;
   const aiTaskCount = latestPlan?.tasks?.length ?? 0;
   const usage = await getAiUsageForUser(supabase, user.id);
+  const imageUsage = await getInviteImageUsageForUser(supabase, user.id, usage.planTier);
   const safeEventsCount = eventsCount ?? 0;
   const totalEventPages = Math.max(1, Math.ceil(safeEventsCount / eventsPerPage));
   const eventsPage = Math.min(requestedEventsPage, totalEventPages);
@@ -984,6 +985,37 @@ export default async function DashboardPage({
               </div>
             )}
           </div>
+        </div>
+      </DashboardPanel>
+
+      <DashboardPanel
+        title="AI image usage this month"
+        description="Live image-generation budget and monthly image counters for your plan."
+        collapsible
+        defaultOpen={false}
+        summaryMeta={`${imageUsage.generatedImagesCount} images`}
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(245,223,255,0.32)_0%,rgba(237,243,255,0.92)_58%,rgba(228,239,255,0.96)_100%)] p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Budget used</p>
+            <p className="mt-2 text-2xl font-semibold text-ink">{formatCost(imageUsage.usedBudgetUsd)}</p>
+          </div>
+          <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(245,223,255,0.32)_0%,rgba(237,243,255,0.92)_58%,rgba(228,239,255,0.96)_100%)] p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Budget remaining</p>
+            <p className="mt-2 text-2xl font-semibold text-ink">{formatCost(imageUsage.remainingBudgetUsd)}</p>
+          </div>
+          <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(245,223,255,0.32)_0%,rgba(237,243,255,0.92)_58%,rgba(228,239,255,0.96)_100%)] p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Images generated</p>
+            <p className="mt-2 text-2xl font-semibold text-ink">{imageUsage.generatedImagesCount}</p>
+          </div>
+          <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(245,223,255,0.32)_0%,rgba(237,243,255,0.92)_58%,rgba(228,239,255,0.96)_100%)] p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Images left this month</p>
+            <p className="mt-2 text-2xl font-semibold text-ink">{imageUsage.imagesLeftThisMonth}</p>
+          </div>
+        </div>
+        <div className="mt-3 rounded-2xl border border-border bg-[rgba(255,255,255,0.32)] px-4 py-3 text-sm text-ink-muted">
+          Monthly image budget: <span className="font-semibold text-ink">{formatCost(imageUsage.monthlyBudgetUsd)}</span> |
+          Monthly image cap: <span className="font-semibold text-ink">{imageUsage.monthlyImageCap}</span>
         </div>
       </DashboardPanel>
 
