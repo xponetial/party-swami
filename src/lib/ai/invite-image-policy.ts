@@ -44,13 +44,18 @@ export function buildPartySwamiInviteImagePrompt({
   sanitizedStylePrompt: string;
 }) {
   return [
-    "Create a PartySwami invitation background only.",
-    "Format: vertical portrait 2:3 ratio for invitation card artwork.",
+    "Create one Party Swami invitation background image only.",
+    "Style: elegant, modern, high-end design.",
+    "Format: vertical portrait, 2:3 ratio (1024x1536).",
     `Event context: "${eventTitle}" (${eventType}).`,
+    "Composition: single unified scene (no collage, no split panels).",
+    "Place subject elements around the edges and keep the center area uncluttered for text overlay.",
+    "Use depth of field and cinematic lighting.",
+    "Lighting: professional and polished; soft or vibrant depending on the event mood.",
+    "Details: high-end textures, realistic materials, rich balanced colors appropriate to the theme.",
     "Hard rules: absolutely no readable text, no letters, no numbers, no logos, no signage, no watermark, no brand marks.",
-    "Keep the middle and lower-middle areas less busy for app overlay copy.",
-    "Visual style request:",
+    "Avoid any typography and avoid any branding.",
+    "User style request:",
     sanitizedStylePrompt,
   ].join(" ");
 }
-

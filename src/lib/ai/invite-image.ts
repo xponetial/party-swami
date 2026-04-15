@@ -6,11 +6,15 @@ const MAX_GENERATION_ATTEMPTS = 4;
 
 function buildInviteBackgroundPrompt(userPrompt: string) {
   return [
-    "Design a vertical 2:3 invitation background image only.",
-    "No words, no letters, no numbers, no logos, no typography, no signs, and no watermarks anywhere in the image.",
-    "Keep center and lower-middle zones visually calm for later text overlay by the app.",
-    "Use festive composition, clean depth, and rich but elegant color contrast.",
-    "Style request:",
+    "Generate a single invitation background image (one scene only).",
+    "Vertical 2:3 format (1024x1536).",
+    "Elegant, modern, high-end art direction.",
+    "Composition: no collage and no split panels.",
+    "Keep center and lower-middle zones clean and readable for overlay text.",
+    "Place visual interest around edges, with depth of field and cinematic lighting.",
+    "Use realistic materials, polished textures, and balanced rich colors.",
+    "Strictly no words, letters, numbers, logos, typography, signage, or watermarks.",
+    "Final style guidance:",
     userPrompt,
   ].join(" ");
 }
