@@ -116,6 +116,7 @@ export function InviteTemplateStudio({
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [imageGenerationMessage, setImageGenerationMessage] = useState<string | null>(null);
   const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
+  const [imageGenerationErrorCode, setImageGenerationErrorCode] = useState<string | null>(null);
   const [generatedOptions, setGeneratedOptions] = useState<GeneratedInviteImageOption[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [selectedLibraryImageId, setSelectedLibraryImageId] = useState<string | null>(null);
@@ -150,6 +151,7 @@ export function InviteTemplateStudio({
 
   async function handleGenerateImage() {
     setImageGenerationError(null);
+    setImageGenerationErrorCode(null);
     setImageGenerationMessage(null);
     setIsGeneratingImage(true);
 
@@ -168,6 +170,7 @@ export function InviteTemplateStudio({
 
       if (!response.ok || !payload?.ok) {
         setImageGenerationError(payload?.message ?? "Could not generate image right now.");
+        setImageGenerationErrorCode(typeof payload?.code === "string" ? payload.code : null);
         return;
       }
 
@@ -220,6 +223,7 @@ export function InviteTemplateStudio({
 
     setIsFinalizingGeneratedImage(true);
     setImageGenerationError(null);
+    setImageGenerationErrorCode(null);
     setImageGenerationMessage(null);
 
     try {
@@ -687,7 +691,15 @@ export function InviteTemplateStudio({
                     <p className="text-xs text-accent">{imageGenerationMessage}</p>
                   ) : null}
                   {imageGenerationError ? (
-                    <p className="text-xs text-brand">{imageGenerationError}</p>
+                    <div className="space-y-2">
+                      <p className="text-xs text-brand">{imageGenerationError}</p>
+                      {(imageGenerationErrorCode === "monthly_cap_reached" ||
+                        imageGenerationErrorCode === "monthly_budget_reached") ? (
+                        <Button asChild type="button" variant="secondary">
+                          <Link href="/billing">Buy $10 image pack</Link>
+                        </Button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               ) : (

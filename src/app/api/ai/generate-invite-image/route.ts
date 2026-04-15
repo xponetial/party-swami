@@ -93,6 +93,7 @@ async function enforceInviteImageHardCaps({
   if (requestedImageCount > caps.maxImagesPerRequest) {
     return {
       allowed: false,
+      code: "max_per_request",
       message: `Image generation is capped at ${caps.maxImagesPerRequest} options per request.`,
     };
   }
@@ -142,6 +143,7 @@ async function enforceInviteImageHardCaps({
   if (dayImages + requestedImageCount > caps.maxImagesPerDay) {
     return {
       allowed: false,
+      code: "daily_cap_reached",
       message: `Daily image cap reached (${caps.maxImagesPerDay}). Try again tomorrow.`,
     };
   }
@@ -149,6 +151,7 @@ async function enforceInviteImageHardCaps({
   if (monthImages + requestedImageCount > effectiveMonthlyImageCap) {
     return {
       allowed: false,
+      code: "monthly_cap_reached",
       message:
         additionalImagesPurchased > 0
           ? `Monthly image cap reached (${effectiveMonthlyImageCap}).`
@@ -159,6 +162,7 @@ async function enforceInviteImageHardCaps({
   if (monthCost >= effectiveMonthlyCostCap) {
     return {
       allowed: false,
+      code: "monthly_budget_reached",
       message: "Monthly image generation budget has been reached for your plan.",
     };
   }
@@ -363,7 +367,14 @@ export async function POST(request: Request) {
   });
 
   if (!limit.allowed) {
-    return NextResponse.json({ ok: false, message: limit.message }, { status: 429 });
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "ai_request_limit_reached",
+        message: limit.message,
+      },
+      { status: 429 },
+    );
   }
 
   const imageCaps = await enforceInviteImageHardCaps({
@@ -374,7 +385,14 @@ export async function POST(request: Request) {
   });
 
   if (!imageCaps.allowed) {
-    return NextResponse.json({ ok: false, message: imageCaps.message }, { status: 429 });
+    return NextResponse.json(
+      {
+        ok: false,
+        code: imageCaps.code ?? "invite_image_limit_reached",
+        message: imageCaps.message,
+      },
+      { status: 429 },
+    );
   }
 
   try {

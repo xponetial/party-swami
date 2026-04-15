@@ -17,6 +17,14 @@ type BillingProfile = {
   stripe_price_id: string | null;
 };
 
+type ImagePackGrant = {
+  id: string;
+  pack_quantity: number;
+  additional_images: number;
+  additional_budget_usd: number;
+  created_at: string;
+};
+
 const PAYMENT_ISSUE_STATUSES = new Set([
   "past_due",
   "unpaid",
@@ -49,7 +57,20 @@ function planLabelFromTier(tier: "free" | "pro" | "admin") {
   return "Starter Host";
 }
 
-export default async function BillingPage() {
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ billing?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const billingState = resolvedSearchParams.billing ?? null;
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -82,15 +103,23 @@ export default async function BillingPage() {
     );
   }
 
-  const [{ data: profile }, usage] = await Promise.all([
+  const [{ data: profile }, usage, { data: packGrants = [] }] = await Promise.all([
     supabase
       .from("profiles")
       .select("plan_tier, billing_status, stripe_customer_id, stripe_subscription_id, stripe_price_id")
       .eq("id", user.id)
       .maybeSingle<BillingProfile>(),
     getAiUsageForUser(supabase, user.id),
+    supabase
+      .from("user_image_pack_grants")
+      .select("id, pack_quantity, additional_images, additional_budget_usd, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(6)
+      .returns<ImagePackGrant[]>(),
   ]);
 
+  const safePackGrants = packGrants ?? [];
   const planTier = profile?.plan_tier ?? usage.planTier ?? "free";
   const rawBillingStatus = profile?.billing_status ?? null;
   const billingStatus = formatBillingStatus(profile?.billing_status ?? null);
@@ -119,6 +148,16 @@ export default async function BillingPage() {
     >
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
+          {billingState === "image_pack_success" ? (
+            <div className="mb-4 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              Image pack purchase successful. Your monthly image cap and budget were updated.
+            </div>
+          ) : null}
+          {billingState === "image_pack_cancelled" ? (
+            <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Image pack checkout was canceled. No changes were made.
+            </div>
+          ) : null}
           <h2 className="text-xl font-semibold text-ink">Current plan</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-border bg-white/80 px-4 py-4">
@@ -166,6 +205,31 @@ export default async function BillingPage() {
               to restore Pro access.
             </div>
           ) : null}
+        </Card>
+
+        <Card className="bg-[rgba(244,247,255,0.9)]">
+          <h2 className="text-xl font-semibold text-ink">Image pack history</h2>
+          {safePackGrants.length ? (
+            <div className="mt-4 space-y-3">
+              {safePackGrants.map((grant) => (
+                <div
+                  key={grant.id}
+                  className="rounded-2xl border border-border bg-white/85 px-4 py-4"
+                >
+                  <p className="text-sm font-semibold text-ink">
+                    +{grant.additional_images} images | +${Number(grant.additional_budget_usd).toFixed(2)} budget
+                  </p>
+                  <p className="mt-1 text-xs text-ink-muted">
+                    {grant.pack_quantity} pack{grant.pack_quantity === 1 ? "" : "s"} | {formatDate(grant.created_at)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-border bg-white/85 px-4 py-4 text-sm text-ink-muted">
+              No image packs purchased yet.
+            </div>
+          )}
         </Card>
 
         {showStripeSyncDetails ? (
