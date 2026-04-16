@@ -263,6 +263,9 @@ function buildTrackedShoppingHref({
     itemCategory: item.category,
     target,
   });
+  if (isAmazonExternal && item.external_url) {
+    params.set("fallbackTarget", item.external_url);
+  }
 
   return `/api/affiliate/click?${params.toString()}`;
 }
