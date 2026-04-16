@@ -20,16 +20,6 @@ type CatalogEnrichmentItem = {
   external_url: string | null;
 };
 
-type AmazonSearchResolutionDiagnostics = {
-  query: string;
-  searchUrl: string;
-  status: number | null;
-  captchaDetected: boolean;
-  asin: string | null;
-  resolvedUrl: string | null;
-  error: string | null;
-};
-
 function buildAmazonSearchUrl(query: string) {
   return `https://${AMAZON_HOST}/s?k=${encodeURIComponent(query.trim())}`;
 }
@@ -106,9 +96,7 @@ function extractFirstAsinFromHtml(html: string) {
   return null;
 }
 
-async function resolveAmazonProductFromQueryWithDiagnostics(
-  query: string,
-): Promise<AmazonSearchResolutionDiagnostics> {
+async function resolveFirstAmazonProductUrl(query: string): Promise<string | null> {
   const searchUrl = buildAmazonSearchUrl(query);
 
   try {
@@ -123,57 +111,20 @@ async function resolveAmazonProductFromQueryWithDiagnostics(
     });
 
     if (!response.ok) {
-      return {
-        query,
-        searchUrl,
-        status: response.status,
-        captchaDetected: false,
-        asin: null,
-        resolvedUrl: null,
-        error: `amazon_response_${response.status}`,
-      };
+      return null;
     }
 
     const html = await response.text();
-    const captchaDetected = /Type the characters you see in this image/i.test(html);
-    if (captchaDetected) {
-      return {
-        query,
-        searchUrl,
-        status: response.status,
-        captchaDetected: true,
-        asin: null,
-        resolvedUrl: null,
-        error: "amazon_captcha_detected",
-      };
+    if (/Type the characters you see in this image/i.test(html)) {
+      return null;
     }
 
     const asin = extractFirstAsinFromHtml(html);
-    return {
-      query,
-      searchUrl,
-      status: response.status,
-      captchaDetected: false,
-      asin,
-      resolvedUrl: asin ? toCanonicalProductUrl(asin) : null,
-      error: asin ? null : "asin_not_found",
-    };
-  } catch (error) {
-    return {
-      query,
-      searchUrl,
-      status: null,
-      captchaDetected: false,
-      asin: null,
-      resolvedUrl: null,
-      error: error instanceof Error ? error.message : "amazon_fetch_error",
-    };
-  }
-}
 
-async function resolveFirstAmazonProductUrl(query: string): Promise<string | null> {
-  const result = await resolveAmazonProductFromQueryWithDiagnostics(query);
-  return result.resolvedUrl;
+    return asin ? toCanonicalProductUrl(asin) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function resolveAmazonProductFromSearchUrl(
@@ -185,52 +136,6 @@ export async function resolveAmazonProductFromSearchUrl(
   }
 
   return resolveFirstAmazonProductUrl(query);
-}
-
-export async function debugResolveAmazonTarget(target: string) {
-  const query = extractQueryFromAmazonSearchUrl(target);
-  if (!query) {
-    return {
-      kind: "non_search_target" as const,
-      target,
-      query: null,
-      attempts: [] as AmazonSearchResolutionDiagnostics[],
-      resolvedUrl: null as string | null,
-    };
-  }
-
-  const queriesToTry = dedupeQueries([
-    query,
-    query
-      .split(/\s+/)
-      .filter((token) => token.length >= 3)
-      .slice(0, 8)
-      .join(" "),
-  ]);
-  const attempts: AmazonSearchResolutionDiagnostics[] = [];
-
-  for (const candidate of queriesToTry) {
-    const attempt = await resolveAmazonProductFromQueryWithDiagnostics(candidate);
-    attempts.push(attempt);
-
-    if (attempt.resolvedUrl) {
-      return {
-        kind: "amazon_search_target" as const,
-        target,
-        query,
-        attempts,
-        resolvedUrl: attempt.resolvedUrl,
-      };
-    }
-  }
-
-  return {
-    kind: "amazon_search_target" as const,
-    target,
-    query,
-    attempts,
-    resolvedUrl: null as string | null,
-  };
 }
 
 async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrichmentItem> {
