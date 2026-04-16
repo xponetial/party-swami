@@ -49,6 +49,8 @@ const BEVERAGE_FALLBACK_QUERIES = [
   "beverage dispenser for parties",
   "mocktail mixer set for party",
 ] as const;
+const DEFAULT_BEVERAGE_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_BEVERAGE_ASIN?.trim() || "B0B924FCQG";
 
 type CatalogEnrichmentItem = {
   category: string;
@@ -350,6 +352,8 @@ export async function resolveAmazonProductFromSearchUrl(
         return fallbackResolved;
       }
     }
+
+    return toCanonicalProductUrl(DEFAULT_BEVERAGE_FALLBACK_ASIN);
   }
 
   return null;
