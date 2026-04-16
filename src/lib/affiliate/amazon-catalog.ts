@@ -121,6 +121,7 @@ function toMeaningfulTokens(value: string) {
 }
 
 function extractBestAsinFromSearchHtml(html: string, query: string, matchHint?: string) {
+  const hintTokens = toMeaningfulTokens(matchHint ?? "");
   const queryTokens = new Set(toMeaningfulTokens(`${query} ${matchHint ?? ""}`));
   const candidates: Array<{ asin: string; score: number }> = [];
   const seenAsins = new Set<string>();
@@ -146,6 +147,14 @@ function extractBestAsinFromSearchHtml(html: string, query: string, matchHint?: 
       (sum, token) => (snippet.includes(token) ? sum + 1 : sum),
       0,
     );
+    const hintMatchCount = hintTokens.reduce(
+      (sum, token) => (snippet.includes(token) ? sum + 1 : sum),
+      0,
+    );
+    if (hintTokens.length > 0 && hintMatchCount === 0) {
+      continue;
+    }
+
     const score = tokenScore - (isSponsored ? 2 : 0);
 
     candidates.push({ asin, score });
@@ -157,8 +166,8 @@ function extractBestAsinFromSearchHtml(html: string, query: string, matchHint?: 
 
   candidates.sort((a, b) => b.score - a.score);
 
-  // If nothing matched meaningfully, avoid forcing a likely-wrong product.
-  if (candidates[0].score <= 0) {
+  // If confidence is weak, avoid forcing a likely-wrong product.
+  if (candidates[0].score < 2) {
     return null;
   }
 
@@ -191,9 +200,7 @@ async function resolveFirstAmazonProductUrl(
       return null;
     }
 
-    const asin =
-      extractBestAsinFromSearchHtml(html, query, matchHint) ??
-      extractFirstAsinFromHtml(html);
+    const asin = extractBestAsinFromSearchHtml(html, query, matchHint);
 
     return asin ? toCanonicalProductUrl(asin) : null;
   } catch {
