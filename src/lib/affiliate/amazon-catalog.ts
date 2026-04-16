@@ -203,7 +203,7 @@ function extractBestAsinFromSearchHtml(
       (sum, token) => (snippet.includes(token) ? sum + 1 : sum),
       0,
     );
-    if (!hasBeverageIntent && hintTokens.length > 0 && hintMatchCount === 0) {
+    if (!hasBeverageIntent && hintTokens.length > 0 && hintMatchCount === 0 && tokenScore < 2) {
       continue;
     }
 
@@ -306,10 +306,11 @@ async function resolveFirstAmazonProductUrl(
       return beverageAsin ? toCanonicalProductUrl(beverageAsin) : null;
     }
 
-    // For other category-constrained resolution, do not fall back to first-ASIN
-    // scraping because it frequently returns unrelated products.
+    // For non-beverage categories, keep a single-PDP experience even when
+    // relevance scoring misses by falling back to first ASIN.
     if (categoryHint?.trim()) {
-      return null;
+      const constrainedFallbackAsin = extractFirstAsinFromHtml(html);
+      return constrainedFallbackAsin ? toCanonicalProductUrl(constrainedFallbackAsin) : null;
     }
 
     const firstAsinFallback = extractFirstAsinFromHtml(html);
