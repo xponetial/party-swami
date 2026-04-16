@@ -36,7 +36,6 @@ These values must be configured in the hosting provider instead of relying on lo
 ### Likely required later
 
 - `AMAZON_ASSOCIATE_TAG`
-- `AMAZON_CURATED_CATALOG_PATH` or `AMAZON_CURATED_CATALOG_JSON`
 - `STRIPE_SECRET_KEY`
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_WEBHOOK_SECRET`

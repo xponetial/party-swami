@@ -50,17 +50,7 @@ AMAZON_ASSOCIATE_TAG=partyswami-20
 ```
 
 If this is set, Amazon outbound shopping links routed through `/api/affiliate/click` will include `tag=<your_store_id>`. Keep this unset in environments where you do not want affiliate tagging enabled.
-
-Optional for curated Amazon product enrichment on shopping recommendations (no PA-API required):
-
-```bash
-AMAZON_CURATED_CATALOG_PATH=data/amazon-curated-catalog.json
-```
-
-The catalog is a JSON array of mappings between your recommendation query terms and a real Amazon product URL/image URL/price. A sample template exists at `data/amazon-curated-catalog.sample.json`.
-Detailed setup notes are in `docs/affiliate-catalog.md`.
-
-When a match is found, generated/replaced shopping items are enriched with real product metadata (thumbnail image, product detail URL, and optional price) before saving. If no match exists, Party Swami falls back to query-based Amazon links and category artwork.
+During shopping generation and replacement, Party Swami attempts to resolve recommendation queries to real Amazon product detail URLs. If that resolution fails for an item, it falls back to the Amazon search URL for that query.
 
 Optional for invite email delivery:
 

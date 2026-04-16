@@ -1,19 +1,11 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+const AMAZON_HOST = "www.amazon.com";
 
-const AMAZON_DOMAIN_HOSTS = new Set([
-  "amazon.com",
-  "amazon.co.uk",
-  "amazon.ca",
-  "amazon.com.au",
-  "amazon.de",
-  "amazon.fr",
-  "amazon.co.jp",
-]);
+const PRODUCT_PATH_PATTERNS = [
+  /\/dp\/([A-Z0-9]{10})(?:[/?]|$)/i,
+  /\/gp\/product\/([A-Z0-9]{10})(?:[/?]|$)/i,
+] as const;
 
-const DEFAULT_CATALOG_PATH = "data/amazon-curated-catalog.json";
-
-export type CatalogEnrichmentItem = {
+type CatalogEnrichmentItem = {
   category: string;
   name: string;
   quantity: number;
@@ -24,183 +16,90 @@ export type CatalogEnrichmentItem = {
   external_url: string | null;
 };
 
-type RawCatalogEntry = {
-  id?: string;
-  category?: string;
-  query_contains?: string[];
-  name_contains?: string[];
-  product_url?: string;
-  image_url?: string;
-  estimated_price?: number;
-};
-
-type CatalogEntry = {
-  id: string;
-  category: string | null;
-  queryContains: string[];
-  nameContains: string[];
-  productUrl: string | null;
-  imageUrl: string | null;
-  estimatedPrice: number | null;
-};
-
-let cachedCatalog: CatalogEntry[] | null = null;
-let cachedCatalogKey: string | null = null;
-
-function normalizeKeywordList(value: string[] | undefined) {
-  return (value ?? [])
-    .map((item) => item.trim().toLowerCase())
-    .filter((item) => item.length >= 2);
+function buildAmazonSearchUrl(query: string) {
+  return `https://${AMAZON_HOST}/s?k=${encodeURIComponent(query.trim())}`;
 }
 
-function safeUrl(value: string | undefined) {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
+function extractAsinFromUrl(url: string) {
+  for (const pattern of PRODUCT_PATH_PATTERNS) {
+    const matched = url.match(pattern);
+    if (matched?.[1]) {
+      return matched[1].toUpperCase();
+    }
+  }
+
+  return null;
+}
+
+function toCanonicalProductUrl(asin: string) {
+  return `https://${AMAZON_HOST}/dp/${asin}`;
+}
+
+function extractFirstAsinFromHtml(html: string) {
+  for (const pattern of PRODUCT_PATH_PATTERNS) {
+    const matched = html.match(pattern);
+    if (matched?.[1]) {
+      return matched[1].toUpperCase();
+    }
+  }
+
+  return null;
+}
+
+async function resolveFirstAmazonProductUrl(query: string): Promise<string | null> {
+  const searchUrl = buildAmazonSearchUrl(query);
 
   try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    const response = await fetch(searchUrl, {
+      method: "GET",
+      headers: {
+        "accept-language": "en-US,en;q=0.9",
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
       return null;
     }
-    return trimmed;
+
+    const html = await response.text();
+    const asin = extractFirstAsinFromHtml(html);
+
+    return asin ? toCanonicalProductUrl(asin) : null;
   } catch {
     return null;
   }
 }
 
-function normalizeCatalog(entries: RawCatalogEntry[]) {
-  return entries
-    .map((entry, index): CatalogEntry | null => {
-      const queryContains = normalizeKeywordList(entry.query_contains);
-      const nameContains = normalizeKeywordList(entry.name_contains);
-      const category = entry.category?.trim().toLowerCase() || null;
-      const productUrl = safeUrl(entry.product_url);
-      const imageUrl = safeUrl(entry.image_url);
-      const estimatedPrice =
-        typeof entry.estimated_price === "number" && Number.isFinite(entry.estimated_price)
-          ? Math.round(entry.estimated_price)
-          : null;
+async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrichmentItem> {
+  const existingUrl = item.external_url?.trim() || null;
 
-      if (
-        !queryContains.length &&
-        !nameContains.length &&
-        !category &&
-        !productUrl &&
-        !imageUrl &&
-        estimatedPrice == null
-      ) {
-        return null;
-      }
-
+  if (existingUrl) {
+    const existingAsin = extractAsinFromUrl(existingUrl);
+    if (existingAsin) {
       return {
-        id: entry.id?.trim() || `catalog-entry-${index + 1}`,
-        category,
-        queryContains,
-        nameContains,
-        productUrl,
-        imageUrl,
-        estimatedPrice,
+        ...item,
+        external_url: toCanonicalProductUrl(existingAsin),
       };
-    })
-    .filter((entry): entry is CatalogEntry => Boolean(entry));
-}
-
-async function readCatalogFromPath(filePath: string) {
-  try {
-    const raw = await fs.readFile(filePath, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return normalizeCatalog(parsed as RawCatalogEntry[]);
-  } catch {
-    return [];
-  }
-}
-
-async function readCatalogFromEnvJson(envJson: string) {
-  try {
-    const parsed = JSON.parse(envJson) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return normalizeCatalog(parsed as RawCatalogEntry[]);
-  } catch {
-    return [];
-  }
-}
-
-async function loadCatalog(): Promise<CatalogEntry[]> {
-  const envJson = process.env.AMAZON_CURATED_CATALOG_JSON?.trim() || "";
-  const envPath = process.env.AMAZON_CURATED_CATALOG_PATH?.trim() || DEFAULT_CATALOG_PATH;
-  const resolvedPath = path.resolve(process.cwd(), envPath);
-  const cacheKey = `${envPath}::${envJson.length ? "env-json" : "path"}`;
-
-  if (cachedCatalog && cachedCatalogKey === cacheKey) {
-    return cachedCatalog;
-  }
-
-  const catalog = envJson
-    ? await readCatalogFromEnvJson(envJson)
-    : await readCatalogFromPath(resolvedPath);
-
-  cachedCatalog = catalog;
-  cachedCatalogKey = cacheKey;
-  return catalog;
-}
-
-function isAmazonUrl(value: string | null): boolean {
-  if (!value) {
-    return false;
-  }
-
-  try {
-    const parsed = new URL(value);
-    const hostname = parsed.hostname.replace(/^www\./, "");
-    return AMAZON_DOMAIN_HOSTS.has(hostname);
-  } catch {
-    return false;
-  }
-}
-
-function scoreCatalogMatch(item: CatalogEnrichmentItem, entry: CatalogEntry) {
-  const searchQuery = item.search_query.trim().toLowerCase();
-  const name = item.name.trim().toLowerCase();
-  const category = item.category.trim().toLowerCase();
-  let score = 0;
-
-  for (const token of entry.queryContains) {
-    if (searchQuery.includes(token)) {
-      score += 4;
     }
   }
 
-  for (const token of entry.nameContains) {
-    if (name.includes(token)) {
-      score += 3;
-    }
+  const query = item.search_query.trim();
+  if (!query) {
+    return item;
   }
 
-  if (entry.category && entry.category === category) {
-    score += 2;
+  const resolved = await resolveFirstAmazonProductUrl(query);
+  if (!resolved) {
+    return item;
   }
 
-  return score;
-}
-
-function pickCatalogEntry(
-  item: CatalogEnrichmentItem,
-  catalog: CatalogEntry[],
-): CatalogEntry | null {
-  let best: CatalogEntry | null = null;
-  let bestScore = 0;
-
-  for (const entry of catalog) {
-    const score = scoreCatalogMatch(item, entry);
-    if (score > bestScore) {
-      best = entry;
-      bestScore = score;
-    }
-  }
-
-  return bestScore > 0 ? best : null;
+  return {
+    ...item,
+    external_url: resolved,
+  };
 }
 
 export async function enrichShoppingItemsWithAmazonCatalog(
@@ -210,30 +109,18 @@ export async function enrichShoppingItemsWithAmazonCatalog(
     return items;
   }
 
-  const catalog = await loadCatalog();
-  if (!catalog.length) {
-    return items;
+  // Keep this small to avoid hammering Amazon during regenerate.
+  const CONCURRENCY = 3;
+  const pending = [...items];
+  const enriched: CatalogEnrichmentItem[] = [];
+
+  while (pending.length > 0) {
+    const chunk = pending.splice(0, CONCURRENCY);
+    const chunkResult = await Promise.all(chunk.map((item) => enrichOneItem(item)));
+    enriched.push(...chunkResult);
   }
 
-  return items.map((item) => {
-    const match = pickCatalogEntry(item, catalog);
-    if (!match) {
-      return item;
-    }
-
-    const shouldReplaceUrl = !item.external_url || isAmazonUrl(item.external_url);
-
-    return {
-      ...item,
-      image_url: match.imageUrl || item.image_url,
-      external_url:
-        shouldReplaceUrl && match.productUrl
-          ? match.productUrl
-          : item.external_url,
-      estimated_price:
-        item.estimated_price == null && match.estimatedPrice != null
-          ? match.estimatedPrice
-          : item.estimated_price,
-    };
-  });
+  return enriched;
 }
+
+export type { CatalogEnrichmentItem };
