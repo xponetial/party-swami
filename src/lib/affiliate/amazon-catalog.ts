@@ -12,6 +12,10 @@ const SEARCH_RESULT_ASIN_PATTERN =
   /data-component-type="s-search-result"[\s\S]{0,1200}?data-asin="([A-Z0-9]{10})"/gi;
 const AMAZON_IMAGE_URL_PATTERN =
   /https?:\/\/m\.media-amazon\.com\/images\/I\/[^"'\\\s>]+?\.(?:jpg|jpeg|png|webp)/gi;
+const AMAZON_IMAGE_URL_ALT_PATTERN =
+  /https?:\/\/(?:m\.media-amazon\.com|images-na\.ssl-images-amazon\.com)\/images\/[IP]\/[^"'\\\s>]+?\.(?:jpg|jpeg|png|webp)/gi;
+const AMAZON_ESCAPED_IMAGE_URL_PATTERN =
+  /https?:\\\/\\\/(?:m\.media-amazon\.com|images-na\.ssl-images-amazon\.com)\\\/images\\\/[IP]\\\/[^"'\\\s>]+?\.(?:jpg|jpeg|png|webp)/gi;
 const STOP_TOKENS = new Set([
   "the",
   "and",
@@ -270,9 +274,25 @@ function normalizeAmazonImageUrl(value: string) {
 }
 
 function extractFirstAmazonImageUrl(value: string) {
-  AMAZON_IMAGE_URL_PATTERN.lastIndex = 0;
-  const matched = AMAZON_IMAGE_URL_PATTERN.exec(value);
-  return matched?.[0] ? normalizeAmazonImageUrl(matched[0]) : null;
+  const patterns = [
+    AMAZON_IMAGE_URL_PATTERN,
+    AMAZON_IMAGE_URL_ALT_PATTERN,
+    AMAZON_ESCAPED_IMAGE_URL_PATTERN,
+  ];
+
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    const matched = pattern.exec(value);
+    if (!matched?.[0]) continue;
+
+    const candidate = matched[0].replace(/\\\//g, "/");
+    const normalized = normalizeAmazonImageUrl(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
 }
 
 function extractImageUrlNearAsin(html: string, asin: string) {
@@ -286,7 +306,28 @@ function extractImageUrlNearAsin(html: string, asin: string) {
   const start = Math.max(0, matched.index - 1400);
   const end = Math.min(html.length, matched.index + 2200);
   const snippet = html.slice(start, end);
-  return extractFirstAmazonImageUrl(snippet);
+  return extractFirstAmazonImageUrl(snippet) ?? extractImageUrlFromImgTagNearAsin(snippet);
+}
+
+function extractImageUrlFromImgTagNearAsin(value: string) {
+  const imgPatterns = [
+    /<img[^>]+src="([^"]+)"/i,
+    /<img[^>]+src='([^']+)'/i,
+    /<img[^>]+data-image-source-density="1"[^>]+src="([^"]+)"/i,
+  ];
+
+  for (const pattern of imgPatterns) {
+    const matched = pattern.exec(value);
+    if (!matched?.[1]) continue;
+    if (!/^https?:\/\//i.test(matched[1])) continue;
+
+    const normalized = normalizeAmazonImageUrl(matched[1]);
+    if (!/amazon\./i.test(normalized)) continue;
+    if (!/\.(jpg|jpeg|png|webp)(\?|$)/i.test(normalized)) continue;
+    return normalized;
+  }
+
+  return null;
 }
 
 function extractOpenGraphImageUrl(html: string) {
@@ -426,7 +467,8 @@ function extractBestAsinFromSearchHtml(
 
     const windowStart = Math.max(0, match.index - 500);
     const windowEnd = Math.min(html.length, match.index + 1500);
-    const snippet = html.slice(windowStart, windowEnd).toLowerCase();
+    const rawSnippet = html.slice(windowStart, windowEnd);
+    const snippet = rawSnippet.toLowerCase();
 
     // Avoid obvious ad slots when possible.
     const isSponsored = /\bsponsored\b|puis-sponsored-label|adfeedback/i.test(snippet);
@@ -446,7 +488,8 @@ function extractBestAsinFromSearchHtml(
     const blockedByIntent =
       hasBeverageIntent &&
       BEVERAGE_OFF_CATEGORY_TOKENS.some((token) => snippet.includes(token));
-    const imageUrl = extractFirstAmazonImageUrl(snippet);
+    const imageUrl =
+      extractFirstAmazonImageUrl(rawSnippet) ?? extractImageUrlFromImgTagNearAsin(rawSnippet);
 
     candidates.push({ asin, score, blockedByIntent, imageUrl });
   }
@@ -490,14 +533,16 @@ function extractFirstBeverageAsinFromSearchHtml(html: string) {
 
     const windowStart = Math.max(0, match.index - 500);
     const windowEnd = Math.min(html.length, match.index + 1500);
-    const snippet = html.slice(windowStart, windowEnd).toLowerCase();
+    const rawSnippet = html.slice(windowStart, windowEnd);
+    const snippet = rawSnippet.toLowerCase();
     const hasBeverageToken = BEVERAGE_INTENT_TOKENS.some((token) => snippet.includes(token));
     const hasOffCategoryToken = BEVERAGE_OFF_CATEGORY_TOKENS.some((token) => snippet.includes(token));
 
     if (hasBeverageToken && !hasOffCategoryToken) {
       return {
         asin,
-        imageUrl: extractFirstAmazonImageUrl(snippet),
+        imageUrl:
+          extractFirstAmazonImageUrl(rawSnippet) ?? extractImageUrlFromImgTagNearAsin(rawSnippet),
       };
     }
   }
