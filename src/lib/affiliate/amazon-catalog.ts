@@ -201,7 +201,7 @@ function extractBestAsinFromSearchHtml(
       (sum, token) => (snippet.includes(token) ? sum + 1 : sum),
       0,
     );
-    if (hintTokens.length > 0 && hintMatchCount === 0) {
+    if (!hasBeverageIntent && hintTokens.length > 0 && hintMatchCount === 0) {
       continue;
     }
 
@@ -231,6 +231,34 @@ function extractBestAsinFromSearchHtml(
   }
 
   return rankedCandidates[0].asin;
+}
+
+function extractFirstBeverageAsinFromSearchHtml(html: string) {
+  const seenAsins = new Set<string>();
+
+  SEARCH_RESULT_ASIN_PATTERN.lastIndex = 0;
+  for (;;) {
+    const match = SEARCH_RESULT_ASIN_PATTERN.exec(html);
+    if (!match?.[1]) {
+      break;
+    }
+
+    const asin = match[1].toUpperCase();
+    if (seenAsins.has(asin)) continue;
+    seenAsins.add(asin);
+
+    const windowStart = Math.max(0, match.index - 500);
+    const windowEnd = Math.min(html.length, match.index + 1500);
+    const snippet = html.slice(windowStart, windowEnd).toLowerCase();
+    const hasBeverageToken = BEVERAGE_INTENT_TOKENS.some((token) => snippet.includes(token));
+    const hasOffCategoryToken = BEVERAGE_OFF_CATEGORY_TOKENS.some((token) => snippet.includes(token));
+
+    if (hasBeverageToken && !hasOffCategoryToken) {
+      return asin;
+    }
+  }
+
+  return null;
 }
 
 async function resolveFirstAmazonProductUrl(
@@ -271,8 +299,13 @@ async function resolveFirstAmazonProductUrl(
       return toCanonicalProductUrl(asin);
     }
 
-    // For category-constrained resolution (for example beverages), do not
-    // fall back to first-ASIN scraping because it frequently returns decor/favor items.
+    if (isBeverageCategory(categoryHint)) {
+      const beverageAsin = extractFirstBeverageAsinFromSearchHtml(html);
+      return beverageAsin ? toCanonicalProductUrl(beverageAsin) : null;
+    }
+
+    // For other category-constrained resolution, do not fall back to first-ASIN
+    // scraping because it frequently returns unrelated products.
     if (categoryHint?.trim()) {
       return null;
     }
