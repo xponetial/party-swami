@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { resolveAmazonProductFromSearchUrl } from "@/lib/affiliate/amazon-catalog";
+import { debugResolveAmazonTarget, resolveAmazonProductFromSearchUrl } from "@/lib/affiliate/amazon-catalog";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
@@ -85,6 +85,7 @@ const querySchema = z.object({
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
+  const debugMode = requestUrl.searchParams.get("debug") === "1";
   const target = requestUrl.searchParams.get("target");
   const parsed = querySchema.safeParse({
     eventId: requestUrl.searchParams.get("eventId"),
@@ -103,8 +104,41 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const resolvedTarget = await maybeResolveAmazonSearchTarget(parsed.data.target);
+  const resolutionDebug = await debugResolveAmazonTarget(parsed.data.target);
+  const resolvedTarget =
+    resolutionDebug.kind === "amazon_search_target" && resolutionDebug.resolvedUrl
+      ? resolutionDebug.resolvedUrl
+      : await maybeResolveAmazonSearchTarget(parsed.data.target);
   const redirectTarget = withAmazonAffiliateTag(resolvedTarget);
+  const resolutionKind =
+    parsed.data.target !== resolvedTarget ? "resolved_product" : "fallback_original_target";
+
+  console.info(
+    "[affiliate-click]",
+    JSON.stringify({
+      eventId: parsed.data.eventId,
+      itemId: parsed.data.itemId,
+      debugMode,
+      targetOriginal: parsed.data.target,
+      targetResolved: resolvedTarget,
+      targetRedirect: redirectTarget,
+      resolutionKind,
+      resolutionDebug,
+    }),
+  );
+
+  if (debugMode) {
+    return NextResponse.json({
+      ok: true,
+      eventId: parsed.data.eventId,
+      itemId: parsed.data.itemId,
+      targetOriginal: parsed.data.target,
+      targetResolved: resolvedTarget,
+      targetRedirect: redirectTarget,
+      resolutionKind,
+      resolutionDebug,
+    });
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -116,7 +150,14 @@ export async function GET(request: Request) {
       eventId: parsed.data.eventId,
       metadata: {
         item_id: parsed.data.itemId,
+        target_original: parsed.data.target,
+        target_resolved: resolvedTarget,
         target: redirectTarget,
+        resolution_kind: resolutionKind,
+        resolution_attempts:
+          resolutionDebug.kind === "amazon_search_target"
+            ? resolutionDebug.attempts.length
+            : 0,
         source: "shopping_recommendation_card",
       },
     }),
@@ -126,7 +167,14 @@ export async function GET(request: Request) {
       eventId: parsed.data.eventId,
       metadata: {
         item_id: parsed.data.itemId,
+        target_original: parsed.data.target,
+        target_resolved: resolvedTarget,
         target: redirectTarget,
+        resolution_kind: resolutionKind,
+        resolution_attempts:
+          resolutionDebug.kind === "amazon_search_target"
+            ? resolutionDebug.attempts.length
+            : 0,
         source: "shopping_recommendation_card",
       },
     }),

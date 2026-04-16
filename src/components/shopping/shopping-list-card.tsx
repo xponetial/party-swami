@@ -259,6 +259,7 @@ function buildShoppingLinks({
   return {
     target,
     trackedHref: `/api/affiliate/click?${params.toString()}`,
+    trackedDebugHref: `/api/affiliate/click?${params.toString()}&debug=1`,
   };
 }
 
@@ -585,6 +586,17 @@ export function ShoppingListCard({
                                       target="_blank"
                                     >
                                       {truncateUrl(shoppingLinks.trackedHref)}
+                                    </a>
+                                  </p>
+                                  <p className="mt-2">
+                                    <span className="mr-2 uppercase tracking-[0.16em]">Debug JSON</span>
+                                    <a
+                                      className="underline"
+                                      href={shoppingLinks.trackedDebugHref}
+                                      rel="noreferrer"
+                                      target="_blank"
+                                    >
+                                      {truncateUrl(shoppingLinks.trackedDebugHref)}
                                     </a>
                                   </p>
                                 </div>
