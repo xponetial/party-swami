@@ -14,10 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
-import {
-  normalizeInviteDesignData,
-  type InviteDesignData,
-} from "@/lib/invite-design";
+import { composeInviteMessageWithEventDetails } from "@/lib/invite-card-layout";
+import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
 import type { EventDetails, InviteDetails } from "@/lib/events";
 import type { InviteFeatureAccess } from "@/lib/invite-feature-access";
 import type { InviteLibraryImage } from "@/lib/invite-image-library";
@@ -58,31 +56,6 @@ function formatDateText(value: string | null) {
     dateStyle: "full",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function composeGuestMessageWithEventDetails({
-  messageText,
-  dateText,
-  locationText,
-}: {
-  messageText: string;
-  dateText: string;
-  locationText: string;
-}) {
-  const baseMessage = messageText.trim();
-  const safeDateText = dateText.trim() || "TBD";
-  const safeLocationText = locationText.trim() || "TBD";
-  const baseMessageLower = baseMessage.toLowerCase();
-
-  const detailLines: string[] = [];
-  if (!baseMessageLower.includes(safeDateText.toLowerCase())) {
-    detailLines.push(`Date & time: ${safeDateText}`);
-  }
-  if (!baseMessageLower.includes(safeLocationText.toLowerCase())) {
-    detailLines.push(`Location: ${safeLocationText}`);
-  }
-
-  return [baseMessage, ...detailLines].filter(Boolean).join("\n\n");
 }
 
 function buildDefaultDesign(
@@ -173,7 +146,7 @@ export function InviteTemplateStudio({
   const nextDesignJson = JSON.stringify(design);
   const inviteImageDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=high`;
   const invitePrintDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=print`;
-  const fullGuestMessage = composeGuestMessageWithEventDetails({
+  const fullGuestMessage = composeInviteMessageWithEventDetails({
     messageText: design.fields.messageText,
     dateText: design.fields.dateText,
     locationText: design.fields.locationText,

@@ -1,5 +1,9 @@
 import type { InviteDesignData } from "@/lib/invite-design";
-import { compactInviteCopy, getInviteCardLayout } from "@/lib/invite-card-layout";
+import {
+  compactInviteCopy,
+  composeInviteMessageWithEventDetails,
+  getInviteCardLayout,
+} from "@/lib/invite-card-layout";
 import type { InviteTemplate } from "@/lib/invite-template-types";
 
 export function InviteCardCanvas({
@@ -14,7 +18,14 @@ export function InviteCardCanvas({
   maxWidth?: number;
 }) {
   const layout = getInviteCardLayout(template);
-  const previewMessage = compactInviteCopy(design.fields.messageText, maxWidth >= 390 ? 420 : 320);
+  const previewMessage = compactInviteCopy(
+    composeInviteMessageWithEventDetails({
+      messageText: design.fields.messageText,
+      dateText: design.fields.dateText,
+      locationText: design.fields.locationText,
+    }),
+    maxWidth >= 390 ? 420 : 320,
+  );
   const previewCtaText = "RSVP now";
 
   return (

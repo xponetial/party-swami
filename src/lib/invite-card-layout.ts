@@ -105,6 +105,31 @@ export function compactInviteCopy(value: string, maxLength: number) {
   return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
+export function composeInviteMessageWithEventDetails({
+  messageText,
+  dateText,
+  locationText,
+}: {
+  messageText: string;
+  dateText: string;
+  locationText: string;
+}) {
+  const baseMessage = messageText.trim();
+  const safeDateText = dateText.trim() || "TBD";
+  const safeLocationText = locationText.trim() || "TBD";
+  const baseMessageLower = baseMessage.toLowerCase();
+
+  const detailLines: string[] = [];
+  if (!baseMessageLower.includes(safeDateText.toLowerCase())) {
+    detailLines.push(`Date & time: ${safeDateText}`);
+  }
+  if (!baseMessageLower.includes(safeLocationText.toLowerCase())) {
+    detailLines.push(`Location: ${safeLocationText}`);
+  }
+
+  return [baseMessage, ...detailLines].filter(Boolean).join("\n\n");
+}
+
 export function getTitleFontSize(title: string) {
   const length = title.trim().length;
 

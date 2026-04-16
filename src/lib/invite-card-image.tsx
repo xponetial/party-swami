@@ -3,6 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
 import {
+  composeInviteMessageWithEventDetails,
   formatTitleForCard,
   getInviteCardLayout,
   getTitleFontSize,
@@ -311,7 +312,11 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
   const titleColor = layout?.accents[0] ?? "#ffffff";
   const ctaColor = layout?.accents[1] ?? "#ffd869";
   const fontPath = getInviteFontPath();
-  const message = design.fields.messageText.trim() || `You're invited to ${design.fields.title}.`;
+  const message = composeInviteMessageWithEventDetails({
+    messageText: design.fields.messageText.trim() || `You're invited to ${design.fields.title}.`,
+    dateText: design.fields.dateText,
+    locationText: design.fields.locationText,
+  });
   const uploadedBackgroundUrl = design.fields.backgroundImageUrl?.trim() || null;
   let backgroundBuffer: Buffer;
 
