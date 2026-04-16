@@ -1,4 +1,5 @@
-import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const AMAZON_DOMAIN_HOSTS = new Set([
   "amazon.com",
@@ -10,13 +11,7 @@ const AMAZON_DOMAIN_HOSTS = new Set([
   "amazon.co.jp",
 ]);
 
-const PAAPI_TARGET = "com.amazon.paapi5.v1.ProductAdvertisingAPIv1.SearchItems";
-const PAAPI_CONTENT_ENCODING = "amz-1.0";
-const PAAPI_PATH = "/paapi5/searchitems";
-const DEFAULT_MARKETPLACE = "www.amazon.com";
-const DEFAULT_HOST = "webservices.amazon.com";
-const DEFAULT_REGION = "us-east-1";
-const DEFAULT_PARTNER_TYPE = "Associates";
+const DEFAULT_CATALOG_PATH = "data/amazon-curated-catalog.json";
 
 export type CatalogEnrichmentItem = {
   category: string;
@@ -29,42 +24,126 @@ export type CatalogEnrichmentItem = {
   external_url: string | null;
 };
 
-type AmazonCatalogProduct = {
+type RawCatalogEntry = {
+  id?: string;
+  category?: string;
+  query_contains?: string[];
+  name_contains?: string[];
+  product_url?: string;
+  image_url?: string;
+  estimated_price?: number;
+};
+
+type CatalogEntry = {
+  id: string;
+  category: string | null;
+  queryContains: string[];
+  nameContains: string[];
+  productUrl: string | null;
   imageUrl: string | null;
-  detailPageUrl: string | null;
-  priceAmount: number | null;
+  estimatedPrice: number | null;
 };
 
-type AmazonPaapiConfig = {
-  accessKey: string;
-  secretKey: string;
-  partnerTag: string;
-  partnerType: string;
-  host: string;
-  region: string;
-  marketplace: string;
-};
+let cachedCatalog: CatalogEntry[] | null = null;
+let cachedCatalogKey: string | null = null;
 
-function getPaapiConfig(): AmazonPaapiConfig | null {
-  const accessKey = process.env.AMAZON_PAAPI_ACCESS_KEY?.trim();
-  const secretKey = process.env.AMAZON_PAAPI_SECRET_KEY?.trim();
-  const partnerTag =
-    process.env.AMAZON_PAAPI_PARTNER_TAG?.trim() ||
-    process.env.AMAZON_ASSOCIATE_TAG?.trim();
+function normalizeKeywordList(value: string[] | undefined) {
+  return (value ?? [])
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => item.length >= 2);
+}
 
-  if (!accessKey || !secretKey || !partnerTag) {
+function safeUrl(value: string | undefined) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return null;
+    }
+    return trimmed;
+  } catch {
     return null;
   }
+}
 
-  return {
-    accessKey,
-    secretKey,
-    partnerTag,
-    partnerType: process.env.AMAZON_PAAPI_PARTNER_TYPE?.trim() || DEFAULT_PARTNER_TYPE,
-    host: process.env.AMAZON_PAAPI_HOST?.trim() || DEFAULT_HOST,
-    region: process.env.AMAZON_PAAPI_REGION?.trim() || DEFAULT_REGION,
-    marketplace: process.env.AMAZON_PAAPI_MARKETPLACE?.trim() || DEFAULT_MARKETPLACE,
-  };
+function normalizeCatalog(entries: RawCatalogEntry[]) {
+  return entries
+    .map((entry, index): CatalogEntry | null => {
+      const queryContains = normalizeKeywordList(entry.query_contains);
+      const nameContains = normalizeKeywordList(entry.name_contains);
+      const category = entry.category?.trim().toLowerCase() || null;
+      const productUrl = safeUrl(entry.product_url);
+      const imageUrl = safeUrl(entry.image_url);
+      const estimatedPrice =
+        typeof entry.estimated_price === "number" && Number.isFinite(entry.estimated_price)
+          ? Math.round(entry.estimated_price)
+          : null;
+
+      if (
+        !queryContains.length &&
+        !nameContains.length &&
+        !category &&
+        !productUrl &&
+        !imageUrl &&
+        estimatedPrice == null
+      ) {
+        return null;
+      }
+
+      return {
+        id: entry.id?.trim() || `catalog-entry-${index + 1}`,
+        category,
+        queryContains,
+        nameContains,
+        productUrl,
+        imageUrl,
+        estimatedPrice,
+      };
+    })
+    .filter((entry): entry is CatalogEntry => Boolean(entry));
+}
+
+async function readCatalogFromPath(filePath: string) {
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return normalizeCatalog(parsed as RawCatalogEntry[]);
+  } catch {
+    return [];
+  }
+}
+
+async function readCatalogFromEnvJson(envJson: string) {
+  try {
+    const parsed = JSON.parse(envJson) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return normalizeCatalog(parsed as RawCatalogEntry[]);
+  } catch {
+    return [];
+  }
+}
+
+async function loadCatalog(): Promise<CatalogEntry[]> {
+  const envJson = process.env.AMAZON_CURATED_CATALOG_JSON?.trim() || "";
+  const envPath = process.env.AMAZON_CURATED_CATALOG_PATH?.trim() || DEFAULT_CATALOG_PATH;
+  const resolvedPath = path.resolve(process.cwd(), envPath);
+  const cacheKey = `${envPath}::${envJson.length ? "env-json" : "path"}`;
+
+  if (cachedCatalog && cachedCatalogKey === cacheKey) {
+    return cachedCatalog;
+  }
+
+  const catalog = envJson
+    ? await readCatalogFromEnvJson(envJson)
+    : await readCatalogFromPath(resolvedPath);
+
+  cachedCatalog = catalog;
+  cachedCatalogKey = cacheKey;
+  return catalog;
 }
 
 function isAmazonUrl(value: string | null): boolean {
@@ -81,202 +160,64 @@ function isAmazonUrl(value: string | null): boolean {
   }
 }
 
-function hmac(key: crypto.BinaryLike, data: string) {
-  return crypto.createHmac("sha256", key).update(data, "utf8").digest();
-}
+function scoreCatalogMatch(item: CatalogEnrichmentItem, entry: CatalogEntry) {
+  const searchQuery = item.search_query.trim().toLowerCase();
+  const name = item.name.trim().toLowerCase();
+  const category = item.category.trim().toLowerCase();
+  let score = 0;
 
-function sha256Hex(value: string) {
-  return crypto.createHash("sha256").update(value, "utf8").digest("hex");
-}
-
-function getSignatureKey(secretKey: string, dateStamp: string, region: string) {
-  const kDate = hmac(`AWS4${secretKey}`, dateStamp);
-  const kRegion = hmac(kDate, region);
-  const kService = hmac(kRegion, "ProductAdvertisingAPI");
-  return hmac(kService, "aws4_request");
-}
-
-function buildSignedHeaders({
-  payload,
-  host,
-  region,
-  accessKey,
-  secretKey,
-}: {
-  payload: string;
-  host: string;
-  region: string;
-  accessKey: string;
-  secretKey: string;
-}) {
-  const now = new Date();
-  const iso8601 = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
-  const amzDate = iso8601.slice(0, 15) + "Z";
-  const dateStamp = amzDate.slice(0, 8);
-  const payloadHash = sha256Hex(payload);
-
-  const canonicalHeaders = [
-    `content-encoding:${PAAPI_CONTENT_ENCODING}`,
-    "content-type:application/json; charset=utf-8",
-    `host:${host}`,
-    `x-amz-date:${amzDate}`,
-    `x-amz-target:${PAAPI_TARGET}`,
-  ].join("\n");
-  const signedHeaders = "content-encoding;content-type;host;x-amz-date;x-amz-target";
-  const canonicalRequest = [
-    "POST",
-    PAAPI_PATH,
-    "",
-    canonicalHeaders,
-    "",
-    signedHeaders,
-    payloadHash,
-  ].join("\n");
-
-  const credentialScope = `${dateStamp}/${region}/ProductAdvertisingAPI/aws4_request`;
-  const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    amzDate,
-    credentialScope,
-    sha256Hex(canonicalRequest),
-  ].join("\n");
-
-  const signingKey = getSignatureKey(secretKey, dateStamp, region);
-  const signature = crypto
-    .createHmac("sha256", signingKey)
-    .update(stringToSign, "utf8")
-    .digest("hex");
-
-  const authorizationHeader = [
-    `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope}`,
-    `SignedHeaders=${signedHeaders}`,
-    `Signature=${signature}`,
-  ].join(", ");
-
-  return {
-    "content-encoding": PAAPI_CONTENT_ENCODING,
-    "content-type": "application/json; charset=utf-8",
-    "x-amz-date": amzDate,
-    "x-amz-target": PAAPI_TARGET,
-    Authorization: authorizationHeader,
-  };
-}
-
-async function fetchTopAmazonProduct(
-  config: AmazonPaapiConfig,
-  query: string,
-): Promise<AmazonCatalogProduct | null> {
-  const payload = JSON.stringify({
-    Keywords: query,
-    Marketplace: config.marketplace,
-    PartnerTag: config.partnerTag,
-    PartnerType: config.partnerType,
-    SearchIndex: "All",
-    ItemCount: 1,
-    Resources: [
-      "Images.Primary.Small",
-      "Images.Primary.Medium",
-      "Images.Primary.Large",
-      "Offers.Listings.Price",
-    ],
-  });
-
-  const headers = buildSignedHeaders({
-    payload,
-    host: config.host,
-    region: config.region,
-    accessKey: config.accessKey,
-    secretKey: config.secretKey,
-  });
-
-  try {
-    const response = await fetch(`https://${config.host}${PAAPI_PATH}`, {
-      method: "POST",
-      headers,
-      body: payload,
-      signal: AbortSignal.timeout(8000),
-    });
-
-    if (!response.ok) {
-      return null;
+  for (const token of entry.queryContains) {
+    if (searchQuery.includes(token)) {
+      score += 4;
     }
-
-    const data = (await response.json()) as {
-      SearchResult?: {
-        Items?: Array<{
-          DetailPageURL?: string;
-          Images?: {
-            Primary?: {
-              Large?: { URL?: string };
-              Medium?: { URL?: string };
-              Small?: { URL?: string };
-            };
-          };
-          Offers?: {
-            Listings?: Array<{
-              Price?: { Amount?: number };
-            }>;
-          };
-        }>;
-      };
-    };
-
-    const item = data.SearchResult?.Items?.[0];
-    if (!item) {
-      return null;
-    }
-
-    return {
-      detailPageUrl: item.DetailPageURL?.trim() || null,
-      imageUrl:
-        item.Images?.Primary?.Medium?.URL?.trim() ||
-        item.Images?.Primary?.Large?.URL?.trim() ||
-        item.Images?.Primary?.Small?.URL?.trim() ||
-        null,
-      priceAmount:
-        typeof item.Offers?.Listings?.[0]?.Price?.Amount === "number"
-          ? item.Offers.Listings[0].Price.Amount
-          : null,
-    };
-  } catch {
-    return null;
   }
+
+  for (const token of entry.nameContains) {
+    if (name.includes(token)) {
+      score += 3;
+    }
+  }
+
+  if (entry.category && entry.category === category) {
+    score += 2;
+  }
+
+  return score;
+}
+
+function pickCatalogEntry(
+  item: CatalogEnrichmentItem,
+  catalog: CatalogEntry[],
+): CatalogEntry | null {
+  let best: CatalogEntry | null = null;
+  let bestScore = 0;
+
+  for (const entry of catalog) {
+    const score = scoreCatalogMatch(item, entry);
+    if (score > bestScore) {
+      best = entry;
+      bestScore = score;
+    }
+  }
+
+  return bestScore > 0 ? best : null;
 }
 
 export async function enrichShoppingItemsWithAmazonCatalog(
   items: CatalogEnrichmentItem[],
 ): Promise<CatalogEnrichmentItem[]> {
-  const config = getPaapiConfig();
-  if (!config || !items.length) {
+  if (!items.length) {
     return items;
   }
 
-  const queries = Array.from(
-    new Set(
-      items
-        .map((item) => item.search_query.trim())
-        .filter((query) => query.length >= 3),
-    ),
-  );
-
-  if (!queries.length) {
+  const catalog = await loadCatalog();
+  if (!catalog.length) {
     return items;
   }
-
-  const productByQuery = new Map<string, AmazonCatalogProduct | null>();
-
-  await Promise.all(
-    queries.map(async (query) => {
-      const product = await fetchTopAmazonProduct(config, query);
-      productByQuery.set(query, product);
-    }),
-  );
 
   return items.map((item) => {
-    const query = item.search_query.trim();
-    const product = productByQuery.get(query);
-
-    if (!product) {
+    const match = pickCatalogEntry(item, catalog);
+    if (!match) {
       return item;
     }
 
@@ -284,14 +225,14 @@ export async function enrichShoppingItemsWithAmazonCatalog(
 
     return {
       ...item,
-      image_url: product.imageUrl || item.image_url,
+      image_url: match.imageUrl || item.image_url,
       external_url:
-        shouldReplaceUrl && product.detailPageUrl
-          ? product.detailPageUrl
+        shouldReplaceUrl && match.productUrl
+          ? match.productUrl
           : item.external_url,
       estimated_price:
-        item.estimated_price == null && product.priceAmount != null
-          ? Math.round(product.priceAmount)
+        item.estimated_price == null && match.estimatedPrice != null
+          ? match.estimatedPrice
           : item.estimated_price,
     };
   });
