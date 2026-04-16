@@ -61,6 +61,22 @@ function toCanonicalProductUrl(asin: string) {
   return `https://${AMAZON_HOST}/dp/${asin}`;
 }
 
+function extractQueryFromAmazonSearchUrl(value: string) {
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.replace(/^www\./, "");
+    const isAmazon = hostname === "amazon.com";
+    if (!isAmazon || parsed.pathname !== "/s") {
+      return null;
+    }
+
+    const query = parsed.searchParams.get("k")?.trim();
+    return query || null;
+  } catch {
+    return null;
+  }
+}
+
 function extractFirstAsinFromHtml(html: string) {
   for (const pattern of [ASIN_ATTRIBUTE_PATTERN, ASIN_JSON_PATTERN]) {
     pattern.lastIndex = 0;
@@ -109,6 +125,17 @@ async function resolveFirstAmazonProductUrl(query: string): Promise<string | nul
   } catch {
     return null;
   }
+}
+
+export async function resolveAmazonProductFromSearchUrl(
+  url: string,
+): Promise<string | null> {
+  const query = extractQueryFromAmazonSearchUrl(url);
+  if (!query) {
+    return null;
+  }
+
+  return resolveFirstAmazonProductUrl(query);
 }
 
 async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrichmentItem> {

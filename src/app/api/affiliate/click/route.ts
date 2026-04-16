@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { resolveAmazonProductFromSearchUrl } from "@/lib/affiliate/amazon-catalog";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
@@ -71,6 +72,11 @@ function withAmazonAffiliateTag(target: string): string {
   }
 }
 
+async function maybeResolveAmazonSearchTarget(target: string) {
+  const resolved = await resolveAmazonProductFromSearchUrl(target);
+  return resolved ?? target;
+}
+
 const querySchema = z.object({
   eventId: z.string().uuid(),
   itemId: z.string().uuid(),
@@ -97,7 +103,8 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const redirectTarget = withAmazonAffiliateTag(parsed.data.target);
+  const resolvedTarget = await maybeResolveAmazonSearchTarget(parsed.data.target);
+  const redirectTarget = withAmazonAffiliateTag(resolvedTarget);
   const {
     data: { user },
   } = await supabase.auth.getUser();
