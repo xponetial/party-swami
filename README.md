@@ -51,6 +51,20 @@ AMAZON_ASSOCIATE_TAG=partyswami-20
 
 If this is set, Amazon outbound shopping links routed through `/api/affiliate/click` will include `tag=<your_store_id>`. Keep this unset in environments where you do not want affiliate tagging enabled.
 
+Optional for live Amazon product enrichment on shopping recommendations:
+
+```bash
+AMAZON_PAAPI_ACCESS_KEY=your_paapi_access_key
+AMAZON_PAAPI_SECRET_KEY=your_paapi_secret_key
+AMAZON_PAAPI_PARTNER_TAG=partyswami-20
+AMAZON_PAAPI_PARTNER_TYPE=Associates
+AMAZON_PAAPI_HOST=webservices.amazon.com
+AMAZON_PAAPI_REGION=us-east-1
+AMAZON_PAAPI_MARKETPLACE=www.amazon.com
+```
+
+When these are present, generated/replaced shopping items are enriched with real Amazon catalog metadata (thumbnail image, product detail URL, and price when available) before saving. If they are missing, Party Swami falls back to query-based Amazon links and category artwork.
+
 Optional for invite email delivery:
 
 ```bash

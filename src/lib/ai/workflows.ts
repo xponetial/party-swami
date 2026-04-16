@@ -12,6 +12,7 @@ import {
   getOpenAIModel,
   getPromptVersion,
 } from "@/lib/ai/party-genie";
+import { enrichShoppingItemsWithAmazonCatalog } from "@/lib/affiliate/amazon-catalog";
 import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
 
 type EventRecord = {
@@ -796,11 +797,14 @@ export async function generatePlanForEvent(
   }
 
   const generated = await generatePartyPlan(event);
+  const enrichedShoppingItems = await enrichShoppingItemsWithAmazonCatalog(
+    generated.shoppingItems,
+  );
 
   await ensureInvite(supabase, eventId, generated.inviteCopy);
 
   const shoppingList = await ensureShoppingList(supabase, eventId);
-  const shoppingSummary = await syncShoppingItems(supabase, shoppingList.id, generated.shoppingItems);
+  const shoppingSummary = await syncShoppingItems(supabase, shoppingList.id, enrichedShoppingItems);
   const tasksAdded = await syncTasks(supabase, eventId, generated.tasks);
   const timelineAdded = await syncTimeline(supabase, eventId, generated.timeline);
 
@@ -903,6 +907,9 @@ export async function revisePlanForEvent(
     changeType,
     instructions,
   });
+  const enrichedShoppingItems = await enrichShoppingItemsWithAmazonCatalog(
+    revisedPlan.shoppingItems,
+  );
 
   const { data: latestVersion } = await supabase
     .from("plan_versions")
@@ -938,7 +945,7 @@ export async function revisePlanForEvent(
   await ensureInvite(supabase, eventId, revisedPlan.inviteCopy);
 
   const shoppingList = await ensureShoppingList(supabase, eventId);
-  const shoppingSummary = await syncShoppingItems(supabase, shoppingList.id, revisedPlan.shoppingItems);
+  const shoppingSummary = await syncShoppingItems(supabase, shoppingList.id, enrichedShoppingItems);
   const tasksAdded = await syncTasks(supabase, eventId, revisedPlan.tasks);
   const timelineAdded = await syncTimeline(supabase, eventId, revisedPlan.timeline);
 
@@ -1204,7 +1211,10 @@ export async function generateShoppingListForEvent(supabase: SupabaseClient, eve
     menu: planContext?.menu ?? [],
     shoppingCategories: planContext?.shopping_categories ?? [],
   });
-  const shoppingSummary = await syncShoppingItems(supabase, shoppingList.id, generated.shoppingItems);
+  const enrichedShoppingItems = await enrichShoppingItemsWithAmazonCatalog(
+    generated.shoppingItems,
+  );
+  const shoppingSummary = await syncShoppingItems(supabase, shoppingList.id, enrichedShoppingItems);
   const fingerprintInput = buildEventFingerprint(event, "shopping_list_transform");
   const requestFingerprint = buildFingerprint(fingerprintInput);
   const promptVersion =
@@ -1302,6 +1312,9 @@ export async function replaceShoppingItemForEvent(
         feedback,
       },
     );
+  const [enrichedReplacementItem] = await enrichShoppingItemsWithAmazonCatalog([
+    replacement.item,
+  ]);
   const requestFingerprint = buildFingerprint({
     ...buildEventFingerprint(event, "shopping_list_transform"),
     replaceItemId: currentItem.id,
@@ -1319,14 +1332,14 @@ export async function replaceShoppingItemForEvent(
   const { error: updateError } = await supabase
     .from("shopping_items")
     .update({
-      category: replacement.item.category,
-      name: replacement.item.name,
-      quantity: replacement.item.quantity,
-      estimated_price: replacement.item.estimated_price,
-      recommendation_reason: replacement.item.recommendation_reason,
-      search_query: replacement.item.search_query,
-      image_url: replacement.item.image_url,
-      external_url: replacement.item.external_url,
+      category: enrichedReplacementItem.category,
+      name: enrichedReplacementItem.name,
+      quantity: enrichedReplacementItem.quantity,
+      estimated_price: enrichedReplacementItem.estimated_price,
+      recommendation_reason: enrichedReplacementItem.recommendation_reason,
+      search_query: enrichedReplacementItem.search_query,
+      image_url: enrichedReplacementItem.image_url,
+      external_url: enrichedReplacementItem.external_url,
       status: "pending",
     })
     .eq("id", currentItem.id);
@@ -1342,7 +1355,7 @@ export async function replaceShoppingItemForEvent(
 
   await syncPlanCategoryReplacement(supabase, eventId, {
     previousItem: currentItem,
-    replacementItem: replacement.item,
+    replacementItem: enrichedReplacementItem,
   });
 
   const usage = replacement.rawResponse.usage;
@@ -1362,7 +1375,7 @@ export async function replaceShoppingItemForEvent(
   });
 
   return {
-    itemName: replacement.item.name,
+    itemName: enrichedReplacementItem.name,
     estimatedTotal,
   };
 }
