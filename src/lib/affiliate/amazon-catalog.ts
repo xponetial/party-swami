@@ -10,6 +10,8 @@ const ASIN_ATTRIBUTE_PATTERN = /data-asin="([A-Z0-9]{10})"/gi;
 const ASIN_JSON_PATTERN = /"asin":"([A-Z0-9]{10})"/gi;
 const SEARCH_RESULT_ASIN_PATTERN =
   /data-component-type="s-search-result"[\s\S]{0,1200}?data-asin="([A-Z0-9]{10})"/gi;
+const AMAZON_IMAGE_URL_PATTERN =
+  /https?:\/\/m\.media-amazon\.com\/images\/I\/[^"'\\\s>]+?\.(?:jpg|jpeg|png|webp)/gi;
 const STOP_TOKENS = new Set([
   "the",
   "and",
@@ -69,6 +71,11 @@ type CatalogEnrichmentItem = {
   search_query: string;
   image_url: string | null;
   external_url: string | null;
+};
+
+type ResolvedAmazonProduct = {
+  productUrl: string;
+  imageUrl: string | null;
 };
 
 function buildAmazonSearchUrl(query: string) {
@@ -147,6 +154,33 @@ function extractFirstAsinFromHtml(html: string) {
   return null;
 }
 
+function normalizeAmazonImageUrl(value: string) {
+  return value
+    .replace(/\\\//g, "/")
+    .replace(/\\u0026/g, "&")
+    .replace(/&amp;/g, "&");
+}
+
+function extractFirstAmazonImageUrl(value: string) {
+  AMAZON_IMAGE_URL_PATTERN.lastIndex = 0;
+  const matched = AMAZON_IMAGE_URL_PATTERN.exec(value);
+  return matched?.[0] ? normalizeAmazonImageUrl(matched[0]) : null;
+}
+
+function extractImageUrlNearAsin(html: string, asin: string) {
+  const escapedAsin = asin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const asinPattern = new RegExp(`data-asin="${escapedAsin}"`, "i");
+  const matched = asinPattern.exec(html);
+  if (!matched) {
+    return null;
+  }
+
+  const start = Math.max(0, matched.index - 1400);
+  const end = Math.min(html.length, matched.index + 2200);
+  const snippet = html.slice(start, end);
+  return extractFirstAmazonImageUrl(snippet);
+}
+
 function toMeaningfulTokens(value: string) {
   return value
     .toLowerCase()
@@ -215,7 +249,12 @@ function extractBestAsinFromSearchHtml(
     [...queryTokens].some((token) =>
     BEVERAGE_INTENT_TOKENS.includes(token as (typeof BEVERAGE_INTENT_TOKENS)[number]),
   );
-  const candidates: Array<{ asin: string; score: number; blockedByIntent: boolean }> = [];
+  const candidates: Array<{
+    asin: string;
+    score: number;
+    blockedByIntent: boolean;
+    imageUrl: string | null;
+  }> = [];
   const seenAsins = new Set<string>();
 
   SEARCH_RESULT_ASIN_PATTERN.lastIndex = 0;
@@ -251,8 +290,9 @@ function extractBestAsinFromSearchHtml(
     const blockedByIntent =
       hasBeverageIntent &&
       BEVERAGE_OFF_CATEGORY_TOKENS.some((token) => snippet.includes(token));
+    const imageUrl = extractFirstAmazonImageUrl(snippet);
 
-    candidates.push({ asin, score, blockedByIntent });
+    candidates.push({ asin, score, blockedByIntent, imageUrl });
   }
 
   if (!candidates.length) {
@@ -272,7 +312,10 @@ function extractBestAsinFromSearchHtml(
     return null;
   }
 
-  return rankedCandidates[0].asin;
+  return {
+    asin: rankedCandidates[0].asin,
+    imageUrl: rankedCandidates[0].imageUrl,
+  };
 }
 
 function extractFirstBeverageAsinFromSearchHtml(html: string) {
@@ -296,14 +339,17 @@ function extractFirstBeverageAsinFromSearchHtml(html: string) {
     const hasOffCategoryToken = BEVERAGE_OFF_CATEGORY_TOKENS.some((token) => snippet.includes(token));
 
     if (hasBeverageToken && !hasOffCategoryToken) {
-      return asin;
+      return {
+        asin,
+        imageUrl: extractFirstAmazonImageUrl(snippet),
+      };
     }
   }
 
   return null;
 }
 
-async function resolveFirstAmazonProductUrl(
+async function resolveFirstAmazonProduct(
   query: string,
   {
     matchHint,
@@ -312,7 +358,7 @@ async function resolveFirstAmazonProductUrl(
     matchHint?: string;
     categoryHint?: string;
   } = {},
-): Promise<string | null> {
+): Promise<ResolvedAmazonProduct | null> {
   const searchUrl = buildAmazonSearchUrl(query);
 
   try {
@@ -335,26 +381,48 @@ async function resolveFirstAmazonProductUrl(
       return null;
     }
 
-    const asin = extractBestAsinFromSearchHtml(html, query, { matchHint, categoryHint });
+    const resolved = extractBestAsinFromSearchHtml(html, query, { matchHint, categoryHint });
 
-    if (asin) {
-      return toCanonicalProductUrl(asin);
+    if (resolved?.asin) {
+      return {
+        productUrl: toCanonicalProductUrl(resolved.asin),
+        imageUrl: resolved.imageUrl ?? extractImageUrlNearAsin(html, resolved.asin),
+      };
     }
 
     if (isBeverageCategory(categoryHint)) {
-      const beverageAsin = extractFirstBeverageAsinFromSearchHtml(html);
-      return beverageAsin ? toCanonicalProductUrl(beverageAsin) : null;
+      const beverageResolved = extractFirstBeverageAsinFromSearchHtml(html);
+      if (!beverageResolved?.asin) {
+        return null;
+      }
+      return {
+        productUrl: toCanonicalProductUrl(beverageResolved.asin),
+        imageUrl:
+          beverageResolved.imageUrl ?? extractImageUrlNearAsin(html, beverageResolved.asin),
+      };
     }
 
     // For non-beverage categories, keep a single-PDP experience even when
     // relevance scoring misses by falling back to first ASIN.
     if (categoryHint?.trim()) {
       const constrainedFallbackAsin = extractFirstAsinFromHtml(html);
-      return constrainedFallbackAsin ? toCanonicalProductUrl(constrainedFallbackAsin) : null;
+      if (!constrainedFallbackAsin) {
+        return null;
+      }
+      return {
+        productUrl: toCanonicalProductUrl(constrainedFallbackAsin),
+        imageUrl: extractImageUrlNearAsin(html, constrainedFallbackAsin),
+      };
     }
 
     const firstAsinFallback = extractFirstAsinFromHtml(html);
-    return firstAsinFallback ? toCanonicalProductUrl(firstAsinFallback) : null;
+    if (!firstAsinFallback) {
+      return null;
+    }
+    return {
+      productUrl: toCanonicalProductUrl(firstAsinFallback),
+      imageUrl: extractImageUrlNearAsin(html, firstAsinFallback),
+    };
   } catch {
     return null;
   }
@@ -375,22 +443,22 @@ export async function resolveAmazonProductFromSearchUrl(
     return null;
   }
 
-  const resolved = await resolveFirstAmazonProductUrl(query, {
+  const resolved = await resolveFirstAmazonProduct(query, {
     matchHint,
     categoryHint,
   });
-  if (resolved) {
-    return resolved;
+  if (resolved?.productUrl) {
+    return resolved.productUrl;
   }
 
   if (isBeverageCategory(categoryHint)) {
     for (const fallbackQuery of BEVERAGE_FALLBACK_QUERIES) {
-      const fallbackResolved = await resolveFirstAmazonProductUrl(fallbackQuery, {
+      const fallbackResolved = await resolveFirstAmazonProduct(fallbackQuery, {
         matchHint: "drink beverage mixer dispenser",
         categoryHint,
       });
-      if (fallbackResolved) {
-        return fallbackResolved;
+      if (fallbackResolved?.productUrl) {
+        return fallbackResolved.productUrl;
       }
     }
 
@@ -429,14 +497,15 @@ async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrich
   }
 
   for (const candidate of queriesToTry) {
-    const resolved = await resolveFirstAmazonProductUrl(candidate, {
+    const resolved = await resolveFirstAmazonProduct(candidate, {
       matchHint: item.name,
       categoryHint: item.category,
     });
-    if (resolved) {
+    if (resolved?.productUrl) {
       return {
         ...item,
-        external_url: resolved,
+        external_url: resolved.productUrl,
+        image_url: item.image_url ?? resolved.imageUrl,
       };
     }
   }

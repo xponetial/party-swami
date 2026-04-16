@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
+import { enrichShoppingItemsWithAmazonCatalog } from "@/lib/affiliate/amazon-catalog";
 import type { InviteDesignData } from "@/lib/invite-design";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -213,13 +214,71 @@ export const getEventContext = cache(async (eventId: string) => {
       ).data ?? []
     : [];
 
+  let resolvedShoppingItems = shoppingItems;
+  const needsImageBackfill = shoppingItems.some(
+    (item) =>
+      !item.image_url &&
+      item.search_query?.trim() &&
+      (item.external_url?.includes("amazon.") || item.search_query?.trim()),
+  );
+
+  if (needsImageBackfill) {
+    const enriched = await enrichShoppingItemsWithAmazonCatalog(
+      shoppingItems.map((item) => ({
+        category: item.category,
+        name: item.name,
+        quantity: item.quantity,
+        estimated_price: item.estimated_price,
+        recommendation_reason: item.recommendation_reason ?? "",
+        search_query: item.search_query ?? "",
+        image_url: item.image_url,
+        external_url: item.external_url,
+      })),
+    );
+
+    resolvedShoppingItems = shoppingItems.map((item, index) => {
+      const enrichedItem = enriched[index];
+      if (!enrichedItem) {
+        return item;
+      }
+      return {
+        ...item,
+        image_url: enrichedItem.image_url ?? item.image_url,
+        external_url: enrichedItem.external_url ?? item.external_url,
+      };
+    });
+
+    const updates = resolvedShoppingItems.filter((item, index) => {
+      const original = shoppingItems[index];
+      if (!original) return false;
+      return (
+        item.image_url !== original.image_url ||
+        item.external_url !== original.external_url
+      );
+    });
+
+    if (updates.length) {
+      await Promise.all(
+        updates.map((item) =>
+          supabase
+            .from("shopping_items")
+            .update({
+              image_url: item.image_url,
+              external_url: item.external_url,
+            })
+            .eq("id", item.id),
+        ),
+      );
+    }
+  }
+
   return {
     event,
     invite,
     plan,
     guests: guests ?? [],
     shoppingList,
-    shoppingItems,
+    shoppingItems: resolvedShoppingItems,
     tasks: tasks ?? [],
     timelineItems: timelineItems ?? [],
     profile: profile ?? null,
