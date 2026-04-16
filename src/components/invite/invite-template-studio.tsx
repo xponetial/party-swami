@@ -728,38 +728,43 @@ export function InviteTemplateStudio({
               </p>
               {libraryImages.length ? (
                 <div className="mt-3 space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    {libraryImages.slice(0, 9).map((image) => (
-                      <button
-                        className={`overflow-hidden rounded-xl border transition ${
-                          image.id === selectedLibraryImageId
-                            ? "border-brand shadow-party"
-                            : "border-border hover:border-brand/40"
-                        }`}
-                        key={image.id}
-                        onClick={() => {
-                          setSelectedLibraryImageId(image.id);
-                          setSelectedOptionId(null);
-                          setDesign((current) => ({
-                            ...current,
-                            fields: {
-                              ...current.fields,
-                              backgroundImageUrl: image.publicUrl,
-                              backgroundImagePath: image.storagePath,
-                            },
-                          }));
-                        }}
-                        type="button"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          alt="Previously generated invite background"
-                          className="h-24 w-full object-cover"
-                          src={image.publicUrl}
-                        />
-                      </button>
-                    ))}
+                  <div className="max-h-[19.5rem] overflow-y-auto pr-1">
+                    <div className="grid grid-cols-3 gap-3">
+                      {libraryImages.map((image) => (
+                        <button
+                          className={`overflow-hidden rounded-xl border transition ${
+                            image.id === selectedLibraryImageId
+                              ? "border-brand shadow-party"
+                              : "border-border hover:border-brand/40"
+                          }`}
+                          key={image.id}
+                          onClick={() => {
+                            setSelectedLibraryImageId(image.id);
+                            setSelectedOptionId(null);
+                            setDesign((current) => ({
+                              ...current,
+                              fields: {
+                                ...current.fields,
+                                backgroundImageUrl: image.publicUrl,
+                                backgroundImagePath: image.storagePath,
+                              },
+                            }));
+                          }}
+                          type="button"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            alt="Previously generated invite background"
+                            className="h-24 w-full object-cover"
+                            src={image.publicUrl}
+                          />
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                  <p className="text-xs text-ink-muted">
+                    Showing newest images first. Scroll to browse the full library.
+                  </p>
                   <Button
                     disabled={!selectedLibraryImageId || isFinalizingGeneratedImage}
                     onClick={handleFinalizeLibraryImage}
