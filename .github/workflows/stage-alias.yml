@@ -1,15 +1,19 @@
 name: Stage Alias
 
 on:
-  push:
-    branches:
-      - "stage/**"
+  deployment_status:
 
 jobs:
   alias-stage-domain:
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.ref != '' &&
+      startsWith(github.event.deployment.ref, 'stage/') &&
+      github.event.deployment_status.target_url != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      deployments: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +30,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_SCOPE: xponetials-projects
-          STAGE_BRANCH: ${{ github.ref_name }}
+          STAGE_BRANCH: ${{ github.event.deployment.ref }}
+          STAGE_SOURCE_ALIAS: ${{ github.event.deployment_status.target_url }}
           STAGE_DOMAIN: stage.partyswami.com
         run: node scripts/stage-alias.mjs
