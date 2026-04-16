@@ -130,6 +130,35 @@ export function composeInviteMessageWithEventDetails({
   return [baseMessage, ...detailLines].filter(Boolean).join("\n\n");
 }
 
+export function compactInvitePreviewMessage({
+  messageText,
+  dateText,
+  locationText,
+  maxLength,
+}: {
+  messageText: string;
+  dateText: string;
+  locationText: string;
+  maxLength: number;
+}) {
+  const normalizedBase = messageText.replace(/\s+/g, " ").trim();
+  const safeDateText = dateText.trim() || "TBD";
+  const safeLocationText = locationText.trim() || "TBD";
+  const dateLine = `Date & time: ${safeDateText}`;
+  const locationLine = `Location: ${safeLocationText}`;
+  const pinnedTail = `${dateLine}\n${locationLine}`;
+
+  const minimumBudgetForBody = 80;
+  const maxBodyLength = Math.max(minimumBudgetForBody, maxLength - pinnedTail.length - 4);
+
+  const compactBody =
+    normalizedBase.length <= maxBodyLength
+      ? normalizedBase
+      : `${normalizedBase.slice(0, maxBodyLength - 3).trimEnd()}...`;
+
+  return `${compactBody}\n\n${pinnedTail}`;
+}
+
 export function getTitleFontSize(title: string) {
   const length = title.trim().length;
 
@@ -159,9 +188,14 @@ export function formatTitleForCard(title: string) {
 }
 
 export function getInviteCardLayout(template: InviteTemplate) {
-  const titleTop = getSafeAreaTopPercent(template.textSafeAreas.title);
-  const detailsTop = getSafeAreaTopPercent(template.textSafeAreas.details);
-  const ctaTop = getSafeAreaTopPercent(template.textSafeAreas.cta);
+  const rawTitleTop = getSafeAreaTopPercent(template.textSafeAreas.title);
+  const rawDetailsTop = getSafeAreaTopPercent(template.textSafeAreas.details);
+  const rawCtaTop = getSafeAreaTopPercent(template.textSafeAreas.cta);
+
+  // Keep important card text readable and reserve stable space near the bottom for RSVP.
+  const titleTop = rawTitleTop;
+  const detailsTop = Math.min(Math.max(rawDetailsTop + 8, 58), 70);
+  const ctaTop = Math.max(rawCtaTop, 94);
 
   return {
     titleTop,
