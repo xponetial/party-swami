@@ -51,6 +51,14 @@ const BEVERAGE_FALLBACK_QUERIES = [
 ] as const;
 const DEFAULT_BEVERAGE_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_BEVERAGE_ASIN?.trim() || "B0B924FCQG";
+const DEFAULT_DECOR_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_DECOR_ASIN?.trim() || "B0GJD38FLF";
+const DEFAULT_TABLEWARE_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_TABLEWARE_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
+const DEFAULT_HOSTING_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_HOSTING_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
+const DEFAULT_GENERAL_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_GENERAL_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
 
 type CatalogEnrichmentItem = {
   category: string;
@@ -155,6 +163,38 @@ function isBeverageCategory(categoryHint?: string) {
     normalized.includes("drink") ||
     normalized.includes("bar")
   );
+}
+
+function getFallbackAsinForCategory(categoryHint?: string) {
+  const normalized = (categoryHint ?? "").toLowerCase();
+
+  if (isBeverageCategory(normalized)) {
+    return DEFAULT_BEVERAGE_FALLBACK_ASIN;
+  }
+
+  if (normalized.includes("decor")) {
+    return DEFAULT_DECOR_FALLBACK_ASIN;
+  }
+
+  if (
+    normalized.includes("table") ||
+    normalized.includes("serve") ||
+    normalized.includes("plate") ||
+    normalized.includes("utensil")
+  ) {
+    return DEFAULT_TABLEWARE_FALLBACK_ASIN;
+  }
+
+  if (
+    normalized.includes("host") ||
+    normalized.includes("setup") ||
+    normalized.includes("supply") ||
+    normalized.includes("essential")
+  ) {
+    return DEFAULT_HOSTING_FALLBACK_ASIN;
+  }
+
+  return DEFAULT_GENERAL_FALLBACK_ASIN;
 }
 
 function extractBestAsinFromSearchHtml(
@@ -354,10 +394,10 @@ export async function resolveAmazonProductFromSearchUrl(
       }
     }
 
-    return toCanonicalProductUrl(DEFAULT_BEVERAGE_FALLBACK_ASIN);
+    return toCanonicalProductUrl(getFallbackAsinForCategory(categoryHint));
   }
 
-  return null;
+  return toCanonicalProductUrl(getFallbackAsinForCategory(categoryHint));
 }
 
 async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrichmentItem> {
