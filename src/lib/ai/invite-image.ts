@@ -1,8 +1,37 @@
 import OpenAI from "openai";
+import sharp from "sharp";
 
 const INVITE_IMAGE_SIZE = "1024x1536";
 const TEXT_CHECK_MODEL = process.env.OPENAI_IMAGE_TEXT_CHECK_MODEL?.trim() || "gpt-4.1-mini";
 const MAX_GENERATION_ATTEMPTS = 4;
+const MIN_TARGET_LUMA = 118;
+
+function getPerceivedLuma(stats: Awaited<ReturnType<sharp.Sharp["stats"]>>) {
+  const r = stats.channels[0]?.mean ?? 0;
+  const g = stats.channels[1]?.mean ?? 0;
+  const b = stats.channels[2]?.mean ?? 0;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+async function normalizeInviteBrightness(png: Buffer) {
+  const stats = await sharp(png).stats();
+  const luma = getPerceivedLuma(stats);
+
+  if (luma >= MIN_TARGET_LUMA) {
+    return png;
+  }
+
+  // Raise exposure for underlit generations while preserving color.
+  const brightness = Math.min(1.35, Math.max(1.08, MIN_TARGET_LUMA / Math.max(luma, 1)));
+
+  return sharp(png)
+    .modulate({
+      brightness,
+      saturation: 1.05,
+    })
+    .png()
+    .toBuffer();
+}
 
 function buildInviteBackgroundPrompt(userPrompt: string) {
   return [
@@ -13,6 +42,8 @@ function buildInviteBackgroundPrompt(userPrompt: string) {
     "Keep center and lower-middle zones clean and readable for overlay text.",
     "Place visual interest around edges, with depth of field and cinematic lighting.",
     "Use realistic materials, polished textures, and balanced rich colors.",
+    "Brightness requirement: bright, airy, and well-exposed overall image.",
+    "Avoid dark, moody, underexposed, or heavily shadowed scenes.",
     "Strictly no words, letters, numbers, logos, typography, signage, or watermarks.",
     "Final style guidance:",
     userPrompt,
@@ -82,11 +113,12 @@ export async function generateInviteBackgroundImageOptions(prompt: string, count
       n: missing,
     });
 
-    const candidates = (result.data ?? [])
+    const rawCandidates = (result.data ?? [])
       .map((item) => item.b64_json)
       .filter((value): value is string => Boolean(value))
       .map((b64) => Buffer.from(b64, "base64"));
-    generatedCandidates += candidates.length;
+    generatedCandidates += rawCandidates.length;
+    const candidates = await Promise.all(rawCandidates.map((candidate) => normalizeInviteBrightness(candidate)));
 
     if (!candidates.length) {
       continue;
