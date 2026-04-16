@@ -30,11 +30,6 @@ const sourceAlias = process.env.STAGE_SOURCE_ALIAS?.trim() || (() => {
   return `https://party-swami-git-${branchSlug}-xponetials-projects.vercel.app`;
 })();
 
-if (!sourceAlias.includes("-git-stage-")) {
-  throw new Error(
-    `stage:alias refused non-stage source alias: "${sourceAlias}"`,
-  );
-}
 const stageDomain = process.env.STAGE_DOMAIN?.trim() || "stage.partyswami.com";
 const vercelScope = process.env.VERCEL_SCOPE?.trim() || "xponetials-projects";
 
