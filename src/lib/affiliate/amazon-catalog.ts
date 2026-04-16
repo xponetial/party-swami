@@ -23,6 +23,27 @@ const STOP_TOKENS = new Set([
   "accessories",
   "birthday",
 ]);
+const BEVERAGE_INTENT_TOKENS = [
+  "drink",
+  "beverage",
+  "mixer",
+  "mixers",
+  "mocktail",
+  "cocktail",
+  "dispenser",
+  "bar",
+] as const;
+const BEVERAGE_OFF_CATEGORY_TOKENS = [
+  "favor",
+  "favors",
+  "goodie",
+  "goodie bag",
+  "gift bag",
+  "balloon",
+  "banner",
+  "cake topper",
+  "table decor",
+] as const;
 
 type CatalogEnrichmentItem = {
   category: string;
@@ -123,7 +144,10 @@ function toMeaningfulTokens(value: string) {
 function extractBestAsinFromSearchHtml(html: string, query: string, matchHint?: string) {
   const hintTokens = toMeaningfulTokens(matchHint ?? "");
   const queryTokens = new Set(toMeaningfulTokens(`${query} ${matchHint ?? ""}`));
-  const candidates: Array<{ asin: string; score: number }> = [];
+  const hasBeverageIntent = [...queryTokens].some((token) =>
+    BEVERAGE_INTENT_TOKENS.includes(token as (typeof BEVERAGE_INTENT_TOKENS)[number]),
+  );
+  const candidates: Array<{ asin: string; score: number; blockedByIntent: boolean }> = [];
   const seenAsins = new Set<string>();
 
   SEARCH_RESULT_ASIN_PATTERN.lastIndex = 0;
@@ -156,22 +180,29 @@ function extractBestAsinFromSearchHtml(html: string, query: string, matchHint?: 
     }
 
     const score = tokenScore - (isSponsored ? 2 : 0);
+    const blockedByIntent =
+      hasBeverageIntent &&
+      BEVERAGE_OFF_CATEGORY_TOKENS.some((token) => snippet.includes(token));
 
-    candidates.push({ asin, score });
+    candidates.push({ asin, score, blockedByIntent });
   }
 
   if (!candidates.length) {
     return null;
   }
 
-  candidates.sort((a, b) => b.score - a.score);
+  const allowedCandidates = candidates.filter((candidate) => !candidate.blockedByIntent);
+  const rankedCandidates = (allowedCandidates.length ? allowedCandidates : candidates).sort(
+    (a, b) => b.score - a.score,
+  );
 
-  // If confidence is weak, avoid forcing a likely-wrong product.
-  if (candidates[0].score < 2) {
+  // Return the best available product result to keep click-through on a single PDP,
+  // while still using intent filters to avoid obvious mismatches.
+  if (!rankedCandidates.length) {
     return null;
   }
 
-  return candidates[0].asin;
+  return rankedCandidates[0].asin;
 }
 
 async function resolveFirstAmazonProductUrl(
@@ -200,7 +231,9 @@ async function resolveFirstAmazonProductUrl(
       return null;
     }
 
-    const asin = extractBestAsinFromSearchHtml(html, query, matchHint);
+    const asin =
+      extractBestAsinFromSearchHtml(html, query, matchHint) ??
+      extractFirstAsinFromHtml(html);
 
     return asin ? toCanonicalProductUrl(asin) : null;
   } catch {
