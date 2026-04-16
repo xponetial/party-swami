@@ -169,6 +169,11 @@ function formatStatusChip(value: ShoppingItemDetails["status"]) {
   return value.replace(/_/g, " ");
 }
 
+function truncateUrl(value: string, maxLength = 96) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}...`;
+}
+
 function getCategoryVisualPath(category: string) {
   const normalizedCategory = category.trim().toLowerCase();
 
@@ -228,7 +233,7 @@ function getCategoryVisualPath(category: string) {
   return null;
 }
 
-function buildTrackedShoppingHref({
+function buildShoppingLinks({
   eventId,
   item,
 }: {
@@ -251,7 +256,10 @@ function buildTrackedShoppingHref({
     target,
   });
 
-  return `/api/affiliate/click?${params.toString()}`;
+  return {
+    target,
+    trackedHref: `/api/affiliate/click?${params.toString()}`,
+  };
 }
 
 function buildRecommendationVisual(item: ShoppingItemDetails) {
@@ -437,7 +445,7 @@ export function ShoppingListCard({
 
                   <div className="mt-4 grid gap-4">
                     {categoryItems.map((item) => {
-                      const trackedHref = buildTrackedShoppingHref({ eventId, item });
+                      const shoppingLinks = buildShoppingLinks({ eventId, item });
                       const confidenceTags = buildConfidenceTags(item, event, plan);
                       const hasSearchHint = Boolean(item.search_query?.trim());
 
@@ -477,10 +485,10 @@ export function ShoppingListCard({
 
                             <div className="rounded-[1.2rem] border border-border bg-white/82 p-3">
                               <div className="flex flex-wrap items-center gap-3">
-                                {trackedHref ? (
+                                {shoppingLinks ? (
                                   <Button asChild className="min-w-[10.5rem]">
                                     <a
-                                      href={trackedHref}
+                                      href={shoppingLinks.trackedHref}
                                       rel="noreferrer"
                                       target="_blank"
                                     >
@@ -551,6 +559,36 @@ export function ShoppingListCard({
                                   <Link href={`#manual-item-${item.id}`}>Adjust details</Link>
                                 </Button>
                               </div>
+
+                              {shoppingLinks ? (
+                                <div className="mt-3 rounded-[1rem] border border-dashed border-border bg-white/80 px-4 py-3 text-xs text-ink-muted">
+                                  <p className="font-medium uppercase tracking-[0.18em] text-ink-muted">
+                                    Debug links
+                                  </p>
+                                  <p className="mt-2">
+                                    <span className="mr-2 uppercase tracking-[0.16em]">Destination</span>
+                                    <a
+                                      className="underline"
+                                      href={shoppingLinks.target}
+                                      rel="noreferrer"
+                                      target="_blank"
+                                    >
+                                      {truncateUrl(shoppingLinks.target)}
+                                    </a>
+                                  </p>
+                                  <p className="mt-2">
+                                    <span className="mr-2 uppercase tracking-[0.16em]">Tracked</span>
+                                    <a
+                                      className="underline"
+                                      href={shoppingLinks.trackedHref}
+                                      rel="noreferrer"
+                                      target="_blank"
+                                    >
+                                      {truncateUrl(shoppingLinks.trackedHref)}
+                                    </a>
+                                  </p>
+                                </div>
+                              ) : null}
 
                               <div className="mt-3 rounded-[1rem] border border-border bg-white/80 px-4 py-3 text-sm text-ink-muted">
                                 <span className="mr-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
