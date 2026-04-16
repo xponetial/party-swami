@@ -57,8 +57,16 @@ function readNumberEnv(name: string, fallback: number) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-function readInviteImageRequestCostUsd() {
-  return readNumberEnv("OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD", 0.86);
+function readInviteImageCostPerImageUsd() {
+  const perImage = Number(process.env.OPENAI_INVITE_IMAGE_COST_PER_IMAGE_USD);
+  if (Number.isFinite(perImage) && perImage > 0) return perImage;
+
+  const perRequest = Number(process.env.OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD);
+  if (Number.isFinite(perRequest) && perRequest > 0) {
+    return Number((perRequest / 3).toFixed(6));
+  }
+
+  return 0.3333;
 }
 
 function getInviteImageCaps(planTier: "pro" | "admin"): InviteImageHardCaps {
@@ -130,15 +138,20 @@ async function enforceInviteImageHardCaps({
     (sum, row) => sum + Math.max(Number(row.output_tokens ?? 0), 0),
     0,
   );
-  const requestCostUsd = readInviteImageRequestCostUsd();
+  const perImageCostUsd = readInviteImageCostPerImageUsd();
   const additionalImagesPurchased = Math.max(0, Number(allowance?.additional_images ?? 0));
   const additionalBudgetUsd = Math.max(0, Number(allowance?.additional_budget_usd ?? 0));
   const effectiveMonthlyImageCap = caps.maxImagesPerMonth + additionalImagesPurchased;
   const effectiveMonthlyCostCap = Number((caps.maxMonthlyCostUsd + additionalBudgetUsd).toFixed(2));
   const monthCost = (monthRows ?? []).reduce(
-    (sum, row) => sum + Math.max(Number(row.estimated_cost_usd ?? 0), requestCostUsd),
+    (sum, row) =>
+      sum +
+      (Number(row.estimated_cost_usd ?? 0) > 0
+        ? Number(row.estimated_cost_usd ?? 0)
+        : Math.max(Number(row.output_tokens ?? 0), 0) * perImageCostUsd),
     0,
   );
+  const projectedCostAfterRequest = monthCost + requestedImageCount * perImageCostUsd;
 
   if (dayImages + requestedImageCount > caps.maxImagesPerDay) {
     return {
@@ -159,7 +172,7 @@ async function enforceInviteImageHardCaps({
     };
   }
 
-  if (monthCost >= effectiveMonthlyCostCap) {
+  if (projectedCostAfterRequest > effectiveMonthlyCostCap) {
     return {
       allowed: false,
       code: "monthly_budget_reached",
@@ -170,10 +183,10 @@ async function enforceInviteImageHardCaps({
   return { allowed: true, caps };
 }
 
-function estimateInviteImageCostUsd() {
-  // Temporary business rule: treat every invite-image generation request as a flat $0.86 cost.
-  // This keeps in-app budgeting aligned with observed spend until full cost reconciliation is in place.
-  return Number(readInviteImageRequestCostUsd().toFixed(6));
+function estimateInviteImageCostUsd(imageCount: number) {
+  // Budget math aligns with plan caps: each generated image consumes the same unit cost.
+  // Default is $0.3333/image so 3 images ~= $0.9999 per generation.
+  return Number((Math.max(imageCount, 0) * readInviteImageCostPerImageUsd()).toFixed(6));
 }
 
 async function trackInviteImageGeneration({
@@ -428,7 +441,7 @@ export async function POST(request: Request) {
       ),
     );
 
-    const estimatedCostUsd = estimateInviteImageCostUsd();
+    const estimatedCostUsd = estimateInviteImageCostUsd(options.length);
     const perImageEstimatedCostUsd = Number(
       (estimatedCostUsd / Math.max(options.length, 1)).toFixed(6),
     );

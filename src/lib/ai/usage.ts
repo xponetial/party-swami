@@ -50,10 +50,16 @@ function readImageBudgetEnv(tier: PlanTier) {
   return 0;
 }
 
-function readInviteImageRequestCostUsd() {
-  const value = Number(process.env.OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD);
-  if (Number.isFinite(value) && value > 0) return value;
-  return 0.86;
+function readInviteImageCostPerImageUsd() {
+  const perImage = Number(process.env.OPENAI_INVITE_IMAGE_COST_PER_IMAGE_USD);
+  if (Number.isFinite(perImage) && perImage > 0) return perImage;
+
+  const perRequest = Number(process.env.OPENAI_INVITE_IMAGE_COST_PER_REQUEST_USD);
+  if (Number.isFinite(perRequest) && perRequest > 0) {
+    return Number((perRequest / 3).toFixed(6));
+  }
+
+  return 0.3333;
 }
 
 function readImagePackSize() {
@@ -196,12 +202,12 @@ export async function getInviteImageUsageForUser(
   const [{ data: generations = [] }, { data: images = [] }, { data: allowance }] = await Promise.all([
     supabase
       .from("ai_generations")
-      .select("id, estimated_cost_usd")
+      .select("id, estimated_cost_usd, output_tokens")
       .eq("user_id", userId)
       .eq("generation_type", "invitation_image")
       .eq("status", "success")
       .gte("created_at", monthStartIso)
-      .returns<Array<{ id: string; estimated_cost_usd: number }>>(),
+      .returns<Array<{ id: string; estimated_cost_usd: number; output_tokens: number }>>(),
     supabase
       .from("invite_generated_images")
       .select("id")
@@ -219,7 +225,7 @@ export async function getInviteImageUsageForUser(
 
   const safeGenerations = generations ?? [];
   const safeImages = images ?? [];
-  const requestCostUsd = readInviteImageRequestCostUsd();
+  const perImageCostUsd = readInviteImageCostPerImageUsd();
   const additionalImagesPurchased = Math.max(0, Number(allowance?.additional_images ?? 0));
   const additionalBudgetUsd = Math.max(0, Number(allowance?.additional_budget_usd ?? 0));
   const baseMonthlyImageCap = readImageCountCapEnv(planTier);
@@ -231,7 +237,14 @@ export async function getInviteImageUsageForUser(
 
   const usedBudgetUsd = Number(
     safeGenerations
-      .reduce((sum, row) => sum + Math.max(Number(row.estimated_cost_usd ?? 0), requestCostUsd), 0)
+      .reduce(
+        (sum, row) =>
+          sum +
+          (Number(row.estimated_cost_usd ?? 0) > 0
+            ? Number(row.estimated_cost_usd ?? 0)
+            : Math.max(Number(row.output_tokens ?? 0), 0) * perImageCostUsd),
+        0,
+      )
       .toFixed(6),
   );
   const remainingBudgetUsd = Math.max(0, Number((totalMonthlyBudgetUsd - usedBudgetUsd).toFixed(6)));
