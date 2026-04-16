@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   addShoppingItemAction,
   deleteShoppingItemAction,
-  replaceShoppingItemAction,
   updateShoppingItemAction,
   updateShoppingSettingsAction,
 } from "@/app/events/actions";
@@ -19,6 +18,34 @@ import {
   type ShoppingItemDetails,
   type ShoppingListDetails,
 } from "@/lib/events";
+
+const SHOPPING_CATEGORY_ORDER = [
+  "Decor",
+  "Tableware",
+  "Cake & Desserts",
+  "Drinks",
+  "Party Favors",
+  "Hats & Wearables",
+  "Activities & Games",
+  "Serving Supplies",
+] as const;
+
+type ShoppingCategoryLabel = (typeof SHOPPING_CATEGORY_ORDER)[number];
+
+function toDisplayCategory(category: string): ShoppingCategoryLabel | null {
+  const normalized = category.trim().toLowerCase();
+
+  if (normalized.includes("decor")) return "Decor";
+  if (normalized.includes("tableware") || normalized.includes("plate") || normalized.includes("cups")) return "Tableware";
+  if (normalized.includes("cake") || normalized.includes("dessert")) return "Cake & Desserts";
+  if (normalized.includes("drink") || normalized.includes("beverage")) return "Drinks";
+  if (normalized.includes("favor") || normalized.includes("goodie")) return "Party Favors";
+  if (normalized.includes("hat") || normalized.includes("wearable")) return "Hats & Wearables";
+  if (normalized.includes("activit") || normalized.includes("game")) return "Activities & Games";
+  if (normalized.includes("serving") || normalized.includes("hosting") || normalized.includes("supply")) return "Serving Supplies";
+
+  return null;
+}
 
 function formatMoney(value: number | null) {
   if (value == null) return "$0";
@@ -77,71 +104,6 @@ function buildRecommendationReason(
   return `Recommended because it supports the ${theme} plan and fits the event setup already stored in Party Swami.`;
 }
 
-function buildConfidenceTags(
-  item: ShoppingItemDetails,
-  event: EventDetails,
-  plan: PartyPlanDetails | null,
-) {
-  const tags: Array<{ label: string; className?: string }> = [];
-  const normalizedCategory = item.category.trim().toLowerCase();
-  const reason = buildRecommendationReason(item, event, plan).toLowerCase();
-  const price = item.estimated_price ?? 0;
-
-  if (price > 0 && price <= 15) {
-    tags.push({
-      label: "Budget-friendly",
-      className:
-        "bg-[linear-gradient(135deg,rgba(227,255,243,0.96)_0%,rgba(238,255,250,0.92)_100%)] text-emerald-700",
-    });
-  } else if (event.budget && price >= event.budget * 0.18) {
-    tags.push({
-      label: "High impact",
-      className:
-        "bg-[linear-gradient(135deg,rgba(255,239,230,0.95)_0%,rgba(255,247,238,0.9)_100%)] text-orange-700",
-    });
-  }
-
-  if (
-    normalizedCategory.includes("hosting") ||
-    normalizedCategory.includes("table") ||
-    normalizedCategory.includes("serve") ||
-    reason.includes("practical") ||
-    reason.includes("easy") ||
-    reason.includes("self-serve")
-  ) {
-    tags.push({
-      label: "Fast setup",
-      className:
-        "bg-[linear-gradient(135deg,rgba(233,244,255,0.96)_0%,rgba(244,248,255,0.92)_100%)] text-sky-700",
-    });
-  }
-
-  if (
-    normalizedCategory.includes("decor") ||
-    normalizedCategory.includes("upgrade") ||
-    normalizedCategory.includes("activity") ||
-    reason.includes("visual") ||
-    reason.includes("focal point") ||
-    reason.includes("lift")
-  ) {
-    tags.push({
-      label: "Guest favorite",
-      className:
-        "bg-[linear-gradient(135deg,rgba(250,236,255,0.95)_0%,rgba(244,238,255,0.92)_100%)] text-fuchsia-700",
-    });
-  }
-
-  if (!tags.length) {
-    tags.push({
-      label: "Host-approved",
-      className:
-        "bg-[linear-gradient(135deg,rgba(242,238,255,0.95)_0%,rgba(238,246,255,0.9)_100%)] text-indigo-700",
-    });
-  }
-
-  return tags.slice(0, 3);
-}
-
 function summarizeCategory(itemCount: number, category: string) {
   const label = toTitleCase(category);
   if (itemCount === 1) {
@@ -149,12 +111,6 @@ function summarizeCategory(itemCount: number, category: string) {
   }
 
   return `${itemCount} ${label.toLowerCase()} picks`;
-}
-
-function truncateSearchQuery(value: string | null, maxLength = 72) {
-  if (!value) return null;
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength - 1).trimEnd()}...`;
 }
 
 function formatPriceChip(value: number | null) {
@@ -165,66 +121,16 @@ function formatPriceChip(value: number | null) {
   return formatMoney(value);
 }
 
-function formatStatusChip(value: ShoppingItemDetails["status"]) {
-  return value.replace(/_/g, " ");
-}
-
 function getCategoryVisualPath(category: string) {
-  const normalizedCategory = category.trim().toLowerCase();
-
-  if (
-    normalizedCategory.includes("beverage") ||
-    normalizedCategory.includes("drink") ||
-    normalizedCategory.includes("bar")
-  ) {
-    return "/shopping-categories/beverages.png";
-  }
-
-  if (
-    normalizedCategory.includes("decor") ||
-    normalizedCategory.includes("floral") ||
-    normalizedCategory.includes("flower") ||
-    normalizedCategory.includes("centerpiece")
-  ) {
-    return "/shopping-categories/decor.svg";
-  }
-
-  if (
-    normalizedCategory.includes("table") ||
-    normalizedCategory.includes("serve") ||
-    normalizedCategory.includes("plate") ||
-    normalizedCategory.includes("utensil")
-  ) {
-    return "/shopping-categories/tableware.svg";
-  }
-
-  if (
-    normalizedCategory.includes("food") ||
-    normalizedCategory.includes("dessert") ||
-    normalizedCategory.includes("snack") ||
-    normalizedCategory.includes("cake")
-  ) {
-    return "/shopping-categories/food.svg";
-  }
-
-  if (
-    normalizedCategory.includes("host") ||
-    normalizedCategory.includes("setup") ||
-    normalizedCategory.includes("supply") ||
-    normalizedCategory.includes("essentials")
-  ) {
-    return "/shopping-categories/hosting.svg";
-  }
-
-  if (
-    normalizedCategory.includes("favor") ||
-    normalizedCategory.includes("activity") ||
-    normalizedCategory.includes("game") ||
-    normalizedCategory.includes("upgrade")
-  ) {
-    return "/shopping-categories/activities.svg";
-  }
-
+  const displayCategory = toDisplayCategory(category);
+  if (displayCategory === "Decor") return "/shopping-categories/decor.png";
+  if (displayCategory === "Tableware") return "/shopping-categories/tableware.png";
+  if (displayCategory === "Cake & Desserts") return "/shopping-categories/cake-desserts.png";
+  if (displayCategory === "Drinks") return "/shopping-categories/beverages.png";
+  if (displayCategory === "Party Favors") return "/shopping-categories/party-favors.png";
+  if (displayCategory === "Hats & Wearables") return "/shopping-categories/hats-wearables.png";
+  if (displayCategory === "Activities & Games") return "/shopping-categories/activities-games.png";
+  if (displayCategory === "Serving Supplies") return "/shopping-categories/serving-supplies.png";
   return null;
 }
 
@@ -274,19 +180,10 @@ function buildRecommendationVisual(item: ShoppingItemDetails) {
   const categoryLabel = toTitleCase(item.category);
   const categoryVisualPath = getCategoryVisualPath(item.category);
 
-  if (item.image_url) {
-    return (
-      <div
-        className="h-28 rounded-[1.35rem] bg-cover bg-center lg:h-full lg:min-h-40"
-        style={{ backgroundImage: `url(${item.image_url})` }}
-      />
-    );
-  }
-
   if (categoryVisualPath) {
     return (
       <div
-        className="h-28 rounded-[1.35rem] border border-white/70 bg-cover bg-center lg:h-full lg:min-h-40"
+        className="h-44 rounded-[1.35rem] border border-white/70 bg-cover bg-center lg:h-full lg:min-h-40"
         style={{ backgroundImage: `url(${categoryVisualPath})` }}
       />
     );
@@ -315,16 +212,18 @@ export function ShoppingListCard({
   items: ShoppingItemDetails[];
   plan: PartyPlanDetails | null;
 }) {
-  const groupedItems = Object.entries(
-    items.reduce<Record<string, ShoppingItemDetails[]>>((groups, item) => {
-      const key = item.category.trim() || "Recommendations";
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(item);
-      return groups;
-    }, {}),
-  ).sort((a, b) => a[0].localeCompare(b[0]));
+  const groupedMap = items.reduce<Record<string, ShoppingItemDetails[]>>((groups, item) => {
+    const key = (toDisplayCategory(item.category) ?? item.category.trim()) || "Recommendations";
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(item);
+    return groups;
+  }, {});
+
+  const groupedItems = SHOPPING_CATEGORY_ORDER
+    .map((category) => [category, groupedMap[category] ?? []] as const)
+    .filter(([, categoryItems]) => categoryItems.length > 0);
 
   const summaryChips = [
     event.theme || plan?.theme
@@ -451,137 +350,48 @@ export function ShoppingListCard({
                     <Badge>{categoryItems.length} items</Badge>
                   </div>
 
-                  <div className="mt-4 grid gap-4">
-                    {categoryItems.map((item) => {
-                      const trackedHref = buildTrackedShoppingHref({ eventId, item });
-                      const confidenceTags = buildConfidenceTags(item, event, plan);
-                      const hasSearchHint = Boolean(item.search_query?.trim());
-
-                      return (
-                        <div
-                          key={item.id}
-                          className="rounded-[1.5rem] border border-border bg-[linear-gradient(135deg,rgba(255,255,255,0.96)_0%,rgba(244,247,255,0.92)_100%)] p-4"
-                        >
-                        <div className="grid gap-4 [@media(min-width:1500px)]:grid-cols-[200px_minmax(0,1fr)]">
-                          {buildRecommendationVisual(item)}
-
-                          <div className="flex min-w-0 flex-col justify-between gap-4">
-                            <div className="flex min-w-0 flex-col gap-4 [@media(min-width:1700px)]:flex-row [@media(min-width:1700px)]:items-start [@media(min-width:1700px)]:justify-between">
-                              <div className="min-w-0 max-w-2xl">
-                                <p className="text-xl font-semibold leading-8 text-ink">{item.name}</p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  {confidenceTags.map((tag) => (
-                                    <Badge key={tag.label} className={tag.className}>
-                                      {tag.label}
-                                    </Badge>
-                                  ))}
-                                </div>
-                                <p className="mt-2 max-w-xl text-sm leading-7 text-ink-muted">
-                                  {buildRecommendationReason(item, event, plan)}
-                                </p>
-                                <div className="mt-4 flex flex-wrap gap-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
-                                  <span className="rounded-full bg-white px-3 py-2">Qty {item.quantity}</span>
-                                  <span className="rounded-full bg-white px-3 py-2">
-                                    {formatPriceChip(item.estimated_price)}
-                                  </span>
-                                  <span className="rounded-full bg-white px-3 py-2 capitalize">
-                                    {formatStatusChip(item.status)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-[1.2rem] border border-border bg-white/82 p-3">
-                              <div className="flex flex-wrap items-center gap-3">
-                                {trackedHref ? (
-                                  <Button asChild className="min-w-[10.5rem]">
+                  <div className="mt-4 grid gap-4 [@media(min-width:1500px)]:grid-cols-[220px_minmax(0,1fr)]">
+                    {buildRecommendationVisual(categoryItems[0])}
+                    <div className="overflow-hidden rounded-[1.2rem] border border-border bg-white/88">
+                      <table className="w-full text-left">
+                        <thead className="bg-[rgba(244,247,255,0.95)]">
+                          <tr className="text-xs uppercase tracking-[0.16em] text-ink-muted">
+                            <th className="px-4 py-3 font-medium">Affiliate link</th>
+                            <th className="px-4 py-3 font-medium">Description</th>
+                            <th className="px-4 py-3 font-medium">Qty</th>
+                            <th className="px-4 py-3 font-medium">Est.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {categoryItems.map((item) => {
+                            const trackedHref = buildTrackedShoppingHref({ eventId, item });
+                            return (
+                              <tr key={item.id} className="border-t border-border/80 align-top">
+                                <td className="px-4 py-3">
+                                  {trackedHref ? (
                                     <a
                                       href={trackedHref}
-                                      rel="noreferrer"
                                       target="_blank"
+                                      rel="noreferrer"
+                                      className="text-sm font-medium text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
                                     >
-                                      View on Amazon
+                                      {item.name}
                                     </a>
-                                  </Button>
-                                ) : (
-                                  <span className="rounded-full border border-dashed border-border bg-[rgba(244,247,255,0.92)] px-4 py-3 text-sm text-ink-muted">
-                                    Search link coming soon
-                                  </span>
-                                )}
-                                {item.status !== "purchased" && item.status !== "removed" ? (
-                                  <>
-                                    <form action={replaceShoppingItemAction}>
-                                      <input type="hidden" name="eventId" value={eventId} />
-                                      <input
-                                        type="hidden"
-                                        name="shoppingListId"
-                                        value={shoppingList?.id ?? ""}
-                                      />
-                                      <input type="hidden" name="itemId" value={item.id} />
-                                      <input type="hidden" name="feedback" value="general" />
-                                      <SubmitButton
-                                        className="min-w-[10.5rem]"
-                                        pendingLabel="Replacing pick..."
-                                        variant="secondary"
-                                      >
-                                        Replace this pick
-                                      </SubmitButton>
-                                    </form>
-                                    <form action={replaceShoppingItemAction}>
-                                      <input type="hidden" name="eventId" value={eventId} />
-                                      <input
-                                        type="hidden"
-                                        name="shoppingListId"
-                                        value={shoppingList?.id ?? ""}
-                                      />
-                                      <input type="hidden" name="itemId" value={item.id} />
-                                      <input type="hidden" name="feedback" value="too_expensive" />
-                                      <SubmitButton
-                                        className="min-w-[10.5rem]"
-                                        pendingLabel="Finding lower-cost option..."
-                                        variant="secondary"
-                                      >
-                                        Too expensive
-                                      </SubmitButton>
-                                    </form>
-                                    <form action={replaceShoppingItemAction}>
-                                      <input type="hidden" name="eventId" value={eventId} />
-                                      <input
-                                        type="hidden"
-                                        name="shoppingListId"
-                                        value={shoppingList?.id ?? ""}
-                                      />
-                                      <input type="hidden" name="itemId" value={item.id} />
-                                      <input type="hidden" name="feedback" value="not_my_style" />
-                                      <SubmitButton
-                                        className="min-w-[10.5rem]"
-                                        pendingLabel="Finding different style..."
-                                        variant="secondary"
-                                      >
-                                        Not my style
-                                      </SubmitButton>
-                                    </form>
-                                  </>
-                                ) : null}
-                                <Button asChild className="min-w-[10.5rem]" variant="secondary">
-                                  <Link href={`#manual-item-${item.id}`}>Adjust details</Link>
-                                </Button>
-                              </div>
-
-                              <div className="mt-3 rounded-[1rem] border border-border bg-white/80 px-4 py-3 text-sm text-ink-muted">
-                                <span className="mr-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
-                                  Amazon search
-                                </span>
-                                {hasSearchHint
-                                  ? truncateSearchQuery(item.search_query)
-                                  : "Search phrase will appear after the next refresh or replacement."}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        </div>
-                      );
-                    })}
+                                  ) : (
+                                    <span className="text-sm text-ink-muted">{item.name}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-sm leading-6 text-ink-muted">
+                                  {buildRecommendationReason(item, event, plan)}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-ink">{item.quantity}</td>
+                                <td className="px-4 py-3 text-sm text-ink">{formatPriceChip(item.estimated_price)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               ))
