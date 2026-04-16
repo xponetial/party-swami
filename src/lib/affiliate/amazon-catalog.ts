@@ -44,6 +44,11 @@ const BEVERAGE_OFF_CATEGORY_TOKENS = [
   "cake topper",
   "table decor",
 ] as const;
+const BEVERAGE_FALLBACK_QUERIES = [
+  "party drink dispenser with stand",
+  "beverage dispenser for parties",
+  "mocktail mixer set for party",
+] as const;
 
 type CatalogEnrichmentItem = {
   category: string;
@@ -141,10 +146,31 @@ function toMeaningfulTokens(value: string) {
     .filter((token) => token.length >= 3 && !STOP_TOKENS.has(token));
 }
 
-function extractBestAsinFromSearchHtml(html: string, query: string, matchHint?: string) {
+function isBeverageCategory(categoryHint?: string) {
+  const normalized = (categoryHint ?? "").toLowerCase();
+  return (
+    normalized.includes("beverage") ||
+    normalized.includes("drink") ||
+    normalized.includes("bar")
+  );
+}
+
+function extractBestAsinFromSearchHtml(
+  html: string,
+  query: string,
+  {
+    matchHint,
+    categoryHint,
+  }: {
+    matchHint?: string;
+    categoryHint?: string;
+  } = {},
+) {
   const hintTokens = toMeaningfulTokens(matchHint ?? "");
   const queryTokens = new Set(toMeaningfulTokens(`${query} ${matchHint ?? ""}`));
-  const hasBeverageIntent = [...queryTokens].some((token) =>
+  const hasBeverageIntent =
+    isBeverageCategory(categoryHint) ||
+    [...queryTokens].some((token) =>
     BEVERAGE_INTENT_TOKENS.includes(token as (typeof BEVERAGE_INTENT_TOKENS)[number]),
   );
   const candidates: Array<{ asin: string; score: number; blockedByIntent: boolean }> = [];
@@ -207,7 +233,13 @@ function extractBestAsinFromSearchHtml(html: string, query: string, matchHint?: 
 
 async function resolveFirstAmazonProductUrl(
   query: string,
-  matchHint?: string,
+  {
+    matchHint,
+    categoryHint,
+  }: {
+    matchHint?: string;
+    categoryHint?: string;
+  } = {},
 ): Promise<string | null> {
   const searchUrl = buildAmazonSearchUrl(query);
 
@@ -232,7 +264,7 @@ async function resolveFirstAmazonProductUrl(
     }
 
     const asin =
-      extractBestAsinFromSearchHtml(html, query, matchHint) ??
+      extractBestAsinFromSearchHtml(html, query, { matchHint, categoryHint }) ??
       extractFirstAsinFromHtml(html);
 
     return asin ? toCanonicalProductUrl(asin) : null;
@@ -243,14 +275,40 @@ async function resolveFirstAmazonProductUrl(
 
 export async function resolveAmazonProductFromSearchUrl(
   url: string,
-  matchHint?: string,
+  {
+    matchHint,
+    categoryHint,
+  }: {
+    matchHint?: string;
+    categoryHint?: string;
+  } = {},
 ): Promise<string | null> {
   const query = extractQueryFromAmazonSearchUrl(url);
   if (!query) {
     return null;
   }
 
-  return resolveFirstAmazonProductUrl(query, matchHint);
+  const resolved = await resolveFirstAmazonProductUrl(query, {
+    matchHint,
+    categoryHint,
+  });
+  if (resolved) {
+    return resolved;
+  }
+
+  if (isBeverageCategory(categoryHint)) {
+    for (const fallbackQuery of BEVERAGE_FALLBACK_QUERIES) {
+      const fallbackResolved = await resolveFirstAmazonProductUrl(fallbackQuery, {
+        matchHint: "drink beverage mixer dispenser",
+        categoryHint,
+      });
+      if (fallbackResolved) {
+        return fallbackResolved;
+      }
+    }
+  }
+
+  return null;
 }
 
 async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrichmentItem> {
@@ -282,7 +340,10 @@ async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrich
   }
 
   for (const candidate of queriesToTry) {
-    const resolved = await resolveFirstAmazonProductUrl(candidate, item.name);
+    const resolved = await resolveFirstAmazonProductUrl(candidate, {
+      matchHint: item.name,
+      categoryHint: item.category,
+    });
     if (resolved) {
       return {
         ...item,

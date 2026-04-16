@@ -235,11 +235,22 @@ function buildTrackedShoppingHref({
   eventId: string;
   item: ShoppingItemDetails;
 }) {
-  const target =
-    item.external_url ||
-    (item.search_query
-      ? `https://www.amazon.com/s?k=${encodeURIComponent(item.search_query.trim())}`
-      : null);
+  const searchTarget = item.search_query
+    ? `https://www.amazon.com/s?k=${encodeURIComponent(item.search_query.trim())}`
+    : null;
+  const isAmazonExternal =
+    item.external_url &&
+    (() => {
+      try {
+        const parsed = new URL(item.external_url);
+        return parsed.hostname.replace(/^www\./, "").includes("amazon.");
+      } catch {
+        return false;
+      }
+    })();
+  // Prefer live search-based resolution for Amazon so stale saved PDP links
+  // do not keep sending users to mismatched items.
+  const target = isAmazonExternal ? (searchTarget ?? item.external_url) : (item.external_url ?? searchTarget);
 
   if (!target) {
     return null;
@@ -249,6 +260,7 @@ function buildTrackedShoppingHref({
     eventId,
     itemId: item.id,
     itemName: item.name,
+    itemCategory: item.category,
     target,
   });
 
