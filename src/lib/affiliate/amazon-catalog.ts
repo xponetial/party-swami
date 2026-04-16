@@ -61,6 +61,11 @@ const DEFAULT_HOSTING_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_HOSTING_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
 const DEFAULT_GENERAL_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_GENERAL_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
+const AMAZON_IMAGE_PROVIDER = process.env.AMAZON_IMAGE_PROVIDER?.trim().toLowerCase() || "";
+const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY?.trim() || "";
+const RAINFOREST_AMAZON_DOMAIN =
+  process.env.AMAZON_IMAGE_PROVIDER_AMAZON_DOMAIN?.trim() || "amazon.com";
+const imageUrlByAsinCache = new Map<string, Promise<string | null>>();
 
 type CatalogEnrichmentItem = {
   category: string;
@@ -77,6 +82,109 @@ type ResolvedAmazonProduct = {
   productUrl: string;
   imageUrl: string | null;
 };
+
+function isHttpUrl(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+  return /^https?:\/\//i.test(value);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function normalizeExternalImageUrl(url: string) {
+  return normalizeAmazonImageUrl(url).trim();
+}
+
+function pickFirstValidImageUrl(candidates: Array<unknown>) {
+  for (const candidate of candidates) {
+    if (!isHttpUrl(candidate)) continue;
+    const normalized = normalizeExternalImageUrl(candidate);
+    if (!normalized) continue;
+    return normalized;
+  }
+  return null;
+}
+
+async function resolveImageUrlViaRainforestByAsin(asin: string): Promise<string | null> {
+  if (!RAINFOREST_API_KEY) {
+    return null;
+  }
+
+  const apiUrl = new URL("https://api.rainforestapi.com/request");
+  apiUrl.searchParams.set("api_key", RAINFOREST_API_KEY);
+  apiUrl.searchParams.set("type", "product");
+  apiUrl.searchParams.set("amazon_domain", RAINFOREST_AMAZON_DOMAIN);
+  apiUrl.searchParams.set("asin", asin);
+  apiUrl.searchParams.set("output", "json");
+
+  try {
+    const response = await fetch(apiUrl.toString(), {
+      method: "GET",
+      headers: {
+        "accept": "application/json",
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json();
+    const root = asRecord(payload);
+    if (!root) {
+      return null;
+    }
+
+    const product = asRecord(root.product);
+    if (!product) {
+      return null;
+    }
+
+    const mainImage = asRecord(product.main_image);
+    const images = Array.isArray(product.images) ? product.images : [];
+    const firstImage = asRecord(images[0]);
+
+    return pickFirstValidImageUrl([
+      mainImage?.link,
+      mainImage?.image,
+      mainImage?.url,
+      product.main_image,
+      firstImage?.link,
+      firstImage?.image,
+      firstImage?.url,
+      images[0],
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+async function resolveImageUrlViaProviderByAsin(asin: string): Promise<string | null> {
+  if (AMAZON_IMAGE_PROVIDER === "rainforest") {
+    return resolveImageUrlViaRainforestByAsin(asin);
+  }
+
+  return null;
+}
+
+function resolveImageUrlFromAsinCached(asin: string): Promise<string | null> {
+  const normalizedAsin = asin.trim().toUpperCase();
+  const cached = imageUrlByAsinCache.get(normalizedAsin);
+  if (cached) {
+    return cached;
+  }
+
+  const pending = resolveImageUrlFromAsin(normalizedAsin);
+  imageUrlByAsinCache.set(normalizedAsin, pending);
+  return pending;
+}
 
 function buildAmazonSearchUrl(query: string) {
   return `https://${AMAZON_HOST}/s?k=${encodeURIComponent(query.trim())}`;
@@ -192,6 +300,11 @@ function extractOpenGraphImageUrl(html: string) {
 }
 
 async function resolveImageUrlFromAsin(asin: string): Promise<string | null> {
+  const providerImageUrl = await resolveImageUrlViaProviderByAsin(asin);
+  if (providerImageUrl) {
+    return providerImageUrl;
+  }
+
   const productUrl = toCanonicalProductUrl(asin);
 
   try {
@@ -427,9 +540,13 @@ async function resolveFirstAmazonProduct(
     const resolved = extractBestAsinFromSearchHtml(html, query, { matchHint, categoryHint });
 
     if (resolved?.asin) {
+      const imageUrl =
+        resolved.imageUrl ??
+        extractImageUrlNearAsin(html, resolved.asin) ??
+        (await resolveImageUrlFromAsinCached(resolved.asin));
       return {
         productUrl: toCanonicalProductUrl(resolved.asin),
-        imageUrl: resolved.imageUrl ?? extractImageUrlNearAsin(html, resolved.asin),
+        imageUrl,
       };
     }
 
@@ -438,10 +555,13 @@ async function resolveFirstAmazonProduct(
       if (!beverageResolved?.asin) {
         return null;
       }
+      const imageUrl =
+        beverageResolved.imageUrl ??
+        extractImageUrlNearAsin(html, beverageResolved.asin) ??
+        (await resolveImageUrlFromAsinCached(beverageResolved.asin));
       return {
         productUrl: toCanonicalProductUrl(beverageResolved.asin),
-        imageUrl:
-          beverageResolved.imageUrl ?? extractImageUrlNearAsin(html, beverageResolved.asin),
+        imageUrl,
       };
     }
 
@@ -454,7 +574,9 @@ async function resolveFirstAmazonProduct(
       }
       return {
         productUrl: toCanonicalProductUrl(constrainedFallbackAsin),
-        imageUrl: extractImageUrlNearAsin(html, constrainedFallbackAsin),
+        imageUrl:
+          extractImageUrlNearAsin(html, constrainedFallbackAsin) ??
+          (await resolveImageUrlFromAsinCached(constrainedFallbackAsin)),
       };
     }
 
@@ -464,7 +586,9 @@ async function resolveFirstAmazonProduct(
     }
     return {
       productUrl: toCanonicalProductUrl(firstAsinFallback),
-      imageUrl: extractImageUrlNearAsin(html, firstAsinFallback),
+      imageUrl:
+        extractImageUrlNearAsin(html, firstAsinFallback) ??
+        (await resolveImageUrlFromAsinCached(firstAsinFallback)),
     };
   } catch {
     return null;
@@ -517,7 +641,8 @@ async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrich
   if (existingUrl) {
     const existingAsin = extractAsinFromUrl(existingUrl);
     if (existingAsin) {
-      const resolvedImageUrl = item.image_url ?? (await resolveImageUrlFromAsin(existingAsin));
+      const resolvedImageUrl =
+        item.image_url ?? (await resolveImageUrlFromAsinCached(existingAsin));
       return {
         ...item,
         external_url: toCanonicalProductUrl(existingAsin),

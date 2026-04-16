@@ -52,6 +52,16 @@ AMAZON_ASSOCIATE_TAG=partyswami-20
 If this is set, Amazon outbound shopping links routed through `/api/affiliate/click` will include `tag=<your_store_id>`. Keep this unset in environments where you do not want affiliate tagging enabled.
 During shopping generation and replacement, Party Swami attempts to resolve recommendation queries to real Amazon product detail URLs. If that resolution fails for an item, it falls back to the Amazon search URL for that query.
 
+Optional for stable Amazon product images (recommended in stage):
+
+```bash
+AMAZON_IMAGE_PROVIDER=rainforest
+RAINFOREST_API_KEY=your_rainforest_api_key
+AMAZON_IMAGE_PROVIDER_AMAZON_DOMAIN=amazon.com
+```
+
+When enabled, Party Swami uses the provider to fetch product image URLs by ASIN and falls back to direct Amazon scraping only if provider data is unavailable.
+
 Optional for invite email delivery:
 
 ```bash
