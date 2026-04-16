@@ -218,9 +218,11 @@ function extractBestAsinFromSearchHtml(
   }
 
   const allowedCandidates = candidates.filter((candidate) => !candidate.blockedByIntent);
-  const rankedCandidates = (allowedCandidates.length ? allowedCandidates : candidates).sort(
-    (a, b) => b.score - a.score,
-  );
+  if (hasBeverageIntent && !allowedCandidates.length) {
+    return null;
+  }
+
+  const rankedCandidates = (allowedCandidates.length ? allowedCandidates : candidates).sort((a, b) => b.score - a.score);
 
   // Return the best available product result to keep click-through on a single PDP,
   // while still using intent filters to avoid obvious mismatches.
@@ -263,11 +265,20 @@ async function resolveFirstAmazonProductUrl(
       return null;
     }
 
-    const asin =
-      extractBestAsinFromSearchHtml(html, query, { matchHint, categoryHint }) ??
-      extractFirstAsinFromHtml(html);
+    const asin = extractBestAsinFromSearchHtml(html, query, { matchHint, categoryHint });
 
-    return asin ? toCanonicalProductUrl(asin) : null;
+    if (asin) {
+      return toCanonicalProductUrl(asin);
+    }
+
+    // For category-constrained resolution (for example beverages), do not
+    // fall back to first-ASIN scraping because it frequently returns decor/favor items.
+    if (categoryHint?.trim()) {
+      return null;
+    }
+
+    const firstAsinFallback = extractFirstAsinFromHtml(html);
+    return firstAsinFallback ? toCanonicalProductUrl(firstAsinFallback) : null;
   } catch {
     return null;
   }
