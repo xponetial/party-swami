@@ -177,7 +177,7 @@ function getCategoryVisualPath(category: string) {
     normalizedCategory.includes("drink") ||
     normalizedCategory.includes("bar")
   ) {
-    return "/shopping-categories/beverages.svg";
+    return "/shopping-categories/beverages.png";
   }
 
   if (
