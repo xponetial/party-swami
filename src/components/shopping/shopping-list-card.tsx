@@ -113,14 +113,6 @@ function summarizeCategory(itemCount: number, category: string) {
   return `${itemCount} ${label.toLowerCase()} picks`;
 }
 
-function formatPriceChip(value: number | null) {
-  if (value == null) {
-    return "Estimate later";
-  }
-
-  return formatMoney(value);
-}
-
 function getCategoryVisualPath(category: string) {
   const displayCategory = toDisplayCategory(category);
   if (displayCategory === "Decor") return "/shopping-categories/decor.png";
@@ -358,8 +350,6 @@ export function ShoppingListCard({
                           <tr className="text-xs uppercase tracking-[0.16em] text-ink-muted">
                             <th className="px-4 py-3 font-medium">Affiliate link</th>
                             <th className="px-4 py-3 font-medium">Description</th>
-                            <th className="px-4 py-3 font-medium">Qty</th>
-                            <th className="px-4 py-3 font-medium">Est.</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -373,7 +363,7 @@ export function ShoppingListCard({
                                       href={trackedHref}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="text-sm font-medium text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+                                      className="text-sm font-semibold text-blue-700 underline decoration-blue-500 underline-offset-4 hover:text-blue-800 hover:decoration-blue-700"
                                     >
                                       {item.name}
                                     </a>
@@ -384,8 +374,6 @@ export function ShoppingListCard({
                                 <td className="px-4 py-3 text-sm leading-6 text-ink-muted">
                                   {buildRecommendationReason(item, event, plan)}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-ink">{item.quantity}</td>
-                                <td className="px-4 py-3 text-sm text-ink">{formatPriceChip(item.estimated_price)}</td>
                               </tr>
                             );
                           })}
