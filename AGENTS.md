@@ -8,17 +8,17 @@ This version has breaking changes - APIs, conventions, and file structure may al
 
 After any stage preview build/push intended for QA, always repoint the public stage domain:
 
-`stage.partyswami.com` -> latest `stage/phase-1b` preview deployment.
+`stage.partyswami.com` -> latest `stage/*` preview deployment.
 
 Use:
 
 `npm run stage:alias`
 
-Default source alias used by the script:
-
-`https://party-swami-git-stage-phase-1b-xponetials-projects.vercel.app`
+By default, the script derives the source alias from the current `stage/*` branch.
 
 Optional overrides:
 
+- `STAGE_BRANCH` (branch name, e.g. `stage/phase-2`)
 - `STAGE_SOURCE_ALIAS` (source deployment/alias URL)
 - `STAGE_DOMAIN` (target domain; default `stage.partyswami.com`)
+- `VERCEL_SCOPE` (default: `xponetials-projects`)

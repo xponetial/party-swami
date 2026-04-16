@@ -97,7 +97,7 @@ npm run test:e2e
 
 ## Stage Domain Alias
 
-After deploying preview builds from `stage/phase-1b`, repoint the stage domain to the latest stage preview:
+After deploying preview builds from any `stage/*` branch, repoint the stage domain to the latest stage preview:
 
 ```bash
 npm run stage:alias
@@ -105,8 +105,10 @@ npm run stage:alias
 
 Optional overrides:
 
+- `STAGE_BRANCH` to choose which `stage/*` branch alias to point from
 - `STAGE_SOURCE_ALIAS` to override source deployment/alias URL
 - `STAGE_DOMAIN` to override target domain (default: `stage.partyswami.com`)
+- `VERCEL_SCOPE` to override Vercel scope/team (default: `xponetials-projects`)
 
 ## Supabase
 
