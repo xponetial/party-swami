@@ -24,6 +24,28 @@ function buildAmazonSearchUrl(query: string) {
   return `https://${AMAZON_HOST}/s?k=${encodeURIComponent(query.trim())}`;
 }
 
+function normalizeQuery(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s-]/g, "")
+    .trim();
+}
+
+function dedupeQueries(queries: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const query of queries.map(normalizeQuery).filter(Boolean)) {
+    const key = query.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(query);
+  }
+
+  return result;
+}
+
 function extractAsinFromUrl(url: string) {
   for (const pattern of PRODUCT_PATH_PATTERNS) {
     const matched = url.match(pattern);
@@ -69,7 +91,7 @@ async function resolveFirstAmazonProductUrl(query: string): Promise<string | nul
         "user-agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!response.ok) {
@@ -77,6 +99,10 @@ async function resolveFirstAmazonProductUrl(query: string): Promise<string | nul
     }
 
     const html = await response.text();
+    if (/Type the characters you see in this image/i.test(html)) {
+      return null;
+    }
+
     const asin = extractFirstAsinFromHtml(html);
 
     return asin ? toCanonicalProductUrl(asin) : null;
@@ -99,19 +125,31 @@ async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrich
   }
 
   const query = item.search_query.trim();
-  if (!query) {
+  const queriesToTry = dedupeQueries([
+    query,
+    item.name,
+    query
+      .split(/\s+/)
+      .filter((token) => token.length >= 3)
+      .slice(0, 8)
+      .join(" "),
+  ]);
+
+  if (!queriesToTry.length) {
     return item;
   }
 
-  const resolved = await resolveFirstAmazonProductUrl(query);
-  if (!resolved) {
-    return item;
+  for (const candidate of queriesToTry) {
+    const resolved = await resolveFirstAmazonProductUrl(candidate);
+    if (resolved) {
+      return {
+        ...item,
+        external_url: resolved,
+      };
+    }
   }
 
-  return {
-    ...item,
-    external_url: resolved,
-  };
+  return item;
 }
 
 export async function enrichShoppingItemsWithAmazonCatalog(
