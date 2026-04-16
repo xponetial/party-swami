@@ -72,14 +72,15 @@ function withAmazonAffiliateTag(target: string): string {
   }
 }
 
-async function maybeResolveAmazonSearchTarget(target: string) {
-  const resolved = await resolveAmazonProductFromSearchUrl(target);
+async function maybeResolveAmazonSearchTarget(target: string, matchHint?: string) {
+  const resolved = await resolveAmazonProductFromSearchUrl(target, matchHint);
   return resolved ?? target;
 }
 
 const querySchema = z.object({
   eventId: z.string().uuid(),
   itemId: z.string().uuid(),
+  itemName: z.string().trim().min(2).max(200).optional(),
   target: z.string().refine(isAllowedAffiliateUrl, "Redirect target is not an allowed affiliate domain."),
 });
 
@@ -89,6 +90,7 @@ export async function GET(request: Request) {
   const parsed = querySchema.safeParse({
     eventId: requestUrl.searchParams.get("eventId"),
     itemId: requestUrl.searchParams.get("itemId"),
+    itemName: requestUrl.searchParams.get("itemName") ?? undefined,
     target,
   });
 
@@ -103,7 +105,10 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const resolvedTarget = await maybeResolveAmazonSearchTarget(parsed.data.target);
+  const resolvedTarget = await maybeResolveAmazonSearchTarget(
+    parsed.data.target,
+    parsed.data.itemName,
+  );
   const redirectTarget = withAmazonAffiliateTag(resolvedTarget);
   const {
     data: { user },

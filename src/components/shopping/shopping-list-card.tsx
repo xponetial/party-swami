@@ -248,6 +248,7 @@ function buildTrackedShoppingHref({
   const params = new URLSearchParams({
     eventId,
     itemId: item.id,
+    itemName: item.name,
     target,
   });
 

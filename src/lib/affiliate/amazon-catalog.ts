@@ -8,6 +8,21 @@ const PRODUCT_PATH_PATTERNS = [
 ] as const;
 const ASIN_ATTRIBUTE_PATTERN = /data-asin="([A-Z0-9]{10})"/gi;
 const ASIN_JSON_PATTERN = /"asin":"([A-Z0-9]{10})"/gi;
+const SEARCH_RESULT_ASIN_PATTERN =
+  /data-component-type="s-search-result"[\s\S]{0,1200}?data-asin="([A-Z0-9]{10})"/gi;
+const STOP_TOKENS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "set",
+  "pack",
+  "kit",
+  "party",
+  "extras",
+  "accessories",
+  "birthday",
+]);
 
 type CatalogEnrichmentItem = {
   category: string;
@@ -96,7 +111,64 @@ function extractFirstAsinFromHtml(html: string) {
   return null;
 }
 
-async function resolveFirstAmazonProductUrl(query: string): Promise<string | null> {
+function toMeaningfulTokens(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !STOP_TOKENS.has(token));
+}
+
+function extractBestAsinFromSearchHtml(html: string, query: string, matchHint?: string) {
+  const queryTokens = new Set(toMeaningfulTokens(`${query} ${matchHint ?? ""}`));
+  const candidates: Array<{ asin: string; score: number }> = [];
+  const seenAsins = new Set<string>();
+
+  SEARCH_RESULT_ASIN_PATTERN.lastIndex = 0;
+  for (;;) {
+    const match = SEARCH_RESULT_ASIN_PATTERN.exec(html);
+    if (!match?.[1]) {
+      break;
+    }
+
+    const asin = match[1].toUpperCase();
+    if (seenAsins.has(asin)) continue;
+    seenAsins.add(asin);
+
+    const windowStart = Math.max(0, match.index - 500);
+    const windowEnd = Math.min(html.length, match.index + 1500);
+    const snippet = html.slice(windowStart, windowEnd).toLowerCase();
+
+    // Avoid obvious ad slots when possible.
+    const isSponsored = /\bsponsored\b|puis-sponsored-label|adfeedback/i.test(snippet);
+    const tokenScore = [...queryTokens].reduce(
+      (sum, token) => (snippet.includes(token) ? sum + 1 : sum),
+      0,
+    );
+    const score = tokenScore - (isSponsored ? 2 : 0);
+
+    candidates.push({ asin, score });
+  }
+
+  if (!candidates.length) {
+    return null;
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+
+  // If nothing matched meaningfully, avoid forcing a likely-wrong product.
+  if (candidates[0].score <= 0) {
+    return null;
+  }
+
+  return candidates[0].asin;
+}
+
+async function resolveFirstAmazonProductUrl(
+  query: string,
+  matchHint?: string,
+): Promise<string | null> {
   const searchUrl = buildAmazonSearchUrl(query);
 
   try {
@@ -119,7 +191,9 @@ async function resolveFirstAmazonProductUrl(query: string): Promise<string | nul
       return null;
     }
 
-    const asin = extractFirstAsinFromHtml(html);
+    const asin =
+      extractBestAsinFromSearchHtml(html, query, matchHint) ??
+      extractFirstAsinFromHtml(html);
 
     return asin ? toCanonicalProductUrl(asin) : null;
   } catch {
@@ -129,13 +203,14 @@ async function resolveFirstAmazonProductUrl(query: string): Promise<string | nul
 
 export async function resolveAmazonProductFromSearchUrl(
   url: string,
+  matchHint?: string,
 ): Promise<string | null> {
   const query = extractQueryFromAmazonSearchUrl(url);
   if (!query) {
     return null;
   }
 
-  return resolveFirstAmazonProductUrl(query);
+  return resolveFirstAmazonProductUrl(query, matchHint);
 }
 
 async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrichmentItem> {
@@ -167,7 +242,7 @@ async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrich
   }
 
   for (const candidate of queriesToTry) {
-    const resolved = await resolveFirstAmazonProductUrl(candidate);
+    const resolved = await resolveFirstAmazonProductUrl(candidate, item.name);
     if (resolved) {
       return {
         ...item,
