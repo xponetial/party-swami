@@ -43,6 +43,14 @@ OPENAI_MODEL_PREMIUM=gpt-5.4
 
 If `OPENAI_API_KEY` is missing, Party Swami falls back to local structured generation so the app still works in development.
 
+Optional for Amazon affiliate attribution in shopping handoff redirects:
+
+```bash
+AMAZON_ASSOCIATE_TAG=partyswami-20
+```
+
+If this is set, Amazon outbound shopping links routed through `/api/affiliate/click` will include `tag=<your_store_id>`. Keep this unset in environments where you do not want affiliate tagging enabled.
+
 Optional for invite email delivery:
 
 ```bash

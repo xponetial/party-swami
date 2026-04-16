@@ -35,6 +35,7 @@ These values must be configured in the hosting provider instead of relying on lo
 
 ### Likely required later
 
+- `AMAZON_ASSOCIATE_TAG`
 - `STRIPE_SECRET_KEY`
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_WEBHOOK_SECRET`

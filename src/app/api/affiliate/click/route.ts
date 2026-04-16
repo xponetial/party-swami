@@ -3,9 +3,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
-// Allowlist of trusted affiliate/shopping domains.
-// AI-generated shopping links are restricted to these to prevent open redirect abuse.
-const ALLOWED_AFFILIATE_DOMAINS = new Set([
+const AMAZON_AFFILIATE_DOMAINS = [
   "amazon.com",
   "amazon.co.uk",
   "amazon.ca",
@@ -13,6 +11,13 @@ const ALLOWED_AFFILIATE_DOMAINS = new Set([
   "amazon.de",
   "amazon.fr",
   "amazon.co.jp",
+] as const;
+const AMAZON_AFFILIATE_DOMAIN_SET = new Set<string>(AMAZON_AFFILIATE_DOMAINS);
+
+// Allowlist of trusted affiliate/shopping domains.
+// AI-generated shopping links are restricted to these to prevent open redirect abuse.
+const ALLOWED_AFFILIATE_DOMAINS = new Set([
+  ...AMAZON_AFFILIATE_DOMAINS,
   "walmart.com",
   "target.com",
   "etsy.com",
@@ -45,6 +50,27 @@ function isAllowedAffiliateUrl(value: string): boolean {
   }
 }
 
+function withAmazonAffiliateTag(target: string): string {
+  const associateTag = process.env.AMAZON_ASSOCIATE_TAG?.trim();
+  if (!associateTag) {
+    return target;
+  }
+
+  try {
+    const targetUrl = new URL(target);
+    const hostname = targetUrl.hostname.replace(/^www\./, "");
+
+    if (!AMAZON_AFFILIATE_DOMAIN_SET.has(hostname)) {
+      return target;
+    }
+
+    targetUrl.searchParams.set("tag", associateTag);
+    return targetUrl.toString();
+  } catch {
+    return target;
+  }
+}
+
 const querySchema = z.object({
   eventId: z.string().uuid(),
   itemId: z.string().uuid(),
@@ -53,10 +79,11 @@ const querySchema = z.object({
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
+  const target = requestUrl.searchParams.get("target");
   const parsed = querySchema.safeParse({
     eventId: requestUrl.searchParams.get("eventId"),
     itemId: requestUrl.searchParams.get("itemId"),
-    target: requestUrl.searchParams.get("target"),
+    target,
   });
 
   if (!parsed.success) {
@@ -70,6 +97,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
+  const redirectTarget = withAmazonAffiliateTag(parsed.data.target);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -81,7 +109,7 @@ export async function GET(request: Request) {
       eventId: parsed.data.eventId,
       metadata: {
         item_id: parsed.data.itemId,
-        target: parsed.data.target,
+        target: redirectTarget,
         source: "shopping_recommendation_card",
       },
     }),
@@ -91,11 +119,11 @@ export async function GET(request: Request) {
       eventId: parsed.data.eventId,
       metadata: {
         item_id: parsed.data.itemId,
-        target: parsed.data.target,
+        target: redirectTarget,
         source: "shopping_recommendation_card",
       },
     }),
   ]);
 
-  return NextResponse.redirect(parsed.data.target, { status: 307 });
+  return NextResponse.redirect(redirectTarget, { status: 307 });
 }
