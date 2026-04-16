@@ -181,6 +181,49 @@ function extractImageUrlNearAsin(html: string, asin: string) {
   return extractFirstAmazonImageUrl(snippet);
 }
 
+function extractOpenGraphImageUrl(html: string) {
+  const ogImagePattern = /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i;
+  const matched = ogImagePattern.exec(html);
+  if (!matched?.[1]) {
+    return null;
+  }
+
+  return normalizeAmazonImageUrl(matched[1]);
+}
+
+async function resolveImageUrlFromAsin(asin: string): Promise<string | null> {
+  const productUrl = toCanonicalProductUrl(asin);
+
+  try {
+    const response = await fetch(productUrl, {
+      method: "GET",
+      headers: {
+        "accept-language": "en-US,en;q=0.9",
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const html = await response.text();
+    if (/Type the characters you see in this image/i.test(html)) {
+      return null;
+    }
+
+    return (
+      extractOpenGraphImageUrl(html) ??
+      extractImageUrlNearAsin(html, asin) ??
+      extractFirstAmazonImageUrl(html)
+    );
+  } catch {
+    return null;
+  }
+}
+
 function toMeaningfulTokens(value: string) {
   return value
     .toLowerCase()
@@ -474,9 +517,11 @@ async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrich
   if (existingUrl) {
     const existingAsin = extractAsinFromUrl(existingUrl);
     if (existingAsin) {
+      const resolvedImageUrl = item.image_url ?? (await resolveImageUrlFromAsin(existingAsin));
       return {
         ...item,
         external_url: toCanonicalProductUrl(existingAsin),
+        image_url: resolvedImageUrl,
       };
     }
   }
