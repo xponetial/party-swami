@@ -19,18 +19,22 @@ function getCurrentBranch() {
 }
 
 const stageBranch = process.env.STAGE_BRANCH?.trim() || getCurrentBranch();
-const isStageBranch = stageBranch.startsWith("stage/");
-
-if (!isStageBranch) {
-  throw new Error(
-    `stage:alias only supports stage/* branches. Received "${stageBranch || "(unknown)"}"`,
-  );
-}
-
 const sourceAlias = process.env.STAGE_SOURCE_ALIAS?.trim() || (() => {
+  if (!stageBranch.startsWith("stage/")) {
+    throw new Error(
+      `stage:alias requires STAGE_SOURCE_ALIAS outside stage/* branches. Received branch "${stageBranch || "(unknown)"}"`,
+    );
+  }
+
   const branchSlug = sanitizeBranchForAlias(stageBranch);
   return `https://party-swami-git-${branchSlug}-xponetials-projects.vercel.app`;
 })();
+
+if (!sourceAlias.includes("-git-stage-")) {
+  throw new Error(
+    `stage:alias refused non-stage source alias: "${sourceAlias}"`,
+  );
+}
 const stageDomain = process.env.STAGE_DOMAIN?.trim() || "stage.partyswami.com";
 const vercelScope = process.env.VERCEL_SCOPE?.trim() || "xponetials-projects";
 
