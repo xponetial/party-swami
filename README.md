@@ -95,6 +95,19 @@ npm run build
 npm run test:e2e
 ```
 
+## Stage Domain Alias
+
+After deploying preview builds from `stage/phase-1b`, repoint the stage domain to the latest stage preview:
+
+```bash
+npm run stage:alias
+```
+
+Optional overrides:
+
+- `STAGE_SOURCE_ALIAS` to override source deployment/alias URL
+- `STAGE_DOMAIN` to override target domain (default: `stage.partyswami.com`)
+
 ## Supabase
 
 This repo includes local Supabase migration files under [`supabase/migrations`](./supabase/migrations).
