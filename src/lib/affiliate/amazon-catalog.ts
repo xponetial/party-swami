@@ -3,7 +3,11 @@ const AMAZON_HOST = "www.amazon.com";
 const PRODUCT_PATH_PATTERNS = [
   /\/dp\/([A-Z0-9]{10})(?:[/?]|$)/i,
   /\/gp\/product\/([A-Z0-9]{10})(?:[/?]|$)/i,
+  /%2Fdp%2F([A-Z0-9]{10})(?:%2F|%3F|%26|$)/i,
+  /%2Fgp%2Fproduct%2F([A-Z0-9]{10})(?:%2F|%3F|%26|$)/i,
 ] as const;
+const ASIN_ATTRIBUTE_PATTERN = /data-asin="([A-Z0-9]{10})"/gi;
+const ASIN_JSON_PATTERN = /"asin":"([A-Z0-9]{10})"/gi;
 
 type CatalogEnrichmentItem = {
   category: string;
@@ -36,6 +40,14 @@ function toCanonicalProductUrl(asin: string) {
 }
 
 function extractFirstAsinFromHtml(html: string) {
+  for (const pattern of [ASIN_ATTRIBUTE_PATTERN, ASIN_JSON_PATTERN]) {
+    pattern.lastIndex = 0;
+    const matched = pattern.exec(html);
+    if (matched?.[1]) {
+      return matched[1].toUpperCase();
+    }
+  }
+
   for (const pattern of PRODUCT_PATH_PATTERNS) {
     const matched = html.match(pattern);
     if (matched?.[1]) {
