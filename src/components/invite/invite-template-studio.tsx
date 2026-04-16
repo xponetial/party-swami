@@ -60,6 +60,31 @@ function formatDateText(value: string | null) {
   }).format(new Date(value));
 }
 
+function composeGuestMessageWithEventDetails({
+  messageText,
+  dateText,
+  locationText,
+}: {
+  messageText: string;
+  dateText: string;
+  locationText: string;
+}) {
+  const baseMessage = messageText.trim();
+  const safeDateText = dateText.trim() || "TBD";
+  const safeLocationText = locationText.trim() || "TBD";
+  const baseMessageLower = baseMessage.toLowerCase();
+
+  const detailLines: string[] = [];
+  if (!baseMessageLower.includes(safeDateText.toLowerCase())) {
+    detailLines.push(`Date & time: ${safeDateText}`);
+  }
+  if (!baseMessageLower.includes(safeLocationText.toLowerCase())) {
+    detailLines.push(`Location: ${safeLocationText}`);
+  }
+
+  return [baseMessage, ...detailLines].filter(Boolean).join("\n\n");
+}
+
 function buildDefaultDesign(
   event: EventDetails,
   invite: InviteDetails,
@@ -148,6 +173,11 @@ export function InviteTemplateStudio({
   const nextDesignJson = JSON.stringify(design);
   const inviteImageDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=high`;
   const invitePrintDownloadHref = `/api/invites/card-image/${invite.public_slug}?download=1&preset=print`;
+  const fullGuestMessage = composeGuestMessageWithEventDetails({
+    messageText: design.fields.messageText,
+    dateText: design.fields.dateText,
+    locationText: design.fields.locationText,
+  });
 
   async function handleGenerateImage() {
     setImageGenerationError(null);
@@ -379,7 +409,7 @@ export function InviteTemplateStudio({
         <form action={saveInviteAction} className="rounded-[2rem] border border-border bg-white p-6">
           <input type="hidden" name="eventId" value={event.id} />
           <input type="hidden" name="inviteId" value={invite.id} />
-          <input type="hidden" name="inviteCopy" value={design.fields.messageText} />
+          <input type="hidden" name="inviteCopy" value={fullGuestMessage} />
           <input type="hidden" name="designJson" value={nextDesignJson} />
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -521,6 +551,15 @@ export function InviteTemplateStudio({
               design={design}
               template={selectedTemplate}
             />
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
+          <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Full guest message</p>
+          <div className="mt-3 rounded-[1.5rem] border border-border bg-white/80 p-5">
+            <p className="whitespace-pre-wrap text-sm leading-7 text-ink-muted">
+              {fullGuestMessage}
+            </p>
           </div>
         </div>
 
@@ -770,15 +809,6 @@ export function InviteTemplateStudio({
             </div>
           </div>
           )}
-        </div>
-
-        <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
-          <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Full guest message</p>
-          <div className="mt-3 rounded-[1.5rem] border border-border bg-white/80 p-5">
-            <p className="whitespace-pre-wrap text-sm leading-7 text-ink-muted">
-              {design.fields.messageText}
-            </p>
-          </div>
         </div>
 
         <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
