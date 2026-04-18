@@ -93,11 +93,21 @@ const DEFAULT_BEVERAGE_JUICE_FALLBACK_ASIN =
 const DEFAULT_BEVERAGE_WATER_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_BEVERAGE_WATER_ASIN?.trim() || "B004CQWWKY";
 const DEFAULT_DECOR_FALLBACK_ASIN =
-  process.env.AMAZON_DEFAULT_DECOR_ASIN?.trim() || "B0GJD38FLF";
+  process.env.AMAZON_DEFAULT_DECOR_ASIN?.trim() || "B0FRMPZNMY";
 const DEFAULT_TABLEWARE_FALLBACK_ASIN =
-  process.env.AMAZON_DEFAULT_TABLEWARE_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
+  process.env.AMAZON_DEFAULT_TABLEWARE_ASIN?.trim() || "B0CDWNNHWN";
+const DEFAULT_CAKE_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_CAKE_ASIN?.trim() || "B09L8HD231";
+const DEFAULT_FAVORS_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_FAVORS_ASIN?.trim() || "B017VNRKT2";
+const DEFAULT_HATS_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_HATS_ASIN?.trim() || "B0BN9KQW8C";
+const DEFAULT_ACTIVITIES_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_ACTIVITIES_ASIN?.trim() || "B0FMXT3DDJ";
+const DEFAULT_SERVING_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_SERVING_ASIN?.trim() || "B0D9H7KDFJ";
 const DEFAULT_HOSTING_FALLBACK_ASIN =
-  process.env.AMAZON_DEFAULT_HOSTING_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
+  process.env.AMAZON_DEFAULT_HOSTING_ASIN?.trim() || DEFAULT_SERVING_FALLBACK_ASIN;
 const DEFAULT_GENERAL_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_GENERAL_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
 const AMAZON_IMAGE_PROVIDER = process.env.AMAZON_IMAGE_PROVIDER?.trim().toLowerCase() || "";
@@ -477,12 +487,38 @@ function getFallbackAsinForCategory(categoryHint?: string) {
   }
 
   if (
+    normalized.includes("cake") ||
+    normalized.includes("dessert") ||
+    normalized.includes("sweet")
+  ) {
+    return DEFAULT_CAKE_FALLBACK_ASIN;
+  }
+
+  if (
     normalized.includes("table") ||
     normalized.includes("serve") ||
     normalized.includes("plate") ||
     normalized.includes("utensil")
   ) {
-    return DEFAULT_TABLEWARE_FALLBACK_ASIN;
+    return normalized.includes("serving") || normalized.includes("supply")
+      ? DEFAULT_SERVING_FALLBACK_ASIN
+      : DEFAULT_TABLEWARE_FALLBACK_ASIN;
+  }
+
+  if (normalized.includes("favor") || normalized.includes("goodie")) {
+    return DEFAULT_FAVORS_FALLBACK_ASIN;
+  }
+
+  if (
+    normalized.includes("hat") ||
+    normalized.includes("wearable") ||
+    normalized.includes("costume")
+  ) {
+    return DEFAULT_HATS_FALLBACK_ASIN;
+  }
+
+  if (normalized.includes("activit") || normalized.includes("game")) {
+    return DEFAULT_ACTIVITIES_FALLBACK_ASIN;
   }
 
   if (
