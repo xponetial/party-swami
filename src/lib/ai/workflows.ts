@@ -582,7 +582,20 @@ async function replaceShoppingItems(
     }
   }
 
-  await supabase.from("shopping_lists").update({ estimated_total: 0 }).eq("id", shoppingListId);
+  const estimatedTotal = items.reduce(
+    (sum, item) => sum + (item.estimated_price ?? 0) * item.quantity,
+    0,
+  );
+
+  await supabase
+    .from("shopping_lists")
+    .update({ estimated_total: estimatedTotal })
+    .eq("id", shoppingListId);
+
+  return {
+    addedCount: items.length,
+    estimatedTotal,
+  };
 }
 
 async function syncTasks(
@@ -1227,7 +1240,11 @@ export async function generateShoppingListForEvent(supabase: SupabaseClient, eve
   const enrichedShoppingItems = await enrichShoppingItemsWithAmazonCatalog(
     generated.shoppingItems,
   );
-  const shoppingSummary = await syncShoppingItems(supabase, shoppingList.id, enrichedShoppingItems);
+  const shoppingSummary = await replaceShoppingItems(
+    supabase,
+    shoppingList.id,
+    enrichedShoppingItems,
+  );
   const fingerprintInput = buildEventFingerprint(event, "shopping_list_transform");
   const requestFingerprint = buildFingerprint(fingerprintInput);
   const promptVersion =
