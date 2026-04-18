@@ -364,6 +364,7 @@ export function ShoppingListCard({
                                       target="_blank"
                                       rel="noreferrer"
                                       className="text-sm font-semibold text-blue-700 underline decoration-blue-500 underline-offset-4 hover:text-blue-800 hover:decoration-blue-700"
+                                      style={{ color: "#1d4ed8", textDecoration: "underline" }}
                                     >
                                       {item.name}
                                     </a>
