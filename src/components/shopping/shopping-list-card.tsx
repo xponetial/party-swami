@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AiGenerateButton } from "@/components/ai/ai-generate-button";
+import { ShoppingRegeneratePanel } from "@/components/shopping/shopping-regenerate-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -57,6 +57,22 @@ function formatEventDate(value: string | null) {
 
 function toTitleCase(value: string) {
   return value.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function dedupeTerms(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    if (!value?.trim()) continue;
+    const normalized = value.trim().replace(/\s+/g, " ");
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result;
 }
 
 function buildRecommendationReason(
@@ -216,6 +232,13 @@ export function ShoppingListCard({
   ].filter((chip): chip is { label: string; value: string } => Boolean(chip));
 
   const completedItems = items.filter((item) => item.status === "purchased").length;
+  const regenerateSearchTerms = dedupeTerms([
+    ...(plan?.raw_response?.shoppingSearchSeed ?? []),
+    ...(plan?.raw_response?.shoppingSearchTerms ?? []),
+    event.title,
+    plan?.theme ?? event.theme,
+    event.event_type,
+  ]);
 
   return (
     <div className="grid gap-4">
@@ -256,15 +279,7 @@ export function ShoppingListCard({
               Rebuild the list from your current event details whenever the plan, guest count, or
               budget shifts.
             </p>
-            <div className="mt-5">
-              <AiGenerateButton
-                endpoint="/api/ai/generate-shopping-list"
-                eventId={eventId}
-                label="Regenerate recommendations"
-                pendingLabel="Refreshing recommendations..."
-                variant="secondary"
-              />
-            </div>
+            <ShoppingRegeneratePanel eventId={eventId} initialTerms={regenerateSearchTerms} />
           </div>
         </div>
       </Card>
@@ -338,6 +353,7 @@ export function ShoppingListCard({
                           <tr className="text-xs uppercase tracking-[0.16em] text-ink-muted">
                             <th className="px-4 py-3 font-medium">Affiliate link</th>
                             <th className="px-4 py-3 font-medium">Description</th>
+                            <th className="px-4 py-3 font-medium">Search terms used</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -362,6 +378,17 @@ export function ShoppingListCard({
                                 </td>
                                 <td className="px-4 py-3 text-sm leading-6 text-ink-muted">
                                   {buildRecommendationReason(item, event, plan)}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="rounded-2xl border border-border bg-[rgba(244,247,255,0.95)] px-3 py-2 text-xs leading-6 text-ink-muted">
+                                    {item.search_query?.trim() ? (
+                                      <code className="font-mono text-[11px] text-ink">
+                                        {item.search_query}
+                                      </code>
+                                    ) : (
+                                      <span>No saved search terms</span>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );

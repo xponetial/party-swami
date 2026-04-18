@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
+  searchTerms: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
 });
 
 export async function POST(request: Request) {
@@ -54,7 +55,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await generateShoppingListForEvent(supabase, parsed.data.eventId);
+    const result = await generateShoppingListForEvent(supabase, parsed.data.eventId, {
+      searchTerms: parsed.data.searchTerms ?? [],
+    });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     return NextResponse.json(

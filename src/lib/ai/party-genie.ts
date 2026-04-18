@@ -90,6 +90,7 @@ type ShoppingGenerationContext = {
     category: string;
     items: Array<{ name: string; quantity: number }>;
   }> | null;
+  searchTerms?: string[] | null;
 };
 
 type ShoppingReplacementContext = ShoppingGenerationContext & {
@@ -320,6 +321,63 @@ function getGuestCount(event: EventSeed) {
 
 function getTheme(event: EventSeed) {
   return event.theme?.trim() || `${event.event_type} celebration`;
+}
+
+function normalizeSearchSeedTerm(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+export function buildShoppingSearchSeedParts(
+  event: EventSeed,
+  context?: ShoppingGenerationContext,
+) {
+  const candidates = [
+    event.title,
+    context?.planTheme?.trim() || event.theme?.trim() || null,
+    event.event_type,
+    ...(context?.searchTerms ?? []),
+  ];
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const normalized = normalizeSearchSeedTerm(candidate);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result.slice(0, 10);
+}
+
+function buildShoppingSearchQuery(
+  event: EventSeed,
+  context: ShoppingGenerationContext | undefined,
+  query: string,
+) {
+  const normalizedQuery = normalizeSearchSeedTerm(query);
+  const queryLower = normalizedQuery.toLowerCase();
+  const seedParts = buildShoppingSearchSeedParts(event, context).filter(
+    (part) => !queryLower.includes(part.toLowerCase()),
+  );
+
+  return [...seedParts, normalizedQuery].join(" ").replace(/\s+/g, " ").trim();
+}
+
+function applyShoppingSearchSeed(
+  items: GeneratedShoppingItem[],
+  event: EventSeed,
+  context?: ShoppingGenerationContext,
+) {
+  return items.map((item) =>
+    normalizeAmazonRecommendation({
+      ...item,
+      search_query: buildShoppingSearchQuery(event, context, item.search_query),
+    }),
+  );
 }
 
 function getBudgetTier(event: EventSeed) {
@@ -1161,7 +1219,11 @@ function getShoppingItems(event: EventSeed, context?: ShoppingGenerationContext)
     buildCategoryFallbackItems(event, category, context),
   );
 
-  return enforceRequiredCategoryStructure(fallbackItems, event, context);
+  return applyShoppingSearchSeed(
+    enforceRequiredCategoryStructure(fallbackItems, event, context),
+    event,
+    context,
+  );
 }
 
 function toShoppingCategories(items: GeneratedShoppingItem[]) {
@@ -1706,6 +1768,9 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
           .map((category) => `${category.category} (${category.items.map((item) => `${item.name} x${item.quantity}`).join(", ")})`)
           .join("; ")}`
       : null,
+    context?.searchTerms?.length
+      ? `Search words to include when useful: ${context.searchTerms.join(", ")}`
+      : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -1722,6 +1787,7 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
 - Return item names that feel like specific Amazon-searchable products.
 - Include recommendation_reason explaining why each item was chosen for this event.
 - Include search_query with the Amazon search phrase to use.
+- Use the current event title, event type, theme, and any provided search words when they improve the product search.
 - Use the saved plan context when it improves specificity.
 - Vary the recommendation mix so the list does not over-index on one category.
 - Use guest count and budget to influence bundle size and upgrade count.
@@ -1758,8 +1824,12 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
     };
   }
 
-  const normalizedShoppingItems = enforceRequiredCategoryStructure(
-    generated.data.shoppingItems.map((item) => normalizeAmazonRecommendation(item)),
+  const normalizedShoppingItems = applyShoppingSearchSeed(
+    enforceRequiredCategoryStructure(
+      generated.data.shoppingItems.map((item) => normalizeAmazonRecommendation(item)),
+      event,
+      context,
+    ),
     event,
     context,
   );
@@ -1784,8 +1854,12 @@ export function ensureRequiredShoppingCoverage(
   items: GeneratedShoppingItem[],
   context?: ShoppingGenerationContext,
 ) {
-  const normalizedShoppingItems = enforceRequiredCategoryStructure(
-    items.map((item) => normalizeAmazonRecommendation(item)),
+  const normalizedShoppingItems = applyShoppingSearchSeed(
+    enforceRequiredCategoryStructure(
+      items.map((item) => normalizeAmazonRecommendation(item)),
+      event,
+      context,
+    ),
     event,
     context,
   );

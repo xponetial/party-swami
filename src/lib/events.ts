@@ -40,6 +40,15 @@ export type PartyPlanDetails = {
   prompt_version?: string | null;
   summary?: string | null;
   generated_at?: string | null;
+  raw_response?: {
+    provider?: string;
+    generatedAt?: string;
+    summary?: string;
+    model?: string;
+    promptVersion?: string;
+    shoppingSearchTerms?: string[];
+    shoppingSearchSeed?: string[];
+  } | null;
 };
 
 export type GuestDetails = {
@@ -156,7 +165,7 @@ export const getEventContext = cache(async (eventId: string) => {
       .maybeSingle<InviteDetails>(),
     supabase
       .from("party_plans")
-      .select("id, theme, invite_copy, menu, shopping_categories, tasks, timeline, model, prompt_version, summary, generated_at")
+      .select("id, theme, invite_copy, menu, shopping_categories, tasks, timeline, model, prompt_version, summary, generated_at, raw_response")
       .eq("event_id", eventId)
       .maybeSingle<PartyPlanDetails>(),
     supabase

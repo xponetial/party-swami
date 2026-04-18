@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   type AiGenerationType,
   type GeneratedPartyPlan,
+  buildShoppingSearchSeedParts,
   generateInviteCopy,
   generatePartyPlan,
   revisePartyPlan,
@@ -1228,14 +1229,20 @@ function getThemeFromEvent(event: EventRecord) {
   return event.theme?.trim() || `${event.event_type} celebration`;
 }
 
-export async function generateShoppingListForEvent(supabase: SupabaseClient, eventId: string) {
+export async function generateShoppingListForEvent(
+  supabase: SupabaseClient,
+  eventId: string,
+  options?: { searchTerms?: string[] | null },
+) {
   const event = await loadEventSeed(supabase, eventId);
   const shoppingList = await ensureShoppingList(supabase, eventId);
   const planContext = await getPlanContextForShopping(supabase, eventId);
+  const searchTerms = options?.searchTerms?.map((term) => term.trim()).filter(Boolean) ?? [];
   const generated = await generateShoppingList(event, {
     planTheme: planContext?.theme ?? null,
     menu: planContext?.menu ?? [],
     shoppingCategories: planContext?.shopping_categories ?? [],
+    searchTerms,
   });
   const enrichedShoppingItems = await enrichShoppingItemsWithAmazonCatalog(
     generated.shoppingItems,
@@ -1245,7 +1252,15 @@ export async function generateShoppingListForEvent(supabase: SupabaseClient, eve
     shoppingList.id,
     enrichedShoppingItems,
   );
-  const fingerprintInput = buildEventFingerprint(event, "shopping_list_transform");
+  const searchSeed = buildShoppingSearchSeedParts(event, {
+    planTheme: planContext?.theme ?? null,
+    searchTerms,
+  });
+  const fingerprintInput = {
+    ...buildEventFingerprint(event, "shopping_list_transform"),
+    searchTerms,
+    searchSeed,
+  };
   const requestFingerprint = buildFingerprint(fingerprintInput);
   const promptVersion =
     generated.rawResponse.promptVersion ?? getPromptVersion("shopping_list_transform");
@@ -1259,7 +1274,11 @@ export async function generateShoppingListForEvent(supabase: SupabaseClient, eve
         theme: getThemeFromEvent(event),
         shopping_categories: generated.shoppingCategories,
         generated_at: new Date().toISOString(),
-        raw_response: generated.rawResponse,
+        raw_response: {
+          ...generated.rawResponse,
+          shoppingSearchTerms: searchTerms,
+          shoppingSearchSeed: searchSeed,
+        },
         request_fingerprint: requestFingerprint,
         prompt_version: promptVersion,
         model,
