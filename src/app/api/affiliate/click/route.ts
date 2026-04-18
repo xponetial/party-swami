@@ -77,28 +77,18 @@ async function maybeResolveAmazonSearchTarget(
   {
     matchHint,
     categoryHint,
-    fallbackTarget,
   }: {
     matchHint?: string;
     categoryHint?: string;
-    fallbackTarget?: string;
   } = {},
 ) {
   const resolved = await resolveAmazonProductFromSearchUrl(target, {
     matchHint,
     categoryHint,
   });
-  const isBeverageCategory =
-    categoryHint?.toLowerCase().includes("beverage") ||
-    categoryHint?.toLowerCase().includes("drink") ||
-    categoryHint?.toLowerCase().includes("bar");
 
   if (resolved) {
     return resolved;
-  }
-
-  if (!isBeverageCategory && fallbackTarget) {
-    return fallbackTarget;
   }
 
   return target;
@@ -110,10 +100,6 @@ const querySchema = z.object({
   itemName: z.string().trim().min(2).max(200).optional(),
   itemCategory: z.string().trim().min(2).max(80).optional(),
   target: z.string().refine(isAllowedAffiliateUrl, "Redirect target is not an allowed affiliate domain."),
-  fallbackTarget: z
-    .string()
-    .refine(isAllowedAffiliateUrl, "Fallback target is not an allowed affiliate domain.")
-    .optional(),
 });
 
 export async function GET(request: Request) {
@@ -125,7 +111,6 @@ export async function GET(request: Request) {
     itemName: requestUrl.searchParams.get("itemName") ?? undefined,
     itemCategory: requestUrl.searchParams.get("itemCategory") ?? undefined,
     target,
-    fallbackTarget: requestUrl.searchParams.get("fallbackTarget") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -144,7 +129,6 @@ export async function GET(request: Request) {
     {
       matchHint: parsed.data.itemName,
       categoryHint: parsed.data.itemCategory,
-      fallbackTarget: parsed.data.fallbackTarget,
     },
   );
   const redirectTarget = withAmazonAffiliateTag(resolvedTarget);
