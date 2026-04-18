@@ -452,20 +452,22 @@ function buildCategoryFallbackItems(
       return [
         normalizeAmazonRecommendation({
           category,
-          name: "Drink dispenser with stand",
-          quantity: 1,
-          estimated_price: budgetTier === "lean" ? 20 : 30,
-          recommendation_reason: "Supports a self-serve flow so hosts are not constantly refilling cups.",
-          search_query: `${theme} drink dispenser with stand party`,
+          name: "Party drink variety pack",
+          quantity: Math.max(1, qtyBase),
+          estimated_price: budgetTier === "lean" ? 18 : 26,
+          recommendation_reason:
+            "Covers the core beverage need directly and works even when a themed drink setup is not available.",
+          search_query: `${theme} party soda variety pack coke sprite pepsi dr pepper`,
           image_url: null,
         }),
         normalizeAmazonRecommendation({
           category,
-          name: "Beverage station accessories set",
+          name: "Juice box or bottled water case pack",
           quantity: Math.max(1, qtyBase),
-          estimated_price: 14,
-          recommendation_reason: "Adds practical station pieces that speed up guest service.",
-          search_query: `${theme} beverage station accessories cups straws`,
+          estimated_price: budgetTier === "lean" ? 10 : 16,
+          recommendation_reason:
+            "Adds an easy crowd-pleasing option for guests and gives the host a simple non-themed beverage fallback.",
+          search_query: `${theme} capri sun juice box bottled water party pack`,
           image_url: null,
         }),
       ];
@@ -805,9 +807,9 @@ function buildReplacementAngles(category: string) {
 
   if (normalizedCategory.includes("beverage") || normalizedCategory.includes("drink")) {
     return [
-      "garnish and presentation",
+      "actual packaged drinks",
+      "kid-friendly drink packs",
       "cooling and serving",
-      "self-serve station accessories",
     ];
   }
 
@@ -855,32 +857,32 @@ function buildReplacementPool(
     return [
       {
         category,
-        name: "Signature drink garnish and glass marker set",
+        name: "Soda variety pack for party cooler",
         quantity: Math.max(1, Math.ceil(guestCount / 12)),
+        estimated_price: wantsLowerCost ? 12 : budgetTier === "lean" ? 16 : 24,
+        recommendation_reason:
+          "Switches the recommendation from serving hardware to actual beverages guests can grab right away.",
+        search_query: `${theme} soda variety pack coke sprite pepsi dr pepper party`,
+        image_url: null,
+      },
+      {
+        category,
+        name: "Juice box or pouch drink party pack",
+        quantity: Math.max(1, Math.ceil(guestCount / 16)),
         estimated_price: wantsLowerCost ? 10 : budgetTier === "lean" ? 12 : 18,
         recommendation_reason:
-          "Shifts the beverage setup toward presentation and guest convenience instead of repeating another dispenser-style add-on.",
-        search_query: `${theme} party drink garnish tray glass markers`,
+          "Gives the host a kid-friendly beverage option when themed drink accessories are not the strongest fit.",
+        search_query: `${theme} capri sun juice pouch juice box party pack`,
         image_url: null,
       },
       {
         category,
-        name: "Ice bucket and insulated beverage tub station",
-        quantity: Math.max(1, Math.ceil(guestCount / 16)),
-        estimated_price: wantsLowerCost ? 14 : budgetTier === "lean" ? 16 : 24,
-        recommendation_reason:
-          "Covers the cooling side of the drink setup so guests can serve themselves without the host constantly refreshing the station.",
-        search_query: `${theme} party beverage tub ice bucket set`,
-        image_url: null,
-      },
-      {
-        category,
-        name: "Mocktail syrup and mixer sampler",
+        name: "Bottled water and flavored water case bundle",
         quantity: Math.max(1, Math.ceil(guestCount / 18)),
-        estimated_price: wantsLowerCost ? 12 : budgetTier === "lean" ? 14 : 22,
+        estimated_price: wantsLowerCost ? 9 : budgetTier === "lean" ? 12 : 18,
         recommendation_reason:
-          "Adds variety at the bar area and gives the host a more guest-facing beverage upgrade than another accessory pack.",
-        search_query: `${theme} party mocktail mixer sampler`,
+          "Adds a practical all-ages drink option and avoids repeating another dispenser or accessory recommendation.",
+        search_query: `${theme} bottled water flavored water variety case party`,
         image_url: null,
       },
     ];
@@ -1651,6 +1653,8 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
 - Vary the recommendation mix so the list does not over-index on one category.
 - Use guest count and budget to influence bundle size and upgrade count.
 - Avoid placeholders like "party supplies" or "decor pack" unless the rest of the name is specific.
+- In the Drinks category, do not default to dispensers, garnish kits, or station accessories unless they are clearly the best fit.
+- If a themed beverage product is weak or unavailable, prefer actual drink recommendations such as soda variety packs, juice boxes, Capri Sun, bottled water, sparkling water, or other beverage multipacks sold on Amazon.
 - Use null for image_url if you do not know an exact image.
 - Set external_url to an Amazon search URL when possible.`,
     schema: generatedShoppingListSchema,
