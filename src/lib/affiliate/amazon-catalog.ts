@@ -39,6 +39,40 @@ const BEVERAGE_INTENT_TOKENS = [
   "dispenser",
   "bar",
 ] as const;
+const BEVERAGE_PACKAGED_TOKENS = [
+  "soda",
+  "sprite",
+  "coke",
+  "pepsi",
+  "pepper",
+  "juice",
+  "capri",
+  "water",
+  "bottled",
+  "sparkling",
+  "gatorade",
+  "minute",
+  "maid",
+  "fanta",
+  "can",
+  "cans",
+  "bottle",
+  "bottles",
+] as const;
+const BEVERAGE_SERVEWARE_TOKENS = [
+  "dispenser",
+  "dispensers",
+  "spigot",
+  "pitcher",
+  "pitchers",
+  "garnish",
+  "markers",
+  "tub",
+  "bucket",
+  "stand",
+  "accessories",
+  "accessory",
+] as const;
 const BEVERAGE_OFF_CATEGORY_TOKENS = [
   "favor",
   "favors",
@@ -49,11 +83,6 @@ const BEVERAGE_OFF_CATEGORY_TOKENS = [
   "banner",
   "cake topper",
   "table decor",
-] as const;
-const BEVERAGE_FALLBACK_QUERIES = [
-  "party drink dispenser with stand",
-  "beverage dispenser for parties",
-  "mocktail mixer set for party",
 ] as const;
 const DEFAULT_BEVERAGE_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_BEVERAGE_ASIN?.trim() || "B0B924FCQG";
@@ -396,6 +425,10 @@ function isBeverageCategory(categoryHint?: string) {
   );
 }
 
+function hasAnyToken(tokens: Set<string>, candidates: readonly string[]) {
+  return candidates.some((token) => tokens.has(token));
+}
+
 function getFallbackAsinForCategory(categoryHint?: string) {
   const normalized = (categoryHint ?? "").toLowerCase();
 
@@ -446,6 +479,8 @@ function extractBestAsinFromSearchHtml(
     [...queryTokens].some((token) =>
     BEVERAGE_INTENT_TOKENS.includes(token as (typeof BEVERAGE_INTENT_TOKENS)[number]),
   );
+  const wantsPackagedBeverages = hasAnyToken(queryTokens, BEVERAGE_PACKAGED_TOKENS);
+  const wantsServeware = hasAnyToken(queryTokens, BEVERAGE_SERVEWARE_TOKENS);
   const candidates: Array<{
     asin: string;
     score: number;
@@ -484,10 +519,21 @@ function extractBestAsinFromSearchHtml(
       continue;
     }
 
-    const score = tokenScore - (isSponsored ? 2 : 0);
-    const blockedByIntent =
+    const hasServewareSnippet = BEVERAGE_SERVEWARE_TOKENS.some((token) => snippet.includes(token));
+    const hasPackagedSnippet = BEVERAGE_PACKAGED_TOKENS.some((token) => snippet.includes(token));
+    const blockedByBeverageMismatch =
       hasBeverageIntent &&
-      BEVERAGE_OFF_CATEGORY_TOKENS.some((token) => snippet.includes(token));
+      ((wantsPackagedBeverages && hasServewareSnippet && !hasPackagedSnippet) ||
+        (!wantsServeware && !wantsPackagedBeverages && hasServewareSnippet && hintMatchCount === 0));
+    const score =
+      tokenScore -
+      (isSponsored ? 2 : 0) +
+      (wantsPackagedBeverages && hasPackagedSnippet ? 3 : 0) -
+      (wantsPackagedBeverages && hasServewareSnippet && !hasPackagedSnippet ? 4 : 0);
+    const blockedByIntent =
+      (hasBeverageIntent &&
+        BEVERAGE_OFF_CATEGORY_TOKENS.some((token) => snippet.includes(token))) ||
+      blockedByBeverageMismatch;
     const imageUrl =
       extractFirstAmazonImageUrl(rawSnippet) ?? extractImageUrlFromImgTagNearAsin(rawSnippet);
 
@@ -561,6 +607,8 @@ async function resolveFirstAmazonProduct(
   } = {},
 ): Promise<ResolvedAmazonProduct | null> {
   const searchUrl = buildAmazonSearchUrl(query);
+  const beverageQueryTokens = new Set(toMeaningfulTokens(`${query} ${matchHint ?? ""}`));
+  const wantsServeware = hasAnyToken(beverageQueryTokens, BEVERAGE_SERVEWARE_TOKENS);
 
   try {
     const response = await fetch(searchUrl, {
@@ -595,7 +643,7 @@ async function resolveFirstAmazonProduct(
       };
     }
 
-    if (isBeverageCategory(categoryHint)) {
+    if (isBeverageCategory(categoryHint) && wantsServeware) {
       const beverageResolved = extractFirstBeverageAsinFromSearchHtml(html);
       if (!beverageResolved?.asin) {
         return null;
@@ -608,6 +656,10 @@ async function resolveFirstAmazonProduct(
         productUrl: toCanonicalProductUrl(beverageResolved.asin),
         imageUrl,
       };
+    }
+
+    if (isBeverageCategory(categoryHint)) {
+      return null;
     }
 
     // For non-beverage categories, keep a single-PDP experience even when
@@ -664,17 +716,7 @@ export async function resolveAmazonProductFromSearchUrl(
   }
 
   if (isBeverageCategory(categoryHint)) {
-    for (const fallbackQuery of BEVERAGE_FALLBACK_QUERIES) {
-      const fallbackResolved = await resolveFirstAmazonProduct(fallbackQuery, {
-        matchHint: "drink beverage mixer dispenser",
-        categoryHint,
-      });
-      if (fallbackResolved?.productUrl) {
-        return fallbackResolved.productUrl;
-      }
-    }
-
-    return toCanonicalProductUrl(getFallbackAsinForCategory(categoryHint));
+    return null;
   }
 
   return toCanonicalProductUrl(getFallbackAsinForCategory(categoryHint));
