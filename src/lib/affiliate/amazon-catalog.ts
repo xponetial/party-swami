@@ -86,6 +86,12 @@ const BEVERAGE_OFF_CATEGORY_TOKENS = [
 ] as const;
 const DEFAULT_BEVERAGE_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_BEVERAGE_ASIN?.trim() || "B0B924FCQG";
+const DEFAULT_BEVERAGE_SODA_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_BEVERAGE_SODA_ASIN?.trim() || "B08MB245WZ";
+const DEFAULT_BEVERAGE_JUICE_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_BEVERAGE_JUICE_ASIN?.trim() || "B0812HZGGZ";
+const DEFAULT_BEVERAGE_WATER_FALLBACK_ASIN =
+  process.env.AMAZON_DEFAULT_BEVERAGE_WATER_ASIN?.trim() || "B004CQWWKY";
 const DEFAULT_DECOR_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_DECOR_ASIN?.trim() || "B0GJD38FLF";
 const DEFAULT_TABLEWARE_FALLBACK_ASIN =
@@ -429,6 +435,36 @@ function hasAnyToken(tokens: Set<string>, candidates: readonly string[]) {
   return candidates.some((token) => tokens.has(token));
 }
 
+function getBeverageFallbackAsinForQuery(query: string, matchHint?: string) {
+  const tokens = new Set(toMeaningfulTokens(`${query} ${matchHint ?? ""}`));
+
+  if (hasAnyToken(tokens, ["water", "bottled", "sparkling"])) {
+    return DEFAULT_BEVERAGE_WATER_FALLBACK_ASIN;
+  }
+
+  if (hasAnyToken(tokens, ["juice", "capri", "sun", "pouch", "box"])) {
+    return DEFAULT_BEVERAGE_JUICE_FALLBACK_ASIN;
+  }
+
+  if (
+    hasAnyToken(tokens, [
+      "soda",
+      "sprite",
+      "coke",
+      "cola",
+      "pepsi",
+      "pepper",
+      "fanta",
+      "gatorade",
+      "variety",
+    ])
+  ) {
+    return DEFAULT_BEVERAGE_SODA_FALLBACK_ASIN;
+  }
+
+  return DEFAULT_BEVERAGE_FALLBACK_ASIN;
+}
+
 function getFallbackAsinForCategory(categoryHint?: string) {
   const normalized = (categoryHint ?? "").toLowerCase();
 
@@ -734,7 +770,7 @@ export async function resolveAmazonProductFromSearchUrl(
   }
 
   if (isBeverageCategory(categoryHint)) {
-    return null;
+    return toCanonicalProductUrl(getBeverageFallbackAsinForQuery(query, matchHint));
   }
 
   return toCanonicalProductUrl(getFallbackAsinForCategory(categoryHint));
