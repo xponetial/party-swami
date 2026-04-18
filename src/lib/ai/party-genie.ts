@@ -333,9 +333,9 @@ export function buildShoppingSearchSeedParts(
 ) {
   const candidates = [
     event.title,
+    ...(context?.searchTerms ?? []),
     context?.planTheme?.trim() || event.theme?.trim() || null,
     event.event_type,
-    ...(context?.searchTerms ?? []),
   ];
   const seen = new Set<string>();
   const result: string[] = [];
@@ -360,11 +360,14 @@ function buildShoppingSearchQuery(
 ) {
   const normalizedQuery = normalizeSearchSeedTerm(query);
   const queryLower = normalizedQuery.toLowerCase();
-  const seedParts = buildShoppingSearchSeedParts(event, context).filter(
+  const [eventTitle = "", ...secondarySeedParts] = buildShoppingSearchSeedParts(event, context);
+  const titlePrefix =
+    eventTitle && !queryLower.includes(eventTitle.toLowerCase()) ? [eventTitle] : [];
+  const refiners = secondarySeedParts.filter(
     (part) => !queryLower.includes(part.toLowerCase()),
   );
 
-  return [...seedParts, normalizedQuery].join(" ").replace(/\s+/g, " ").trim();
+  return [...titlePrefix, normalizedQuery, ...refiners].join(" ").replace(/\s+/g, " ").trim();
 }
 
 function applyShoppingSearchSeed(
