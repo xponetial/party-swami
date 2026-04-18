@@ -405,6 +405,15 @@ function buildCategoryFallbackItems(
           search_query: `${theme} party table centerpiece decor set`,
           image_url: null,
         }),
+        normalizeAmazonRecommendation({
+          category,
+          name: "Welcome sign and entry styling kit",
+          quantity: 1,
+          estimated_price: budgetTier === "lean" ? 14 : 22,
+          recommendation_reason: "Creates a strong first impression and helps the party feel intentional from arrival.",
+          search_query: `${theme} party welcome sign entry decor`,
+          image_url: null,
+        }),
       ];
     case "Tableware":
       return [
@@ -426,6 +435,15 @@ function buildCategoryFallbackItems(
           search_query: `${theme} party cups straws set`,
           image_url: null,
         }),
+        normalizeAmazonRecommendation({
+          category,
+          name: "Disposable serving tray and utensil bundle",
+          quantity: 1,
+          estimated_price: budgetTier === "lean" ? 12 : 18,
+          recommendation_reason: "Rounds out the table setup with practical serving support instead of just place settings.",
+          search_query: `${theme} disposable serving trays utensils party set`,
+          image_url: null,
+        }),
       ];
     case "Cake & Desserts":
       return [
@@ -440,11 +458,20 @@ function buildCategoryFallbackItems(
         }),
         normalizeAmazonRecommendation({
           category,
-          name: "Cupcake stand and dessert display tray",
-          quantity: 1,
-          estimated_price: budgetTier === "lean" ? 14 : 22,
-          recommendation_reason: "Improves dessert presentation and keeps the serving area neat.",
-          search_query: `${theme} cupcake stand dessert display tray`,
+          name: "Cupcake or dessert assortment pack",
+          quantity: Math.max(1, qtyBase),
+          estimated_price: budgetTier === "lean" ? 18 : 28,
+          recommendation_reason: "Adds a ready-to-serve dessert option so the category includes actual sweets, not just accessories.",
+          search_query: `${theme} cupcakes dessert assortment birthday party`,
+          image_url: null,
+        }),
+        normalizeAmazonRecommendation({
+          category,
+          name: "Cookie, brownie, or treat box bundle",
+          quantity: Math.max(1, qtyBase),
+          estimated_price: budgetTier === "lean" ? 16 : 24,
+          recommendation_reason: "Gives the host an easy second dessert lane with real treats guests can actually eat.",
+          search_query: `${theme} cookies brownies dessert box party`,
           image_url: null,
         }),
       ];
@@ -470,6 +497,16 @@ function buildCategoryFallbackItems(
           search_query: `${theme} capri sun juice box bottled water party pack`,
           image_url: null,
         }),
+        normalizeAmazonRecommendation({
+          category,
+          name: "Sparkling water or sports drink multipack",
+          quantity: Math.max(1, qtyBase),
+          estimated_price: budgetTier === "lean" ? 12 : 20,
+          recommendation_reason:
+            "Adds a third real drink option so the beverage category does not over-index on dispensers or accessories.",
+          search_query: `${theme} sparkling water sports drink variety pack party`,
+          image_url: null,
+        }),
       ];
     case "Party Favors":
       return [
@@ -489,6 +526,15 @@ function buildCategoryFallbackItems(
           estimated_price: budgetTier === "lean" ? 16 : 24,
           recommendation_reason: "Reduces prep time while still giving each guest a favor.",
           search_query: `${theme} prefilled party favor assortment`,
+          image_url: null,
+        }),
+        normalizeAmazonRecommendation({
+          category,
+          name: "Favor bag filler toy and sticker combo",
+          quantity: Math.max(1, qtyBase),
+          estimated_price: budgetTier === "lean" ? 14 : 22,
+          recommendation_reason: "Completes the favor table with a flexible filler option when one bag item is not enough.",
+          search_query: `${theme} party favor filler toys stickers set`,
           image_url: null,
         }),
       ];
@@ -512,6 +558,15 @@ function buildCategoryFallbackItems(
           search_query: `${theme} novelty glasses wearable party accessories`,
           image_url: null,
         }),
+        normalizeAmazonRecommendation({
+          category,
+          name: "Photo-booth wearables and prop set",
+          quantity: 1,
+          estimated_price: budgetTier === "lean" ? 12 : 18,
+          recommendation_reason: "Adds a third wearable option that also supports party photos and guest participation.",
+          search_query: `${theme} party photo booth wearables props`,
+          image_url: null,
+        }),
       ];
     case "Activities & Games":
       return [
@@ -533,6 +588,15 @@ function buildCategoryFallbackItems(
           search_query: `${theme} activity station party prize kit`,
           image_url: null,
         }),
+        normalizeAmazonRecommendation({
+          category,
+          name: "Table game or conversation card pack",
+          quantity: 1,
+          estimated_price: budgetTier === "lean" ? 10 : 16,
+          recommendation_reason: "Adds an easy lower-lift activity so the category has variety beyond one main game set.",
+          search_query: `${theme} party conversation cards table game`,
+          image_url: null,
+        }),
       ];
     case "Serving Supplies":
       return [
@@ -552,6 +616,15 @@ function buildCategoryFallbackItems(
           estimated_price: budgetTier === "lean" ? 18 : 26,
           recommendation_reason: "Covers practical setup needs hosts usually miss until the last minute.",
           search_query: `${theme} buffet serving supplies set`,
+          image_url: null,
+        }),
+        normalizeAmazonRecommendation({
+          category,
+          name: "Cleanup station and trash bag holder set",
+          quantity: 1,
+          estimated_price: budgetTier === "lean" ? 12 : 18,
+          recommendation_reason: "Adds a host-side support item that keeps food and serving zones cleaner during the event.",
+          search_query: `${theme} party cleanup station trash bag holder`,
           image_url: null,
         }),
       ];
@@ -579,12 +652,12 @@ function enforceRequiredCategoryStructure(
 
   for (const category of REQUIRED_SHOPPING_CATEGORIES) {
     const current = byCategory.get(category) ?? [];
-    if (current.length >= 2) continue;
+    if (current.length >= 3) continue;
 
     const fallback = buildCategoryFallbackItems(event, category, context);
     const existingNames = new Set(current.map((item) => item.name.trim().toLowerCase()));
     for (const candidate of fallback) {
-      if (current.length >= 2) break;
+      if (current.length >= 3) break;
       if (existingNames.has(candidate.name.trim().toLowerCase())) continue;
       current.push(candidate);
       existingNames.add(candidate.name.trim().toLowerCase());
@@ -966,32 +1039,32 @@ function buildReplacementPool(
     return [
       {
         category,
-        name: "Dessert display stand and riser set",
+        name: "Dessert variety box or bakery sampler",
         quantity: 1,
-        estimated_price: wantsLowerCost ? 14 : budgetTier === "lean" ? 18 : 26,
+        estimated_price: wantsLowerCost ? 18 : budgetTier === "lean" ? 22 : 30,
         recommendation_reason:
-          "Shifts the food recommendation toward presentation so the spread looks more intentional without changing the whole menu.",
-        search_query: `${theme} party dessert stand risers`,
+          "Moves the category toward real ready-to-serve desserts instead of repeating another display-only accessory.",
+        search_query: `${theme} dessert variety box bakery sampler party`,
         image_url: null,
       },
       {
         category,
-        name: "Snack bowl and grazing board bundle",
+        name: "Cookie or brownie party tray",
         quantity: 1,
-        estimated_price: wantsLowerCost ? 12 : budgetTier === "lean" ? 16 : 24,
+        estimated_price: wantsLowerCost ? 14 : budgetTier === "lean" ? 18 : 24,
         recommendation_reason:
-          "Supports a more casual self-serve food moment if you want guests to graze instead of clustering around one serving area.",
-        search_query: `${theme} party snack bowls grazing board set`,
+          "Adds an actual dessert option guests can share without relying on only cake accessories or toppers.",
+        search_query: `${theme} cookies brownies dessert tray party`,
         image_url: null,
       },
       {
         category,
-        name: "Cupcake and treat wrapper assortment",
+        name: "Cupcake and treat assortment pack",
         quantity: Math.max(1, Math.ceil(guestCount / 18)),
-        estimated_price: wantsLowerCost ? 8 : budgetTier === "lean" ? 10 : 15,
+        estimated_price: wantsLowerCost ? 12 : budgetTier === "lean" ? 16 : 22,
         recommendation_reason:
-          "Gives the dessert station a cleaner finish and helps smaller sweets feel easier to serve and photograph.",
-        search_query: `${theme} dessert wrappers treat stand party`,
+          "Gives the dessert station a real bite-sized sweet option instead of more presentation hardware.",
+        search_query: `${theme} cupcakes treats assortment party`,
         image_url: null,
       },
     ];
@@ -1644,7 +1717,7 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
     userPrompt: `Create a shopping list for this event brief.\n${eventBrief(event)}${contextLines ? `\n\nSaved planning context:\n${contextLines}` : ""}\n\nRequirements:
 - Return exactly 16 to 24 useful items.
 - Use only these categories: Decor, Tableware, Cake & Desserts, Drinks, Party Favors, Hats & Wearables, Activities & Games, Serving Supplies.
-- Return 2 to 3 items for each of those categories.
+- Return exactly 3 items for each of those categories.
 - Quantities must be whole numbers.
 - Return item names that feel like specific Amazon-searchable products.
 - Include recommendation_reason explaining why each item was chosen for this event.
@@ -1653,6 +1726,7 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
 - Vary the recommendation mix so the list does not over-index on one category.
 - Use guest count and budget to influence bundle size and upgrade count.
 - Avoid placeholders like "party supplies" or "decor pack" unless the rest of the name is specific.
+- In Cake & Desserts, include real dessert products or edible dessert bundles when possible, not just toppers, wrappers, stands, or display accessories.
 - In the Drinks category, do not default to dispensers, garnish kits, or station accessories unless they are clearly the best fit.
 - If a themed beverage product is weak or unavailable, prefer actual drink recommendations such as soda variety packs, juice boxes, Capri Sun, bottled water, sparkling water, or other beverage multipacks sold on Amazon.
 - Use null for image_url if you do not know an exact image.
