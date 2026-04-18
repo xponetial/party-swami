@@ -646,7 +646,16 @@ async function resolveFirstAmazonProduct(
     if (isBeverageCategory(categoryHint) && wantsServeware) {
       const beverageResolved = extractFirstBeverageAsinFromSearchHtml(html);
       if (!beverageResolved?.asin) {
-        return null;
+        const firstBeverageFallbackAsin = extractFirstAsinFromHtml(html);
+        if (!firstBeverageFallbackAsin) {
+          return null;
+        }
+        return {
+          productUrl: toCanonicalProductUrl(firstBeverageFallbackAsin),
+          imageUrl:
+            extractImageUrlNearAsin(html, firstBeverageFallbackAsin) ??
+            (await resolveImageUrlFromAsinCached(firstBeverageFallbackAsin)),
+        };
       }
       const imageUrl =
         beverageResolved.imageUrl ??
@@ -659,7 +668,16 @@ async function resolveFirstAmazonProduct(
     }
 
     if (isBeverageCategory(categoryHint)) {
-      return null;
+      const firstBeverageFallbackAsin = extractFirstAsinFromHtml(html);
+      if (!firstBeverageFallbackAsin) {
+        return null;
+      }
+      return {
+        productUrl: toCanonicalProductUrl(firstBeverageFallbackAsin),
+        imageUrl:
+          extractImageUrlNearAsin(html, firstBeverageFallbackAsin) ??
+          (await resolveImageUrlFromAsinCached(firstBeverageFallbackAsin)),
+      };
     }
 
     // For non-beverage categories, keep a single-PDP experience even when
