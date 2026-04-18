@@ -1701,6 +1701,23 @@ export async function generateShoppingList(event: EventSeed, context?: ShoppingG
   };
 }
 
+export function ensureRequiredShoppingCoverage(
+  event: EventSeed,
+  items: GeneratedShoppingItem[],
+  context?: ShoppingGenerationContext,
+) {
+  const normalizedShoppingItems = enforceRequiredCategoryStructure(
+    items.map((item) => normalizeAmazonRecommendation(item)),
+    event,
+    context,
+  );
+
+  return {
+    shoppingItems: normalizedShoppingItems,
+    shoppingCategories: toShoppingCategories(normalizedShoppingItems),
+  };
+}
+
 function buildReplacementFallback(
   event: EventSeed,
   currentItem: {

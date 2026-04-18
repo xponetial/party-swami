@@ -8,6 +8,7 @@ import {
   generatePartyPlan,
   revisePartyPlan,
   generateShoppingList,
+  ensureRequiredShoppingCoverage,
   generateReplacementShoppingItem,
   getOpenAIModel,
   getPromptVersion,
@@ -797,8 +798,13 @@ export async function generatePlanForEvent(
   }
 
   const generated = await generatePartyPlan(event);
+  const normalizedShopping = ensureRequiredShoppingCoverage(event, generated.shoppingItems, {
+    planTheme: generated.theme,
+    menu: generated.menu,
+    shoppingCategories: generated.shoppingCategories,
+  });
   const enrichedShoppingItems = await enrichShoppingItemsWithAmazonCatalog(
-    generated.shoppingItems,
+    normalizedShopping.shoppingItems,
   );
 
   await ensureInvite(supabase, eventId, generated.inviteCopy);
@@ -814,7 +820,7 @@ export async function generatePlanForEvent(
       theme: generated.theme,
       invite_copy: generated.inviteCopy,
       menu: generated.menu,
-      shopping_categories: generated.shoppingCategories,
+      shopping_categories: normalizedShopping.shoppingCategories,
       tasks: generated.tasks,
       timeline: generated.timeline.map(({ label, detail }) => ({ label, detail })),
       raw_response: generated.rawResponse,
@@ -852,7 +858,7 @@ export async function generatePlanForEvent(
     theme: generated.theme,
     inviteCopy: generated.inviteCopy,
     menu: generated.menu,
-    shoppingCategories: generated.shoppingCategories,
+    shoppingCategories: normalizedShopping.shoppingCategories,
     tasks: generated.tasks,
     timeline: generated.timeline,
     synced: {
@@ -907,8 +913,13 @@ export async function revisePlanForEvent(
     changeType,
     instructions,
   });
+  const normalizedShopping = ensureRequiredShoppingCoverage(event, revisedPlan.shoppingItems, {
+    planTheme: revisedPlan.theme,
+    menu: revisedPlan.menu,
+    shoppingCategories: revisedPlan.shoppingCategories,
+  });
   const enrichedShoppingItems = await enrichShoppingItemsWithAmazonCatalog(
-    revisedPlan.shoppingItems,
+    normalizedShopping.shoppingItems,
   );
 
   const { data: latestVersion } = await supabase
@@ -955,7 +966,7 @@ export async function revisePlanForEvent(
       theme: revisedPlan.theme,
       invite_copy: revisedPlan.inviteCopy,
       menu: revisedPlan.menu,
-      shopping_categories: revisedPlan.shoppingCategories,
+      shopping_categories: normalizedShopping.shoppingCategories,
       tasks: revisedPlan.tasks,
       timeline: revisedPlan.timeline.map(({ label, detail }) => ({ label, detail })),
       raw_response: revisedPlan.rawResponse,
@@ -990,6 +1001,8 @@ export async function revisePlanForEvent(
 
   return {
     ...revisedPlan,
+    shoppingItems: normalizedShopping.shoppingItems,
+    shoppingCategories: normalizedShopping.shoppingCategories,
     synced: {
       shoppingItemsAdded: shoppingSummary.addedCount,
       tasksAdded,
