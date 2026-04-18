@@ -22,6 +22,7 @@ export function SiteFooter({
         <div className="space-y-1">
           <p>&copy; {year} {APP_NAME}. All rights reserved.</p>
           <p>AI-powered party planning, invitations, guests, shopping, and task flow.</p>
+          <p>As an Amazon Associate we earn from qualifying purchases.</p>
         </div>
         <div className="flex flex-wrap gap-3 text-sm">
           <ContactLink emailKey="hello" context="marketing" pageLabel={pageLabel} className="transition hover:text-ink" />

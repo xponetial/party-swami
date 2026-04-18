@@ -28,6 +28,13 @@ export default function TermsPage() {
           ],
         },
         {
+          title: "Affiliate disclosure and shopping links",
+          body: [
+            "Some shopping recommendations may include Amazon affiliate links. As an Amazon Associate, Party Swami earns from qualifying purchases.",
+            "Shopping suggestions are provided to help hosts plan faster, but hosts remain responsible for reviewing product details, pricing, availability, and fit before purchasing.",
+          ],
+        },
+        {
           title: "Communications and public links",
           body: [
             "When a host enables public invite sharing or sends email invites, Party Swami may generate guest-specific RSVP links that allow invitees to respond without signing in.",
