@@ -110,6 +110,60 @@ const DEFAULT_HOSTING_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_HOSTING_ASIN?.trim() || DEFAULT_SERVING_FALLBACK_ASIN;
 const DEFAULT_GENERAL_FALLBACK_ASIN =
   process.env.AMAZON_DEFAULT_GENERAL_ASIN?.trim() || DEFAULT_DECOR_FALLBACK_ASIN;
+const CATEGORY_FALLBACK_ASIN_POOLS = {
+  decor: [
+    DEFAULT_DECOR_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_DECOR_BALLOON_ASIN?.trim() || "B0GJD38FLF",
+    process.env.AMAZON_FALLBACK_DECOR_BACKDROP_ASIN?.trim() || "B0FBL3ZK57",
+  ],
+  tableware: [
+    DEFAULT_TABLEWARE_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_TABLEWARE_CUPS_ASIN?.trim() || "B0CDWNNHWN",
+    process.env.AMAZON_FALLBACK_TABLEWARE_TRAYS_ASIN?.trim() || DEFAULT_SERVING_FALLBACK_ASIN,
+  ],
+  cake: [
+    DEFAULT_CAKE_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_CAKE_DESSERT_ASIN?.trim() || "B0BM5H6GBL",
+    process.env.AMAZON_FALLBACK_CAKE_TREATS_ASIN?.trim() || DEFAULT_CAKE_FALLBACK_ASIN,
+  ],
+  favors: [
+    DEFAULT_FAVORS_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_FAVORS_STICKERS_ASIN?.trim() || DEFAULT_ACTIVITIES_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_FAVORS_TOYS_ASIN?.trim() || DEFAULT_HATS_FALLBACK_ASIN,
+  ],
+  hats: [
+    DEFAULT_HATS_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_HATS_GLASSES_ASIN?.trim() || DEFAULT_FAVORS_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_HATS_PROPS_ASIN?.trim() || DEFAULT_ACTIVITIES_FALLBACK_ASIN,
+  ],
+  activities: [
+    DEFAULT_ACTIVITIES_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_ACTIVITIES_GAMES_ASIN?.trim() || DEFAULT_FAVORS_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_ACTIVITIES_PRIZES_ASIN?.trim() || DEFAULT_HATS_FALLBACK_ASIN,
+  ],
+  serving: [
+    DEFAULT_SERVING_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_SERVING_TRAYS_ASIN?.trim() || DEFAULT_TABLEWARE_FALLBACK_ASIN,
+    process.env.AMAZON_FALLBACK_SERVING_CLEANUP_ASIN?.trim() || DEFAULT_HOSTING_FALLBACK_ASIN,
+  ],
+  general: [
+    DEFAULT_GENERAL_FALLBACK_ASIN,
+    DEFAULT_TABLEWARE_FALLBACK_ASIN,
+    DEFAULT_FAVORS_FALLBACK_ASIN,
+  ],
+} as const;
+const GLOBAL_FALLBACK_ASIN_POOL = [
+  DEFAULT_DECOR_FALLBACK_ASIN,
+  "B0GJD38FLF",
+  "B0FBL3ZK57",
+  DEFAULT_TABLEWARE_FALLBACK_ASIN,
+  DEFAULT_SERVING_FALLBACK_ASIN,
+  DEFAULT_CAKE_FALLBACK_ASIN,
+  "B0BM5H6GBL",
+  DEFAULT_FAVORS_FALLBACK_ASIN,
+  DEFAULT_HATS_FALLBACK_ASIN,
+  DEFAULT_ACTIVITIES_FALLBACK_ASIN,
+] as const;
 const AMAZON_IMAGE_PROVIDER = process.env.AMAZON_IMAGE_PROVIDER?.trim().toLowerCase() || "";
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY?.trim() || "";
 const RAINFOREST_AMAZON_DOMAIN =
@@ -475,15 +529,54 @@ function getBeverageFallbackAsinForQuery(query: string, matchHint?: string) {
   return DEFAULT_BEVERAGE_FALLBACK_ASIN;
 }
 
-function getFallbackAsinForCategory(categoryHint?: string) {
+function hashString(value: string) {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash;
+}
+
+function pickFromFallbackPool(
+  pool: readonly string[],
+  query: string,
+  matchHint?: string,
+  fallbackSeed?: string,
+  fallbackIndex?: number,
+) {
+  const candidates = [...pool, ...GLOBAL_FALLBACK_ASIN_POOL]
+    .map((asin) => asin.trim().toUpperCase())
+    .filter((asin, index, asins) => /^[A-Z0-9]{10}$/.test(asin) && asins.indexOf(asin) === index);
+
+  if (!candidates.length) {
+    return DEFAULT_GENERAL_FALLBACK_ASIN;
+  }
+
+  if (typeof fallbackIndex === "number" && Number.isFinite(fallbackIndex)) {
+    return candidates[Math.abs(Math.trunc(fallbackIndex)) % candidates.length];
+  }
+
+  const fingerprint = `${query} ${matchHint ?? ""} ${fallbackSeed ?? ""}`.trim().toLowerCase();
+  return candidates[hashString(fingerprint) % candidates.length];
+}
+
+function getFallbackAsinForCategory(
+  categoryHint?: string,
+  query = "",
+  matchHint?: string,
+  fallbackSeed?: string,
+  fallbackIndex?: number,
+) {
   const normalized = (categoryHint ?? "").toLowerCase();
 
   if (isBeverageCategory(normalized)) {
-    return DEFAULT_BEVERAGE_FALLBACK_ASIN;
+    return getBeverageFallbackAsinForQuery(query, matchHint);
   }
 
   if (normalized.includes("decor")) {
-    return DEFAULT_DECOR_FALLBACK_ASIN;
+    return pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.decor, query, matchHint, fallbackSeed, fallbackIndex);
   }
 
   if (
@@ -491,7 +584,7 @@ function getFallbackAsinForCategory(categoryHint?: string) {
     normalized.includes("dessert") ||
     normalized.includes("sweet")
   ) {
-    return DEFAULT_CAKE_FALLBACK_ASIN;
+    return pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.cake, query, matchHint, fallbackSeed, fallbackIndex);
   }
 
   if (
@@ -501,12 +594,12 @@ function getFallbackAsinForCategory(categoryHint?: string) {
     normalized.includes("utensil")
   ) {
     return normalized.includes("serving") || normalized.includes("supply")
-      ? DEFAULT_SERVING_FALLBACK_ASIN
-      : DEFAULT_TABLEWARE_FALLBACK_ASIN;
+      ? pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.serving, query, matchHint, fallbackSeed, fallbackIndex)
+      : pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.tableware, query, matchHint, fallbackSeed, fallbackIndex);
   }
 
   if (normalized.includes("favor") || normalized.includes("goodie")) {
-    return DEFAULT_FAVORS_FALLBACK_ASIN;
+    return pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.favors, query, matchHint, fallbackSeed, fallbackIndex);
   }
 
   if (
@@ -514,11 +607,11 @@ function getFallbackAsinForCategory(categoryHint?: string) {
     normalized.includes("wearable") ||
     normalized.includes("costume")
   ) {
-    return DEFAULT_HATS_FALLBACK_ASIN;
+    return pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.hats, query, matchHint, fallbackSeed, fallbackIndex);
   }
 
   if (normalized.includes("activit") || normalized.includes("game")) {
-    return DEFAULT_ACTIVITIES_FALLBACK_ASIN;
+    return pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.activities, query, matchHint, fallbackSeed, fallbackIndex);
   }
 
   if (
@@ -527,10 +620,10 @@ function getFallbackAsinForCategory(categoryHint?: string) {
     normalized.includes("supply") ||
     normalized.includes("essential")
   ) {
-    return DEFAULT_HOSTING_FALLBACK_ASIN;
+    return pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.serving, query, matchHint, fallbackSeed, fallbackIndex);
   }
 
-  return DEFAULT_GENERAL_FALLBACK_ASIN;
+  return pickFromFallbackPool(CATEGORY_FALLBACK_ASIN_POOLS.general, query, matchHint, fallbackSeed, fallbackIndex);
 }
 
 function extractBestAsinFromSearchHtml(
@@ -787,9 +880,13 @@ export async function resolveAmazonProductFromSearchUrl(
   {
     matchHint,
     categoryHint,
+    fallbackSeed,
+    fallbackIndex,
   }: {
     matchHint?: string;
     categoryHint?: string;
+    fallbackSeed?: string;
+    fallbackIndex?: number;
   } = {},
 ): Promise<string | null> {
   const query = extractQueryFromAmazonSearchUrl(url);
@@ -809,7 +906,9 @@ export async function resolveAmazonProductFromSearchUrl(
     return toCanonicalProductUrl(getBeverageFallbackAsinForQuery(query, matchHint));
   }
 
-  return toCanonicalProductUrl(getFallbackAsinForCategory(categoryHint));
+  return toCanonicalProductUrl(
+    getFallbackAsinForCategory(categoryHint, query, matchHint, fallbackSeed, fallbackIndex),
+  );
 }
 
 async function enrichOneItem(item: CatalogEnrichmentItem): Promise<CatalogEnrichmentItem> {

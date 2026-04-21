@@ -77,14 +77,20 @@ async function maybeResolveAmazonSearchTarget(
   {
     matchHint,
     categoryHint,
+    fallbackSeed,
+    fallbackIndex,
   }: {
     matchHint?: string;
     categoryHint?: string;
+    fallbackSeed?: string;
+    fallbackIndex?: number;
   } = {},
 ) {
   const resolved = await resolveAmazonProductFromSearchUrl(target, {
     matchHint,
     categoryHint,
+    fallbackSeed,
+    fallbackIndex,
   });
 
   if (resolved) {
@@ -99,6 +105,7 @@ const querySchema = z.object({
   itemId: z.string().uuid(),
   itemName: z.string().trim().min(2).max(200).optional(),
   itemCategory: z.string().trim().min(2).max(80).optional(),
+  itemIndex: z.coerce.number().int().min(0).max(50).optional(),
   target: z.string().refine(isAllowedAffiliateUrl, "Redirect target is not an allowed affiliate domain."),
 });
 
@@ -110,6 +117,7 @@ export async function GET(request: Request) {
     itemId: requestUrl.searchParams.get("itemId"),
     itemName: requestUrl.searchParams.get("itemName") ?? undefined,
     itemCategory: requestUrl.searchParams.get("itemCategory") ?? undefined,
+    itemIndex: requestUrl.searchParams.get("itemIndex") ?? undefined,
     target,
   });
 
@@ -129,6 +137,8 @@ export async function GET(request: Request) {
     {
       matchHint: parsed.data.itemName,
       categoryHint: parsed.data.itemCategory,
+      fallbackSeed: parsed.data.itemId,
+      fallbackIndex: parsed.data.itemIndex,
     },
   );
   const redirectTarget = withAmazonAffiliateTag(resolvedTarget);

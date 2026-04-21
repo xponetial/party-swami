@@ -136,9 +136,11 @@ function getCategoryVisualPath(category: string) {
 function buildTrackedShoppingHref({
   eventId,
   item,
+  itemIndex,
 }: {
   eventId: string;
   item: ShoppingItemDetails;
+  itemIndex: number;
 }) {
   const searchTarget = item.search_query
     ? `https://www.amazon.com/s?k=${encodeURIComponent(item.search_query.trim())}`
@@ -166,6 +168,7 @@ function buildTrackedShoppingHref({
     itemId: item.id,
     itemName: item.name,
     itemCategory: item.category,
+    itemIndex: String(itemIndex),
     target,
   });
 
@@ -357,8 +360,8 @@ export function ShoppingListCard({
                           </tr>
                         </thead>
                         <tbody>
-                          {categoryItems.map((item) => {
-                            const trackedHref = buildTrackedShoppingHref({ eventId, item });
+                          {categoryItems.map((item, itemIndex) => {
+                            const trackedHref = buildTrackedShoppingHref({ eventId, item, itemIndex });
                             return (
                               <tr key={item.id} className="border-t border-border/80 align-top">
                                 <td className="px-4 py-3">
