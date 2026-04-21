@@ -168,6 +168,12 @@ const AMAZON_IMAGE_PROVIDER = process.env.AMAZON_IMAGE_PROVIDER?.trim().toLowerC
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY?.trim() || "";
 const RAINFOREST_AMAZON_DOMAIN =
   process.env.AMAZON_IMAGE_PROVIDER_AMAZON_DOMAIN?.trim() || "amazon.com";
+const AMAZON_SEARCH_CATEGORY_DELAY_MS = Number(
+  process.env.AMAZON_SEARCH_CATEGORY_DELAY_MS?.trim() || "5000",
+);
+const AMAZON_SEARCH_ITEM_DELAY_MS = Number(
+  process.env.AMAZON_SEARCH_ITEM_DELAY_MS?.trim() || "0",
+);
 const imageUrlByAsinCache = new Map<string, Promise<string | null>>();
 
 type CatalogEnrichmentItem = {
@@ -191,6 +197,19 @@ function isHttpUrl(value: unknown): value is string {
     return false;
   }
   return /^https?:\/\//i.test(value);
+}
+
+function delay(ms: number) {
+  const safeDelay = Number.isFinite(ms) ? Math.max(0, ms) : 0;
+  if (!safeDelay) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => setTimeout(resolve, safeDelay));
+}
+
+function normalizeCategoryKey(category: string) {
+  return category.trim().toLowerCase() || "uncategorized";
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -966,15 +985,36 @@ export async function enrichShoppingItemsWithAmazonCatalog(
     return items;
   }
 
-  // Keep this small to avoid hammering Amazon during regenerate.
-  const CONCURRENCY = 3;
-  const pending = [...items];
-  const enriched: CatalogEnrichmentItem[] = [];
+  const enriched: CatalogEnrichmentItem[] = new Array(items.length);
+  const categoryGroups: Array<{ categoryKey: string; entries: Array<{ item: CatalogEnrichmentItem; index: number }> }> = [];
 
-  while (pending.length > 0) {
-    const chunk = pending.splice(0, CONCURRENCY);
-    const chunkResult = await Promise.all(chunk.map((item) => enrichOneItem(item)));
-    enriched.push(...chunkResult);
+  for (const [index, item] of items.entries()) {
+    const categoryKey = normalizeCategoryKey(item.category);
+    const currentGroup = categoryGroups[categoryGroups.length - 1];
+
+    if (currentGroup?.categoryKey === categoryKey) {
+      currentGroup.entries.push({ item, index });
+      continue;
+    }
+
+    categoryGroups.push({
+      categoryKey,
+      entries: [{ item, index }],
+    });
+  }
+
+  for (const [groupIndex, group] of categoryGroups.entries()) {
+    if (groupIndex > 0) {
+      await delay(AMAZON_SEARCH_CATEGORY_DELAY_MS);
+    }
+
+    for (const [entryIndex, entry] of group.entries.entries()) {
+      if (entryIndex > 0) {
+        await delay(AMAZON_SEARCH_ITEM_DELAY_MS);
+      }
+
+      enriched[entry.index] = await enrichOneItem(entry.item);
+    }
   }
 
   return enriched;
