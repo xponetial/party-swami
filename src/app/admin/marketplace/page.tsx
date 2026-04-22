@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import {
+  formatAdminCurrency,
+  formatAdminDateTime,
   getAdminMarketplaceData,
   normalizeAdminRange,
   requireAdminAccess,
@@ -50,6 +52,9 @@ export default async function AdminMarketplacePage({
     >
       <div className="grid gap-4 xl:grid-cols-3">
         {[
+          { label: "Marketplace leads", value: String(marketplace.totalLeads) },
+          { label: "New leads", value: String(marketplace.newLeads) },
+          { label: "Vendor / planner", value: `${marketplace.vendorLeads} / ${marketplace.plannerLeads}` },
           { label: "Shopping clicks", value: String(marketplace.totalClicks) },
           { label: "Replacement actions", value: String(marketplace.totalReplacementActions) },
           { label: "Top categories", value: String(marketplace.topShoppingCategories.length) },
@@ -60,6 +65,61 @@ export default async function AdminMarketplacePage({
           </div>
         ))}
       </div>
+
+      <DashboardPanel
+        title="Marketplace leads"
+        description="All vendor and planner requests submitted through Phase 3 marketplace profiles."
+      >
+        <div className="space-y-3">
+          {marketplace.recentLeads.length ? marketplace.recentLeads.map((lead) => (
+            <div key={lead.id} className="rounded-3xl border border-border bg-white/70 p-5">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-lg font-semibold text-ink">{lead.providerName}</p>
+                    <span className="rounded-full bg-canvas px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink-muted">
+                      {lead.providerType}
+                    </span>
+                    <span className="rounded-full bg-canvas px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink-muted">
+                      {lead.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-ink-muted">
+                    {lead.contactName} | {lead.contactEmail}
+                    {lead.contactPhone ? ` | ${lead.contactPhone}` : ""}
+                  </p>
+                </div>
+                <div className="text-left text-sm text-ink-muted xl:text-right">
+                  <p>{formatAdminDateTime(lead.createdAt)}</p>
+                  <p className="mt-1">{lead.eventZipCode ?? "ZIP TBD"}</p>
+                </div>
+              </div>
+
+              <p className="mt-4 rounded-2xl bg-canvas px-4 py-3 text-sm leading-6 text-ink-muted">
+                {lead.message}
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  { label: "Lead type", value: lead.leadType.replaceAll("_", " ") },
+                  { label: "Event", value: lead.eventTitle ?? lead.eventType ?? "Event TBD" },
+                  { label: "Budget", value: lead.budget == null ? "Budget TBD" : formatAdminCurrency(lead.budget) },
+                  { label: "Lead ID", value: lead.id.slice(0, 8) },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl bg-canvas px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">{item.label}</p>
+                    <p className="mt-2 text-sm font-semibold capitalize text-ink">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )) : (
+            <p className="rounded-3xl border border-border bg-white/70 p-5 text-sm text-ink-muted">
+              No marketplace leads in this date range yet.
+            </p>
+          )}
+        </div>
+      </DashboardPanel>
 
       <div className="grid gap-4 xl:grid-cols-3">
         <DashboardPanel

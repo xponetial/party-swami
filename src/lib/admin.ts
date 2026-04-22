@@ -426,9 +426,29 @@ export type AdminSupportData = {
 export type AdminMarketplaceData = {
   totalClicks: number;
   totalReplacementActions: number;
+  totalLeads: number;
+  newLeads: number;
+  vendorLeads: number;
+  plannerLeads: number;
   topEventTypes: Array<{ label: string; count: number }>;
   topShoppingCategories: Array<{ label: string; count: number }>;
   topClickedEvents: Array<{ label: string; count: number }>;
+  recentLeads: Array<{
+    id: string;
+    leadType: "vendor" | "planner_consultation" | "planner_full_service";
+    providerName: string;
+    providerType: "Vendor" | "Planner";
+    contactName: string;
+    contactEmail: string;
+    contactPhone: string | null;
+    eventTitle: string | null;
+    eventType: string | null;
+    eventZipCode: string | null;
+    budget: number | null;
+    message: string;
+    status: "new" | "contacted" | "quoted" | "won" | "lost";
+    createdAt: string;
+  }>;
 };
 
 export type AdminIntegrationStatus = {
@@ -1634,7 +1654,14 @@ export async function getAdminSocialMediaData(): Promise<AdminSocialMediaData> {
 export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promise<AdminMarketplaceData> {
   const supabase = createSupabaseAdminClient();
   const since = getRangeStart(rangeDays);
-  const [{ data: analytics = [] }, { data: events = [] }, { data: shoppingItems = [] }] = await Promise.all([
+  const [
+    { data: analytics = [] },
+    { data: events = [] },
+    { data: shoppingItems = [] },
+    { data: leads = [] },
+    { data: vendors = [] },
+    { data: planners = [] },
+  ] = await Promise.all([
     supabase
       .from("analytics_events")
       .select("id, user_id, event_id, event_name, metadata, created_at")
@@ -1665,11 +1692,44 @@ export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promis
           error: items.error,
         };
       }),
+    supabase
+      .from("marketplace_leads")
+      .select("id, lead_type, contact_name, contact_email, contact_phone, event_id, vendor_id, planner_id, event_type, event_zip_code, budget, message, status, created_at")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(30)
+      .returns<Array<{
+        id: string;
+        lead_type: "vendor" | "planner_consultation" | "planner_full_service";
+        contact_name: string;
+        contact_email: string;
+        contact_phone: string | null;
+        event_id: string | null;
+        vendor_id: string | null;
+        planner_id: string | null;
+        event_type: string | null;
+        event_zip_code: string | null;
+        budget: number | null;
+        message: string;
+        status: "new" | "contacted" | "quoted" | "won" | "lost";
+        created_at: string;
+      }>>(),
+    supabase
+      .from("vendors")
+      .select("id, business_name")
+      .returns<Array<{ id: string; business_name: string }>>(),
+    supabase
+      .from("planners")
+      .select("id, business_name")
+      .returns<Array<{ id: string; business_name: string }>>(),
   ]);
 
   const eventById = new Map((events ?? []).map((event) => [event.id, event] as const));
+  const vendorById = new Map((vendors ?? []).map((vendor) => [vendor.id, vendor.business_name] as const));
+  const plannerById = new Map((planners ?? []).map((planner) => [planner.id, planner.business_name] as const));
   const clickEvents = (analytics ?? []).filter((entry) => entry.event_name === "shopping_link_clicked");
   const replacementCount = (analytics ?? []).filter((entry) => entry.event_name === "shopping_pick_replaced").length;
+  const marketplaceLeads = leads ?? [];
 
   const topEventTypes = [...clickEvents.reduce<Map<string, number>>((map, entry) => {
     const eventType = entry.event_id ? eventById.get(entry.event_id)?.event_type ?? "unknown" : "unknown";
@@ -1700,9 +1760,37 @@ export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promis
   return {
     totalClicks: clickEvents.length,
     totalReplacementActions: replacementCount,
+    totalLeads: marketplaceLeads.length,
+    newLeads: marketplaceLeads.filter((lead) => lead.status === "new").length,
+    vendorLeads: marketplaceLeads.filter((lead) => lead.lead_type === "vendor").length,
+    plannerLeads: marketplaceLeads.filter((lead) => lead.lead_type !== "vendor").length,
     topEventTypes,
     topShoppingCategories,
     topClickedEvents,
+    recentLeads: marketplaceLeads.map((lead) => {
+      const isVendorLead = lead.lead_type === "vendor";
+      const providerName = isVendorLead
+        ? vendorById.get(lead.vendor_id ?? "") ?? "Unknown vendor"
+        : plannerById.get(lead.planner_id ?? "") ?? "Unknown planner";
+      const event = lead.event_id ? eventById.get(lead.event_id) ?? null : null;
+
+      return {
+        id: lead.id,
+        leadType: lead.lead_type,
+        providerName,
+        providerType: isVendorLead ? "Vendor" : "Planner",
+        contactName: lead.contact_name,
+        contactEmail: lead.contact_email,
+        contactPhone: lead.contact_phone,
+        eventTitle: event?.title ?? null,
+        eventType: lead.event_type ?? event?.event_type ?? null,
+        eventZipCode: lead.event_zip_code,
+        budget: lead.budget,
+        message: lead.message,
+        status: lead.status,
+        createdAt: lead.created_at,
+      };
+    }),
   };
 }
 
