@@ -1,0 +1,291 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+const blankToNullNumber = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? value : parsed;
+  }
+  return value;
+}, z.number().min(0).nullable());
+
+const urlOrBlank = z.url().optional().or(z.literal(""));
+
+const vendorSignupSchema = z.object({
+  businessName: z.string().trim().min(2, "Business name is required."),
+  category: z.string().trim().min(2, "Choose a vendor category."),
+  city: z.string().trim().min(2, "City is required."),
+  state: z.string().trim().max(32).optional(),
+  zipCode: z.string().trim().regex(/^\d{5}$/, "Use a 5-digit ZIP code."),
+  serviceRadiusMiles: z.coerce.number().int().min(1).max(250),
+  contactName: z.string().trim().optional(),
+  contactEmail: z.email("Use a valid contact email."),
+  contactPhone: z.string().trim().optional(),
+  websiteUrl: urlOrBlank,
+  affiliateUrl: urlOrBlank,
+  pricingModel: z.enum(["fixed_packages", "custom_quotes", "affiliate_links"]),
+  startingPrice: blankToNullNumber,
+  description: z.string().trim().min(40, "Add at least 40 characters describing the service."),
+  portfolioUrls: z.string().trim().optional(),
+});
+
+const plannerSignupSchema = z.object({
+  businessName: z.string().trim().min(2, "Business name is required."),
+  contactName: z.string().trim().min(2, "Contact name is required."),
+  city: z.string().trim().min(2, "City is required."),
+  state: z.string().trim().max(32).optional(),
+  zipCode: z.string().trim().regex(/^\d{5}$/, "Use a 5-digit ZIP code."),
+  serviceRadiusMiles: z.coerce.number().int().min(1).max(250),
+  contactEmail: z.email("Use a valid contact email."),
+  contactPhone: z.string().trim().optional(),
+  websiteUrl: urlOrBlank,
+  yearsExperience: blankToNullNumber,
+  certifications: z.string().trim().optional(),
+  consultationPrice: blankToNullNumber,
+  hourlyRate: blankToNullNumber,
+  fullServiceMinimum: blankToNullNumber,
+  bio: z.string().trim().min(40, "Add at least 40 characters about your planning style."),
+  services: z.array(z.string()).default([]),
+  availabilityNote: z.string().trim().optional(),
+});
+
+const leadSchema = z.object({
+  providerType: z.enum(["vendor", "planner"]),
+  providerId: z.string().uuid(),
+  eventId: z.string().uuid().optional().or(z.literal("")),
+  leadType: z.enum(["vendor", "planner_consultation", "planner_full_service"]),
+  contactName: z.string().trim().min(2, "Your name is required."),
+  contactEmail: z.email("Use a valid email."),
+  contactPhone: z.string().trim().optional(),
+  eventType: z.string().trim().optional(),
+  eventDate: z.string().optional(),
+  eventZipCode: z.string().trim().regex(/^\d{5}$/, "Use a 5-digit ZIP code.").optional().or(z.literal("")),
+  budget: blankToNullNumber,
+  message: z.string().trim().min(20, "Add a short note about what you need."),
+  returnTo: z.string().startsWith("/"),
+});
+
+function createSlug(name: string) {
+  const base = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 52);
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return `${base || "provider"}-${suffix}`;
+}
+
+function parseUrlList(value?: string) {
+  return (value ?? "")
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+async function requireUser() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return { supabase, user };
+}
+
+function redirectWithError(path: string, message: string): never {
+  redirect(`${path}?error=${encodeURIComponent(message)}`);
+}
+
+export async function createVendorProfileAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = vendorSignupSchema.safeParse({
+    businessName: formData.get("businessName"),
+    category: formData.get("category"),
+    city: formData.get("city"),
+    state: formData.get("state") || undefined,
+    zipCode: formData.get("zipCode"),
+    serviceRadiusMiles: formData.get("serviceRadiusMiles") || 25,
+    contactName: formData.get("contactName") || undefined,
+    contactEmail: formData.get("contactEmail"),
+    contactPhone: formData.get("contactPhone") || undefined,
+    websiteUrl: formData.get("websiteUrl") || "",
+    affiliateUrl: formData.get("affiliateUrl") || "",
+    pricingModel: formData.get("pricingModel"),
+    startingPrice: formData.get("startingPrice"),
+    description: formData.get("description"),
+    portfolioUrls: formData.get("portfolioUrls") || undefined,
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/vendors/signup", parsed.error.issues[0]?.message ?? "Check your vendor details.");
+  }
+
+  const slug = createSlug(parsed.data.businessName);
+  const { error } = await supabase.from("vendors").insert({
+    owner_id: user.id,
+    business_name: parsed.data.businessName,
+    slug,
+    category: parsed.data.category,
+    city: parsed.data.city,
+    state: parsed.data.state?.trim() || null,
+    zip_code: parsed.data.zipCode,
+    service_radius_miles: parsed.data.serviceRadiusMiles,
+    contact_name: parsed.data.contactName?.trim() || null,
+    contact_email: parsed.data.contactEmail,
+    contact_phone: parsed.data.contactPhone?.trim() || null,
+    website_url: parsed.data.websiteUrl || null,
+    affiliate_url: parsed.data.affiliateUrl || null,
+    pricing_model: parsed.data.pricingModel,
+    starting_price: parsed.data.startingPrice,
+    description: parsed.data.description,
+    portfolio_urls: parseUrlList(parsed.data.portfolioUrls),
+    status: "active",
+  });
+
+  if (error) {
+    redirectWithError("/vendors/signup", error.message);
+  }
+
+  revalidatePath("/vendors");
+  revalidatePath("/vendors/dashboard");
+  redirect(`/vendors/${slug}?created=1`);
+}
+
+export async function createPlannerProfileAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = plannerSignupSchema.safeParse({
+    businessName: formData.get("businessName"),
+    contactName: formData.get("contactName"),
+    city: formData.get("city"),
+    state: formData.get("state") || undefined,
+    zipCode: formData.get("zipCode"),
+    serviceRadiusMiles: formData.get("serviceRadiusMiles") || 35,
+    contactEmail: formData.get("contactEmail"),
+    contactPhone: formData.get("contactPhone") || undefined,
+    websiteUrl: formData.get("websiteUrl") || "",
+    yearsExperience: formData.get("yearsExperience"),
+    certifications: formData.get("certifications") || undefined,
+    consultationPrice: formData.get("consultationPrice"),
+    hourlyRate: formData.get("hourlyRate"),
+    fullServiceMinimum: formData.get("fullServiceMinimum"),
+    bio: formData.get("bio"),
+    services: formData.getAll("services"),
+    availabilityNote: formData.get("availabilityNote") || undefined,
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/planners/signup", parsed.error.issues[0]?.message ?? "Check your planner details.");
+  }
+
+  const slug = createSlug(parsed.data.businessName);
+  const { error } = await supabase.from("planners").insert({
+    owner_id: user.id,
+    business_name: parsed.data.businessName,
+    slug,
+    city: parsed.data.city,
+    state: parsed.data.state?.trim() || null,
+    zip_code: parsed.data.zipCode,
+    service_radius_miles: parsed.data.serviceRadiusMiles,
+    contact_name: parsed.data.contactName,
+    contact_email: parsed.data.contactEmail,
+    contact_phone: parsed.data.contactPhone?.trim() || null,
+    website_url: parsed.data.websiteUrl || null,
+    years_experience: parsed.data.yearsExperience,
+    certifications: parsed.data.certifications?.trim() || null,
+    consultation_price: parsed.data.consultationPrice,
+    hourly_rate: parsed.data.hourlyRate,
+    full_service_minimum: parsed.data.fullServiceMinimum,
+    bio: parsed.data.bio,
+    services: parsed.data.services,
+    availability_note: parsed.data.availabilityNote?.trim() || null,
+    status: "active",
+  });
+
+  if (error) {
+    redirectWithError("/planners/signup", error.message);
+  }
+
+  revalidatePath("/planners");
+  revalidatePath("/planners/dashboard");
+  redirect(`/planners/${slug}?created=1`);
+}
+
+export async function createMarketplaceLeadAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = leadSchema.safeParse({
+    providerType: formData.get("providerType"),
+    providerId: formData.get("providerId"),
+    eventId: formData.get("eventId") || "",
+    leadType: formData.get("leadType"),
+    contactName: formData.get("contactName"),
+    contactEmail: formData.get("contactEmail"),
+    contactPhone: formData.get("contactPhone") || undefined,
+    eventType: formData.get("eventType") || undefined,
+    eventDate: formData.get("eventDate") || undefined,
+    eventZipCode: formData.get("eventZipCode") || "",
+    budget: formData.get("budget"),
+    message: formData.get("message"),
+    returnTo: formData.get("returnTo"),
+  });
+
+  if (!parsed.success) {
+    redirectWithError(formData.get("returnTo")?.toString() || "/marketplace", parsed.error.issues[0]?.message ?? "Check your request.");
+  }
+
+  let eventId = parsed.data.eventId || null;
+  let eventDate: string | null = parsed.data.eventDate
+    ? new Date(`${parsed.data.eventDate}T12:00:00`).toISOString()
+    : null;
+  let eventType = parsed.data.eventType?.trim() || null;
+  let budget = parsed.data.budget;
+
+  if (eventId) {
+    const { data: event } = await supabase
+      .from("events")
+      .select("id, event_type, event_date, budget")
+      .eq("id", eventId)
+      .eq("owner_id", user.id)
+      .maybeSingle<{ id: string; event_type: string; event_date: string | null; budget: number | null }>();
+
+    if (!event) {
+      eventId = null;
+    } else {
+      eventType = eventType ?? event.event_type;
+      eventDate = eventDate ?? event.event_date;
+      budget = budget ?? event.budget;
+    }
+  }
+
+  const { error } = await supabase.from("marketplace_leads").insert({
+    consumer_id: user.id,
+    event_id: eventId,
+    vendor_id: parsed.data.providerType === "vendor" ? parsed.data.providerId : null,
+    planner_id: parsed.data.providerType === "planner" ? parsed.data.providerId : null,
+    lead_type: parsed.data.leadType,
+    contact_name: parsed.data.contactName,
+    contact_email: parsed.data.contactEmail,
+    contact_phone: parsed.data.contactPhone?.trim() || null,
+    event_type: eventType,
+    event_date: eventDate,
+    event_zip_code: parsed.data.eventZipCode || null,
+    budget,
+    message: parsed.data.message,
+  });
+
+  if (error) {
+    redirectWithError(parsed.data.returnTo, error.message);
+  }
+
+  revalidatePath("/vendors/dashboard");
+  revalidatePath("/planners/dashboard");
+  redirect(`${parsed.data.returnTo}?lead=sent`);
+}

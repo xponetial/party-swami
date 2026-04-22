@@ -7,6 +7,7 @@ import {
   CreditCard,
   Images,
   Sparkles,
+  Store,
 } from "lucide-react";
 import { MembershipMenu } from "@/components/auth/membership-menu";
 import { ImageBudgetMeter } from "@/components/layout/image-budget-meter";
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 const sections = [
   { href: "/dashboard", label: "Dashboard", icon: ChartNoAxesCombined },
   { href: "/events/new", label: "New Event", icon: ClipboardList },
+  { href: "/marketplace", label: "Marketplace", icon: Store },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/", label: "Marketing", icon: Sparkles },
 ];
@@ -31,6 +33,7 @@ const eventSections = [
   { key: "invite", href: "/invite", label: "Invite" },
   { key: "guests", href: "/guests/add", label: "Guests" },
   { key: "shopping", href: "/shopping", label: "Shopping" },
+  { key: "next-steps", href: "/next-steps", label: "Next Steps" },
   { key: "timeline", href: "/timeline", label: "Timeline" },
   { key: "settings", href: "/settings", label: "Settings" },
 ] as const;

@@ -74,6 +74,12 @@ export default function MarketingHomePage() {
               </Link>
             </Button>
             <DashboardPreviewButton />
+            <Button asChild size="lg" variant="secondary">
+              <Link href="/marketplace">
+                Browse marketplace
+                <ShoppingBag className="size-4" />
+              </Link>
+            </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <Card className="bg-[rgba(255,255,255,0.42)]">

@@ -28,9 +28,6 @@ export function ContactLink({
   className,
 }: ContactLinkProps) {
   const pathname = usePathname();
-  const timestamp = new Date().toISOString();
-  const pageUrl =
-    typeof window === "undefined" ? undefined : `${window.location.origin}${window.location.pathname}${window.location.search}`;
 
   return (
     <Link
@@ -41,8 +38,6 @@ export function ContactLink({
               intent,
               pageLabel,
               pagePath: pathname,
-              pageUrl,
-              timestamp,
             }
           : undefined)
       }

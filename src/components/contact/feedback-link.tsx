@@ -25,8 +25,6 @@ export function FeedbackLink({
   className,
 }: FeedbackLinkProps) {
   const pathname = usePathname();
-  const pageUrl =
-    typeof window === "undefined" ? undefined : `${window.location.origin}${window.location.pathname}${window.location.search}`;
 
   return (
     <Link
@@ -36,7 +34,6 @@ export function FeedbackLink({
         intent,
         pageLabel,
         pagePath: pathname,
-        pageUrl,
       })}
       className={className}
     >
