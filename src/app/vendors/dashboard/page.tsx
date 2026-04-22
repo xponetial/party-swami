@@ -4,13 +4,14 @@ import { Store } from "lucide-react";
 import {
   createProviderPackageAction,
   updateProviderLeadStatusAction,
+  updateProviderReviewResponseAction,
   updateVendorProfileAction,
 } from "@/app/marketplace/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getLeadActivity, getOwnedVendorDashboard, getVendorPackages } from "@/lib/marketplace";
+import { getLeadActivity, getOwnedVendorDashboard, getOwnedVendorReviews, getVendorPackages } from "@/lib/marketplace";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MARKETPLACE_LEAD_STATUSES, VENDOR_CATEGORIES } from "@/types/marketplace";
 
@@ -25,9 +26,10 @@ export default async function VendorDashboardPage() {
   }
 
   const { profiles, leads } = await getOwnedVendorDashboard(user.id);
-  const [packagesByProfileEntries, activityByLeadId] = await Promise.all([
+  const [packagesByProfileEntries, activityByLeadId, reviews] = await Promise.all([
     Promise.all(profiles.map(async (profile) => [profile.id, await getVendorPackages(profile.id)] as const)),
     getLeadActivity(leads.map((lead) => lead.id)),
+    getOwnedVendorReviews(user.id),
   ]);
   const packagesByProfileId = new Map(packagesByProfileEntries);
 
@@ -181,6 +183,47 @@ export default async function VendorDashboardPage() {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <h2 className="text-2xl font-semibold text-ink">Review responses</h2>
+        <p className="mt-2 text-sm leading-6 text-ink-muted">
+          Respond to host reviews. Responses show publicly once the review is approved.
+        </p>
+        <div className="mt-5 grid gap-3">
+          {reviews.length ? reviews.map((review) => (
+            <div key={review.id} className="rounded-3xl border border-border bg-white/65 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-ink">{review.rating}/5 - {review.title}</p>
+                  <p className="mt-1 text-sm text-ink-muted">{review.status}</p>
+                </div>
+                {review.providerRespondedAt ? (
+                  <span className="rounded-full bg-canvas px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink-muted">responded</span>
+                ) : null}
+              </div>
+              <p className="mt-3 text-sm leading-6 text-ink-muted">{review.body}</p>
+              <form action={updateProviderReviewResponseAction} className="mt-4 grid gap-3 rounded-2xl bg-canvas p-3">
+                <input type="hidden" name="reviewId" value={review.id} />
+                <input type="hidden" name="providerType" value="vendor" />
+                <input type="hidden" name="returnTo" value="/vendors/dashboard" />
+                <textarea
+                  className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none"
+                  defaultValue={review.providerResponse ?? ""}
+                  name="providerResponse"
+                  placeholder="Write a professional public response"
+                  required
+                  rows={3}
+                />
+                <Button type="submit" variant="secondary">Save response</Button>
+              </form>
+            </div>
+          )) : (
+            <p className="rounded-3xl border border-border bg-white/60 p-5 text-sm text-ink-muted">
+              No reviews yet.
+            </p>
+          )}
+        </div>
+      </Card>
     </AppShell>
   );
 }

@@ -268,6 +268,12 @@ export default async function AdminMarketplacePage({
                 <p className="text-sm text-ink-muted">{formatAdminDateTime(review.createdAt)}</p>
               </div>
               <p className="mt-4 rounded-2xl bg-canvas px-4 py-3 text-sm leading-6 text-ink-muted">{review.body}</p>
+              {review.providerResponse ? (
+                <div className="mt-4 rounded-2xl bg-canvas px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Provider response</p>
+                  <p className="mt-2 text-sm leading-6 text-ink-muted">{review.providerResponse}</p>
+                </div>
+              ) : null}
               <form action={updateAdminMarketplaceReviewStatusAction} className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-canvas p-3">
                 <input type="hidden" name="reviewId" value={review.id} />
                 <input type="hidden" name="returnTo" value={currentPath} />

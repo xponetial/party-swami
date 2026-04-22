@@ -122,6 +122,8 @@ export type MarketplaceReview = {
   title: string;
   body: string;
   status: "pending_review" | "approved" | "rejected";
+  providerResponse: string | null;
+  providerRespondedAt: string | null;
   createdAt: string;
 };
 

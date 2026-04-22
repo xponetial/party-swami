@@ -149,6 +149,12 @@ export default async function PlannerProfilePage({
                   <div key={review.id} className="rounded-3xl border border-border bg-white/65 p-4">
                     <p className="text-sm font-semibold text-ink">{review.rating}/5 - {review.title}</p>
                     <p className="mt-2 text-sm leading-6 text-ink-muted">{review.body}</p>
+                    {review.providerResponse ? (
+                      <div className="mt-4 rounded-2xl bg-canvas px-4 py-3">
+                        <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Provider response</p>
+                        <p className="mt-2 text-sm leading-6 text-ink-muted">{review.providerResponse}</p>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

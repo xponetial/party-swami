@@ -103,6 +103,13 @@ const reviewSchema = z.object({
   returnTo: z.string().startsWith("/"),
 });
 
+const providerReviewResponseSchema = z.object({
+  reviewId: z.string().uuid(),
+  providerType: z.enum(["vendor", "planner"]),
+  providerResponse: z.string().trim().min(10, "Add a little more detail to the response.").max(1000),
+  returnTo: z.string().startsWith("/"),
+});
+
 function createSlug(name: string) {
   const base = name
     .toLowerCase()
@@ -713,4 +720,79 @@ export async function createMarketplaceReviewAction(formData: FormData) {
   });
   revalidatePath(parsed.data.returnTo);
   redirect(`${parsed.data.returnTo}?review=submitted`);
+}
+
+export async function updateProviderReviewResponseAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = providerReviewResponseSchema.safeParse({
+    reviewId: formData.get("reviewId"),
+    providerType: formData.get("providerType"),
+    providerResponse: formData.get("providerResponse"),
+    returnTo: formData.get("returnTo") || "/dashboard",
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/dashboard", parsed.error.issues[0]?.message ?? "Check the review response.");
+  }
+
+  const providerColumn = parsed.data.providerType === "vendor" ? "vendor_id" : "planner_id";
+  const providerTable = parsed.data.providerType === "vendor" ? "vendors" : "planners";
+  const { data: review } = await supabase
+    .from("marketplace_reviews")
+    .select(`id, ${providerColumn}`)
+    .eq("id", parsed.data.reviewId)
+    .maybeSingle<Record<string, string | null>>();
+  const providerId = review?.[providerColumn];
+
+  if (!providerId) {
+    redirectWithError(parsed.data.returnTo, "Review not found.");
+  }
+
+  const { data: ownedProvider } = await supabase
+    .from(providerTable)
+    .select("id")
+    .eq("id", providerId)
+    .eq("owner_id", user.id)
+    .maybeSingle<{ id: string }>();
+
+  if (!ownedProvider) {
+    redirectWithError(parsed.data.returnTo, "You do not own this provider profile.");
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("marketplace_reviews")
+    .update({
+      provider_response: parsed.data.providerResponse,
+      provider_responded_at: now,
+      provider_response_updated_at: now,
+    })
+    .eq("id", parsed.data.reviewId);
+
+  if (error) {
+    redirectWithError(parsed.data.returnTo, error.message);
+  }
+
+  await Promise.all([
+    trackAnalyticsEvent(supabase, {
+      eventName: "marketplace_review_response_updated",
+      userId: user.id,
+      metadata: {
+        review_id: parsed.data.reviewId,
+        provider_type: parsed.data.providerType,
+      },
+    }),
+    createAuditLog(supabase, {
+      action: "marketplace_review_response_updated",
+      userId: user.id,
+      metadata: {
+        review_id: parsed.data.reviewId,
+        provider_type: parsed.data.providerType,
+      },
+    }),
+  ]);
+
+  revalidatePath(parsed.data.returnTo);
+  revalidatePath("/marketplace");
+  redirect(`${parsed.data.returnTo}?review=response_saved`);
 }

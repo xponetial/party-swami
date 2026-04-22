@@ -469,6 +469,7 @@ export type AdminMarketplaceData = {
     rating: number;
     title: string;
     body: string;
+    providerResponse: string | null;
     status: "pending_review" | "approved" | "rejected";
     createdAt: string;
   }>;
@@ -1775,7 +1776,7 @@ export async function getAdminMarketplaceData(
       .returns<Array<{ status: "pending" | "sent" | "skipped" | "failed" }>>(),
     supabase
       .from("marketplace_reviews")
-      .select("id, vendor_id, planner_id, rating, title, body, status, created_at")
+      .select("id, vendor_id, planner_id, rating, title, body, provider_response, status, created_at")
       .order("created_at", { ascending: false })
       .limit(20)
       .returns<Array<{
@@ -1785,6 +1786,7 @@ export async function getAdminMarketplaceData(
         rating: number;
         title: string;
         body: string;
+        provider_response: string | null;
         status: "pending_review" | "approved" | "rejected";
         created_at: string;
       }>>(),
@@ -1938,6 +1940,7 @@ export async function getAdminMarketplaceData(
         rating: review.rating,
         title: review.title,
         body: review.body,
+        providerResponse: review.provider_response,
         status: review.status,
         createdAt: review.created_at,
       };

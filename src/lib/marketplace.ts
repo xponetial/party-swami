@@ -106,6 +106,8 @@ type ReviewRow = {
   title: string;
   body: string;
   status: "pending_review" | "approved" | "rejected";
+  provider_response: string | null;
+  provider_responded_at: string | null;
   created_at: string;
 };
 
@@ -188,6 +190,8 @@ function mapReview(row: ReviewRow): MarketplaceReview {
     title: row.title,
     body: row.body,
     status: row.status,
+    providerResponse: row.provider_response,
+    providerRespondedAt: row.provider_responded_at,
     createdAt: row.created_at,
   };
 }
@@ -431,7 +435,7 @@ export async function getVendorReviews(vendorId: string) {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("marketplace_reviews")
-    .select("id, rating, title, body, status, created_at")
+    .select("id, rating, title, body, status, provider_response, provider_responded_at, created_at")
     .eq("vendor_id", vendorId)
     .eq("status", "approved")
     .order("created_at", { ascending: false })
@@ -445,7 +449,7 @@ export async function getPlannerReviews(plannerId: string) {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("marketplace_reviews")
-    .select("id, rating, title, body, status, created_at")
+    .select("id, rating, title, body, status, provider_response, provider_responded_at, created_at")
     .eq("planner_id", plannerId)
     .eq("status", "approved")
     .order("created_at", { ascending: false })
@@ -530,6 +534,28 @@ export async function getOwnedVendorDashboard(userId: string) {
   };
 }
 
+export async function getOwnedVendorReviews(userId: string) {
+  const supabase = await createSupabaseServerClient();
+  const { data: vendors } = await supabase
+    .from("vendors")
+    .select("id")
+    .eq("owner_id", userId)
+    .returns<Array<{ id: string }>>();
+  const vendorIds = (vendors ?? []).map((vendor) => vendor.id);
+
+  if (!vendorIds.length) return [];
+
+  const { data } = await supabase
+    .from("marketplace_reviews")
+    .select("id, rating, title, body, status, provider_response, provider_responded_at, created_at")
+    .in("vendor_id", vendorIds)
+    .order("created_at", { ascending: false })
+    .limit(20)
+    .returns<ReviewRow[]>();
+
+  return (data ?? []).map(mapReview);
+}
+
 export async function getOwnedPlannerDashboard(userId: string) {
   const supabase = await createSupabaseServerClient();
   const { data: planners } = await supabase
@@ -567,6 +593,28 @@ export async function getOwnedPlannerDashboard(userId: string) {
       packageTitle: lead.package_id ? packageTitleById.get(lead.package_id) ?? null : null,
     })) ?? [],
   };
+}
+
+export async function getOwnedPlannerReviews(userId: string) {
+  const supabase = await createSupabaseServerClient();
+  const { data: planners } = await supabase
+    .from("planners")
+    .select("id")
+    .eq("owner_id", userId)
+    .returns<Array<{ id: string }>>();
+  const plannerIds = (planners ?? []).map((planner) => planner.id);
+
+  if (!plannerIds.length) return [];
+
+  const { data } = await supabase
+    .from("marketplace_reviews")
+    .select("id, rating, title, body, status, provider_response, provider_responded_at, created_at")
+    .in("planner_id", plannerIds)
+    .order("created_at", { ascending: false })
+    .limit(20)
+    .returns<ReviewRow[]>();
+
+  return (data ?? []).map(mapReview);
 }
 
 export async function getLeadActivity(leadIds: string[]) {
