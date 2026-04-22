@@ -20,6 +20,7 @@ export default async function MarketplacePage({
     getPlanners({ zip: filters.zip, service: filters.service }),
   ]);
   const activeZip = filters.zip?.trim() || "";
+  const hasActiveSearch = Boolean(activeZip || filters.category || filters.service);
 
   return (
     <ShellFrame
@@ -66,7 +67,7 @@ export default async function MarketplacePage({
                 <p className="text-sm text-ink-muted">Start with ZIP matching, then refine by provider type.</p>
               </div>
             </div>
-            <form className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto]" action="/marketplace">
+            <form className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto]" action="/marketplace#marketplace-results" method="get">
               <div className="space-y-2">
                 <Label htmlFor="zip">Event ZIP</Label>
                 <Input id="zip" name="zip" inputMode="numeric" maxLength={5} placeholder="78701" defaultValue={activeZip} />
@@ -92,7 +93,7 @@ export default async function MarketplacePage({
                 <ArrowRight className="size-4" />
               </Button>
             </form>
-            <form className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto]" action="/marketplace">
+            <form className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto]" action="/marketplace#marketplace-results" method="get">
               <input type="hidden" name="zip" value={activeZip} />
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="service">Planner service</Label>
@@ -114,10 +115,45 @@ export default async function MarketplacePage({
                 Find planners
               </Button>
             </form>
+            <div className="mt-5 rounded-[1.75rem] border border-border bg-white/65 p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">
+                {hasActiveSearch ? "Search results" : "Marketplace inventory"}
+              </p>
+              <p className="mt-2 text-lg font-semibold text-ink">
+                {vendors.length} vendor{vendors.length === 1 ? "" : "s"} and {planners.length} planner{planners.length === 1 ? "" : "s"} found
+              </p>
+              <p className="mt-1 text-sm leading-6 text-ink-muted">
+                {hasActiveSearch
+                  ? `Showing matches${activeZip ? ` for ${activeZip}` : ""}${filters.category ? ` in ${filters.category}` : ""}${filters.service ? ` with ${filters.service}` : ""}.`
+                  : "Use a seed ZIP like 78701, 78704, or 78664 to test local matching."}
+              </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {vendors.slice(0, 2).map((vendor) => (
+                  <Link
+                    key={vendor.id}
+                    href={`/vendors/${vendor.slug}`}
+                    className="rounded-2xl border border-border bg-canvas/70 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/35"
+                  >
+                    {vendor.businessName}
+                    <span className="block text-xs font-normal text-ink-muted">{vendor.category} · {vendor.zipCode}</span>
+                  </Link>
+                ))}
+                {planners.slice(0, 2).map((planner) => (
+                  <Link
+                    key={planner.id}
+                    href={`/planners/${planner.slug}`}
+                    className="rounded-2xl border border-border bg-canvas/70 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/35"
+                  >
+                    {planner.businessName}
+                    <span className="block text-xs font-normal text-ink-muted">Planner · {planner.zipCode}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-2">
+        <section id="marketplace-results" className="scroll-mt-6 grid gap-5 xl:grid-cols-2">
           <Card>
             <div className="flex items-center justify-between gap-4">
               <div>
