@@ -4,6 +4,7 @@ import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import {
   updateAdminMarketplaceLeadStatusAction,
   updateAdminMarketplaceProviderStatusAction,
+  updateAdminMarketplaceReviewStatusAction,
 } from "@/app/admin/actions";
 import {
   formatAdminCurrency,
@@ -72,9 +73,10 @@ export default async function AdminMarketplacePage({
           { label: "Marketplace leads", value: String(marketplace.totalLeads) },
           { label: "New leads", value: String(marketplace.newLeads) },
           { label: "Vendor / planner", value: `${marketplace.vendorLeads} / ${marketplace.plannerLeads}` },
+          { label: "Notifications", value: marketplace.notificationCounts.map((item) => `${item.label}: ${item.count}`).join(" / ") || "0" },
           { label: "Shopping clicks", value: String(marketplace.totalClicks) },
           { label: "Replacement actions", value: String(marketplace.totalReplacementActions) },
-          { label: "Top categories", value: String(marketplace.topShoppingCategories.length) },
+          { label: "Reviews", value: String(marketplace.reviews.length) },
         ].map((item) => (
           <div key={item.label} className="rounded-[2rem] border border-white/75 bg-canvas p-6 shadow-party">
             <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">{item.label}</p>
@@ -246,6 +248,49 @@ export default async function AdminMarketplacePage({
               </form>
             </div>
           ))}
+        </div>
+      </DashboardPanel>
+
+      <DashboardPanel
+        title="Review moderation"
+        description="Approve or reject host reviews before they appear on public marketplace profiles."
+      >
+        <div className="space-y-3">
+          {marketplace.reviews.length ? marketplace.reviews.map((review) => (
+            <div key={review.id} className="rounded-3xl border border-border bg-white/70 p-5">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <p className="text-lg font-semibold text-ink">{review.title}</p>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    {review.providerName} | {review.providerType} | {review.rating}/5 | {review.status}
+                  </p>
+                </div>
+                <p className="text-sm text-ink-muted">{formatAdminDateTime(review.createdAt)}</p>
+              </div>
+              <p className="mt-4 rounded-2xl bg-canvas px-4 py-3 text-sm leading-6 text-ink-muted">{review.body}</p>
+              <form action={updateAdminMarketplaceReviewStatusAction} className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-canvas p-3">
+                <input type="hidden" name="reviewId" value={review.id} />
+                <input type="hidden" name="returnTo" value={currentPath} />
+                <label className="grid gap-2 text-xs uppercase tracking-[0.16em] text-ink-muted">
+                  Status
+                  <select
+                    className="min-w-44 rounded-2xl border border-border bg-white px-4 py-3 text-sm normal-case tracking-normal text-ink outline-none"
+                    defaultValue={review.status}
+                    name="status"
+                  >
+                    <option value="pending_review">pending_review</option>
+                    <option value="approved">approved</option>
+                    <option value="rejected">rejected</option>
+                  </select>
+                </label>
+                <Button type="submit" variant="secondary">Save review</Button>
+              </form>
+            </div>
+          )) : (
+            <p className="rounded-3xl border border-border bg-white/70 p-5 text-sm text-ink-muted">
+              No marketplace reviews yet.
+            </p>
+          )}
         </div>
       </DashboardPanel>
 

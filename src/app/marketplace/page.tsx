@@ -12,12 +12,13 @@ import { PLANNER_SERVICES, VENDOR_CATEGORIES } from "@/types/marketplace";
 export default async function MarketplacePage({
   searchParams,
 }: {
-  searchParams: Promise<{ zip?: string; category?: string; service?: string }>;
+  searchParams: Promise<{ zip?: string; category?: string; service?: string; radius?: string }>;
 }) {
   const filters = await searchParams;
+  const radiusMiles = filters.radius ? Number(filters.radius) : 50;
   const [vendors, planners] = await Promise.all([
-    getVendors({ zip: filters.zip, category: filters.category }),
-    getPlanners({ zip: filters.zip, service: filters.service }),
+    getVendors({ zip: filters.zip, category: filters.category, radiusMiles }),
+    getPlanners({ zip: filters.zip, service: filters.service, radiusMiles }),
   ]);
   const activeZip = filters.zip?.trim() || "";
   const hasActiveSearch = Boolean(activeZip || filters.category || filters.service);
@@ -67,7 +68,7 @@ export default async function MarketplacePage({
                 <p className="text-sm text-ink-muted">Start with ZIP matching, then refine by provider type.</p>
               </div>
             </div>
-            <form className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto]" action="/marketplace#marketplace-results" method="get">
+            <form className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_0.7fr_auto]" action="/marketplace#marketplace-results" method="get">
               <div className="space-y-2">
                 <Label htmlFor="zip">Event ZIP</Label>
                 <Input id="zip" name="zip" inputMode="numeric" maxLength={5} placeholder="78701" defaultValue={activeZip} />
@@ -88,6 +89,21 @@ export default async function MarketplacePage({
                   ))}
                 </select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="radius">Radius</Label>
+                <select
+                  id="radius"
+                  name="radius"
+                  defaultValue={String(radiusMiles)}
+                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
+                >
+                  {[10, 25, 50, 100].map((radius) => (
+                    <option key={radius} value={radius}>
+                      {radius} mi
+                    </option>
+                  ))}
+                </select>
+              </div>
               <Button className="self-end" type="submit">
                 Search
                 <ArrowRight className="size-4" />
@@ -95,6 +111,7 @@ export default async function MarketplacePage({
             </form>
             <form className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto]" action="/marketplace#marketplace-results" method="get">
               <input type="hidden" name="zip" value={activeZip} />
+              <input type="hidden" name="radius" value={String(radiusMiles)} />
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="service">Planner service</Label>
                 <select
@@ -124,8 +141,8 @@ export default async function MarketplacePage({
               </p>
               <p className="mt-1 text-sm leading-6 text-ink-muted">
                 {hasActiveSearch
-                  ? `Showing matches${activeZip ? ` for ${activeZip}` : ""}${filters.category ? ` in ${filters.category}` : ""}${filters.service ? ` with ${filters.service}` : ""}.`
-                  : "Use a seed ZIP like 78701, 78704, or 78664 to test local matching."}
+                  ? `Showing matches${activeZip ? ` within ${radiusMiles} miles of ${activeZip}` : ""}${filters.category ? ` in ${filters.category}` : ""}${filters.service ? ` with ${filters.service}` : ""}.`
+                  : "Use a seed ZIP like 78701, 78704, 78664, or 75043 to test local matching."}
               </p>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 {vendors.slice(0, 2).map((vendor) => (
@@ -135,7 +152,9 @@ export default async function MarketplacePage({
                     className="rounded-2xl border border-border bg-canvas/70 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/35"
                   >
                     {vendor.businessName}
-                    <span className="block text-xs font-normal text-ink-muted">{vendor.category} · {vendor.zipCode}</span>
+                    <span className="block text-xs font-normal text-ink-muted">
+                      {vendor.category} | {vendor.distanceMiles == null ? vendor.zipCode : `${vendor.distanceMiles} mi`}
+                    </span>
                   </Link>
                 ))}
                 {planners.slice(0, 2).map((planner) => (
@@ -145,7 +164,9 @@ export default async function MarketplacePage({
                     className="rounded-2xl border border-border bg-canvas/70 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/35"
                   >
                     {planner.businessName}
-                    <span className="block text-xs font-normal text-ink-muted">Planner · {planner.zipCode}</span>
+                    <span className="block text-xs font-normal text-ink-muted">
+                      Planner | {planner.distanceMiles == null ? planner.zipCode : `${planner.distanceMiles} mi`}
+                    </span>
                   </Link>
                 ))}
               </div>
@@ -177,7 +198,7 @@ export default async function MarketplacePage({
                       <p className="mt-1 text-sm text-ink-muted">{vendor.category}</p>
                     </div>
                     <span className="rounded-full bg-canvas px-3 py-1 text-xs text-ink-muted">
-                      {vendor.city}, {vendor.state ?? vendor.zipCode}
+                      {vendor.distanceMiles == null ? `${vendor.city}, ${vendor.state ?? vendor.zipCode}` : `${vendor.distanceMiles} mi`}
                     </span>
                   </div>
                   <p className="mt-3 line-clamp-2 text-sm leading-6 text-ink-muted">{vendor.description}</p>
@@ -214,7 +235,7 @@ export default async function MarketplacePage({
                     </div>
                     <span className="inline-flex items-center gap-1 rounded-full bg-canvas px-3 py-1 text-xs text-ink-muted">
                       <MapPin className="size-3" />
-                      {planner.city}, {planner.state ?? planner.zipCode}
+                      {planner.distanceMiles == null ? `${planner.city}, ${planner.state ?? planner.zipCode}` : `${planner.distanceMiles} mi`}
                     </span>
                   </div>
                   <p className="mt-3 line-clamp-2 text-sm leading-6 text-ink-muted">{planner.bio}</p>

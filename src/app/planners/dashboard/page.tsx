@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Handshake } from "lucide-react";
-import { updateProviderLeadStatusAction } from "@/app/marketplace/actions";
+import {
+  createProviderPackageAction,
+  updatePlannerProfileAction,
+  updateProviderLeadStatusAction,
+} from "@/app/marketplace/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getOwnedPlannerDashboard } from "@/lib/marketplace";
+import { Input } from "@/components/ui/input";
+import { getLeadActivity, getOwnedPlannerDashboard, getPlannerPackages } from "@/lib/marketplace";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { MARKETPLACE_LEAD_STATUSES } from "@/types/marketplace";
+import { MARKETPLACE_LEAD_STATUSES, PLANNER_SERVICES } from "@/types/marketplace";
 
 export default async function PlannerDashboardPage() {
   const supabase = await createSupabaseServerClient();
@@ -20,6 +25,11 @@ export default async function PlannerDashboardPage() {
   }
 
   const { profiles, leads } = await getOwnedPlannerDashboard(user.id);
+  const [packagesByProfileEntries, activityByLeadId] = await Promise.all([
+    Promise.all(profiles.map(async (profile) => [profile.id, await getPlannerPackages(profile.id)] as const)),
+    getLeadActivity(leads.map((lead) => lead.id)),
+  ]);
+  const packagesByProfileId = new Map(packagesByProfileEntries);
 
   return (
     <AppShell
@@ -41,10 +51,73 @@ export default async function PlannerDashboardPage() {
           </div>
           <div className="mt-5 grid gap-3">
             {profiles.length ? profiles.map((profile) => (
-              <Link key={profile.id} href={`/planners/${profile.slug}`} className="rounded-3xl border border-border bg-white/65 p-4 transition hover:border-brand/35">
-                <p className="font-semibold text-ink">{profile.businessName}</p>
-                <p className="mt-1 text-sm text-ink-muted">{profile.services.slice(0, 2).join(" | ") || "Planning"} | {profile.city}, {profile.state ?? profile.zipCode}</p>
-              </Link>
+              <div key={profile.id} className="rounded-3xl border border-border bg-white/65 p-4">
+                <Link href={`/planners/${profile.slug}`} className="block transition hover:text-brand">
+                  <p className="font-semibold text-ink">{profile.businessName}</p>
+                  <p className="mt-1 text-sm text-ink-muted">{profile.services.slice(0, 2).join(" | ") || "Planning"} | {profile.city}, {profile.state ?? profile.zipCode}</p>
+                </Link>
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm font-medium text-ink">Edit profile</summary>
+                  <form action={updatePlannerProfileAction} className="mt-4 grid gap-3">
+                    <input type="hidden" name="providerId" value={profile.id} />
+                    <input type="hidden" name="returnTo" value="/planners/dashboard" />
+                    <Input name="businessName" defaultValue={profile.businessName} required />
+                    <Input name="contactName" defaultValue={profile.contactName} required />
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <Input name="city" defaultValue={profile.city} required />
+                      <Input name="state" defaultValue={profile.state ?? ""} />
+                      <Input name="zipCode" defaultValue={profile.zipCode} required maxLength={5} />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <Input name="serviceRadiusMiles" defaultValue={profile.serviceRadiusMiles} required type="number" min="1" max="250" />
+                      <Input name="responseTimeHours" defaultValue={profile.responseTimeHours} required type="number" min="1" max="240" />
+                      <Input name="yearsExperience" defaultValue={profile.yearsExperience ?? ""} type="number" min="0" />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Input name="contactEmail" defaultValue={profile.contactEmail} required type="email" />
+                      <Input name="contactPhone" defaultValue={profile.contactPhone ?? ""} />
+                      <Input name="websiteUrl" defaultValue={profile.websiteUrl ?? ""} type="url" />
+                      <Input name="consultationPrice" defaultValue={profile.consultationPrice ?? ""} type="number" min="0" step="0.01" />
+                      <Input name="hourlyRate" defaultValue={profile.hourlyRate ?? ""} type="number" min="0" step="0.01" />
+                      <Input name="fullServiceMinimum" defaultValue={profile.fullServiceMinimum ?? ""} type="number" min="0" step="0.01" />
+                    </div>
+                    <div className="grid gap-2 rounded-2xl bg-canvas p-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Services</p>
+                      {PLANNER_SERVICES.map((service) => (
+                        <label key={service} className="flex items-center gap-2 text-sm text-ink-muted">
+                          <input type="checkbox" name="services" value={service} defaultChecked={profile.services.includes(service)} />
+                          {service}
+                        </label>
+                      ))}
+                    </div>
+                    <textarea name="bio" defaultValue={profile.bio} required rows={4} className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none" />
+                    <textarea name="certifications" defaultValue={profile.certifications ?? ""} rows={3} className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none" placeholder="Certifications or specialties" />
+                    <textarea name="availabilityNote" defaultValue={profile.availabilityNote ?? ""} rows={2} className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none" placeholder="Availability note" />
+                    <textarea name="serviceNotes" defaultValue={profile.serviceNotes ?? ""} rows={3} className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none" placeholder="Service notes, constraints, planning style" />
+                    <Button type="submit" variant="secondary">Save profile</Button>
+                  </form>
+                </details>
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm font-medium text-ink">Packages ({packagesByProfileId.get(profile.id)?.length ?? 0})</summary>
+                  <div className="mt-3 grid gap-2">
+                    {(packagesByProfileId.get(profile.id) ?? []).map((item) => (
+                      <div key={item.id} className="rounded-2xl bg-canvas px-4 py-3 text-sm text-ink-muted">
+                        <span className="font-semibold text-ink">{item.title}</span> | {item.priceLabel ?? (item.price == null ? "Custom quote" : `$${item.price}`)}
+                      </div>
+                    ))}
+                  </div>
+                  <form action={createProviderPackageAction} className="mt-3 grid gap-3 rounded-2xl bg-canvas p-3">
+                    <input type="hidden" name="providerType" value="planner" />
+                    <input type="hidden" name="providerId" value={profile.id} />
+                    <input type="hidden" name="returnTo" value="/planners/dashboard" />
+                    <Input name="title" placeholder="Package title" required />
+                    <Input name="price" placeholder="Price" type="number" min="0" step="0.01" />
+                    <Input name="priceLabel" placeholder="Price label, e.g. custom quote" />
+                    <textarea name="description" required rows={3} className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none" placeholder="What this package includes" />
+                    <Button type="submit" variant="secondary">Add package</Button>
+                  </form>
+                </details>
+              </div>
             )) : (
               <p className="rounded-3xl border border-border bg-white/60 p-5 text-sm text-ink-muted">
                 No planner profile yet. Create one to receive consultation and full-service requests.
@@ -70,7 +143,21 @@ export default async function PlannerDashboardPage() {
                 <p className="mt-3 text-sm leading-6 text-ink-muted">{lead.message}</p>
                 <p className="mt-3 text-xs uppercase tracking-[0.16em] text-ink-muted">
                   {lead.eventType ?? "Event"} | {lead.eventZipCode ?? "ZIP TBD"} | {lead.budget ? `$${lead.budget}` : "Budget TBD"}
+                  {lead.packageTitle ? ` | ${lead.packageTitle}` : ""}
                 </p>
+                {(activityByLeadId.get(lead.id) ?? []).length ? (
+                  <div className="mt-4 rounded-2xl bg-canvas p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">History</p>
+                    <div className="mt-2 grid gap-2">
+                      {(activityByLeadId.get(lead.id) ?? []).slice(0, 3).map((activity) => (
+                        <p key={activity.id} className="text-sm text-ink-muted">
+                          {activity.action.replaceAll("_", " ")}
+                          {activity.toStatus ? ` -> ${activity.toStatus}` : ""}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <form action={updateProviderLeadStatusAction} className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-canvas p-3">
                   <input type="hidden" name="leadId" value={lead.id} />
                   <input type="hidden" name="providerType" value="planner" />

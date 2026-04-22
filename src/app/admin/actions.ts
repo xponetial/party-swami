@@ -52,6 +52,12 @@ const marketplaceProviderStatusSchema = z.object({
   returnTo: z.string().startsWith("/admin/marketplace").default("/admin/marketplace"),
 });
 
+const marketplaceReviewStatusSchema = z.object({
+  reviewId: z.string().uuid(),
+  status: z.enum(["pending_review", "approved", "rejected"]),
+  returnTo: z.string().startsWith("/admin/marketplace").default("/admin/marketplace"),
+});
+
 const socialMediaBrandProfileSchema = z.object({
   tone: z.string().trim().min(10).max(500),
   audience: z.string().trim().min(10).max(500),
@@ -588,6 +594,40 @@ export async function updateAdminMarketplaceProviderStatusAction(formData: FormD
         },
       }),
     ]);
+  }
+
+  revalidatePath("/admin/marketplace");
+  revalidatePath("/marketplace");
+  redirect(parsed.data.returnTo);
+}
+
+export async function updateAdminMarketplaceReviewStatusAction(formData: FormData) {
+  const admin = await requireAdminAccess();
+  const parsed = marketplaceReviewStatusSchema.safeParse({
+    reviewId: formData.get("reviewId"),
+    status: formData.get("status"),
+    returnTo: formData.get("returnTo") || "/admin/marketplace",
+  });
+
+  if (!parsed.success) {
+    redirect("/admin/marketplace");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("marketplace_reviews")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.reviewId);
+
+  if (!error) {
+    await createAuditLog(supabase, {
+      action: "marketplace_review_status_updated",
+      userId: admin.userId,
+      metadata: {
+        review_id: parsed.data.reviewId,
+        status: parsed.data.status,
+      },
+    });
   }
 
   revalidatePath("/admin/marketplace");

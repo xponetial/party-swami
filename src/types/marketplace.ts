@@ -47,9 +47,13 @@ export type VendorProfile = {
   startingPrice: number | null;
   description: string;
   portfolioUrls: string[];
+  serviceNotes: string | null;
+  responseTimeHours: number;
+  profileImageUrl: string | null;
   status: MarketplaceStatus;
   isVerified: boolean;
   createdAt: string;
+  distanceMiles?: number | null;
 };
 
 export type PlannerProfile = {
@@ -73,9 +77,13 @@ export type PlannerProfile = {
   bio: string;
   services: string[];
   availabilityNote: string | null;
+  serviceNotes: string | null;
+  responseTimeHours: number;
+  profileImageUrl: string | null;
   status: MarketplaceStatus;
   isVerified: boolean;
   createdAt: string;
+  distanceMiles?: number | null;
 };
 
 export type MarketplaceLead = {
@@ -90,5 +98,38 @@ export type MarketplaceLead = {
   budget: number | null;
   message: string;
   status: "new" | "contacted" | "quoted" | "won" | "lost";
+  createdAt: string;
+  packageId: string | null;
+  packageTitle?: string | null;
+};
+
+export type MarketplaceProviderPackage = {
+  id: string;
+  vendorId: string | null;
+  plannerId: string | null;
+  title: string;
+  description: string;
+  price: number | null;
+  priceLabel: string | null;
+  displayOrder: number;
+  status: "active" | "paused";
+  createdAt: string;
+};
+
+export type MarketplaceReview = {
+  id: string;
+  rating: number;
+  title: string;
+  body: string;
+  status: "pending_review" | "approved" | "rejected";
+  createdAt: string;
+};
+
+export type MarketplaceLeadActivity = {
+  id: string;
+  action: string;
+  fromStatus: MarketplaceLeadStatus | null;
+  toStatus: MarketplaceLeadStatus | null;
+  note: string | null;
   createdAt: string;
 };

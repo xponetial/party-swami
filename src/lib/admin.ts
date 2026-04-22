@@ -433,6 +433,7 @@ export type AdminMarketplaceData = {
   topEventTypes: Array<{ label: string; count: number }>;
   topShoppingCategories: Array<{ label: string; count: number }>;
   topClickedEvents: Array<{ label: string; count: number }>;
+  notificationCounts: Array<{ label: string; count: number }>;
   recentLeads: Array<{
     id: string;
     leadType: "vendor" | "planner_consultation" | "planner_full_service";
@@ -460,6 +461,16 @@ export type AdminMarketplaceData = {
     status: "active" | "paused" | "pending_review";
     isVerified: boolean;
     leadCount: number;
+  }>;
+  reviews: Array<{
+    id: string;
+    providerName: string;
+    providerType: "Vendor" | "Planner";
+    rating: number;
+    title: string;
+    body: string;
+    status: "pending_review" | "approved" | "rejected";
+    createdAt: string;
   }>;
 };
 
@@ -1676,6 +1687,8 @@ export async function getAdminMarketplaceData(
     { data: leads = [] },
     { data: vendors = [] },
     { data: planners = [] },
+    { data: notifications = [] },
+    { data: reviews = [] },
   ] = await Promise.all([
     supabase
       .from("analytics_events")
@@ -1755,6 +1768,26 @@ export async function getAdminMarketplaceData(
         status: "active" | "paused" | "pending_review";
         is_verified: boolean;
       }>>(),
+    supabase
+      .from("marketplace_notifications")
+      .select("status")
+      .gte("created_at", since)
+      .returns<Array<{ status: "pending" | "sent" | "skipped" | "failed" }>>(),
+    supabase
+      .from("marketplace_reviews")
+      .select("id, vendor_id, planner_id, rating, title, body, status, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .returns<Array<{
+        id: string;
+        vendor_id: string | null;
+        planner_id: string | null;
+        rating: number;
+        title: string;
+        body: string;
+        status: "pending_review" | "approved" | "rejected";
+        created_at: string;
+      }>>(),
   ]);
 
   const eventById = new Map((events ?? []).map((event) => [event.id, event] as const));
@@ -1826,6 +1859,12 @@ export async function getAdminMarketplaceData(
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
+  const notificationCounts = [...(notifications ?? []).reduce<Map<string, number>>((map, notification) => {
+    map.set(notification.status, (map.get(notification.status) ?? 0) + 1);
+    return map;
+  }, new Map()).entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
 
   return {
     totalClicks: clickEvents.length,
@@ -1837,6 +1876,7 @@ export async function getAdminMarketplaceData(
     topEventTypes,
     topShoppingCategories,
     topClickedEvents,
+    notificationCounts,
     recentLeads: marketplaceLeads.map((lead) => {
       const isVendorLead = lead.lead_type === "vendor";
       const providerName = isVendorLead
@@ -1887,6 +1927,21 @@ export async function getAdminMarketplaceData(
         leadCount: leadCountByPlanner.get(planner.id) ?? 0,
       })),
     ].sort((a, b) => b.leadCount - a.leadCount || a.name.localeCompare(b.name)),
+    reviews: (reviews ?? []).map((review) => {
+      const isVendorReview = Boolean(review.vendor_id);
+      return {
+        id: review.id,
+        providerName: isVendorReview
+          ? vendorById.get(review.vendor_id ?? "") ?? "Unknown vendor"
+          : plannerById.get(review.planner_id ?? "") ?? "Unknown planner",
+        providerType: isVendorReview ? "Vendor" : "Planner",
+        rating: review.rating,
+        title: review.title,
+        body: review.body,
+        status: review.status,
+        createdAt: review.created_at,
+      };
+    }),
   };
 }
 
