@@ -31,6 +31,12 @@ export default async function PlannerSignupPage({
             Consultations give hosts fast expert help. Full-service requests create a quote-led path
             where Party Swami can later introduce a 10% commission model.
           </p>
+          <p className="mt-3 rounded-3xl border border-border bg-white/55 p-4 text-sm leading-6 text-ink-muted">
+            New planner profiles are reviewed before they appear publicly. Questions? Email{" "}
+            <a className="font-semibold text-brand" href="mailto:marketplace.admin@partyswami.com">
+              marketplace.admin@partyswami.com
+            </a>.
+          </p>
           <div className="mt-5 grid gap-3">
             {[
               { icon: CalendarClock, text: "Set consultation, hourly, and full-service starting points" },

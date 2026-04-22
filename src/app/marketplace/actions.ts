@@ -181,7 +181,7 @@ export async function createVendorProfileAction(formData: FormData) {
     starting_price: parsed.data.startingPrice,
     description: parsed.data.description,
     portfolio_urls: parseUrlList(parsed.data.portfolioUrls),
-    status: "active",
+    status: "pending_review",
   });
 
   if (error) {
@@ -190,7 +190,7 @@ export async function createVendorProfileAction(formData: FormData) {
 
   revalidatePath("/vendors");
   revalidatePath("/vendors/dashboard");
-  redirect(`/vendors/${slug}?created=1`);
+  redirect(`/vendors/dashboard?created=pending_review`);
 }
 
 export async function createPlannerProfileAction(formData: FormData) {
@@ -240,7 +240,7 @@ export async function createPlannerProfileAction(formData: FormData) {
     bio: parsed.data.bio,
     services: parsed.data.services,
     availability_note: parsed.data.availabilityNote?.trim() || null,
-    status: "active",
+    status: "pending_review",
   });
 
   if (error) {
@@ -249,7 +249,7 @@ export async function createPlannerProfileAction(formData: FormData) {
 
   revalidatePath("/planners");
   revalidatePath("/planners/dashboard");
-  redirect(`/planners/${slug}?created=1`);
+  redirect(`/planners/dashboard?created=pending_review`);
 }
 
 export async function createMarketplaceLeadAction(formData: FormData) {
