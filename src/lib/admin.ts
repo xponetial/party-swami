@@ -449,6 +449,18 @@ export type AdminMarketplaceData = {
     status: "new" | "contacted" | "quoted" | "won" | "lost";
     createdAt: string;
   }>;
+  providers: Array<{
+    id: string;
+    providerType: "vendor" | "planner";
+    name: string;
+    categoryOrServices: string;
+    city: string;
+    state: string | null;
+    zipCode: string;
+    status: "active" | "paused" | "pending_review";
+    isVerified: boolean;
+    leadCount: number;
+  }>;
 };
 
 export type AdminIntegrationStatus = {
@@ -1651,7 +1663,10 @@ export async function getAdminSocialMediaData(): Promise<AdminSocialMediaData> {
   };
 }
 
-export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promise<AdminMarketplaceData> {
+export async function getAdminMarketplaceData(
+  rangeDays: AdminRangeDays,
+  filters: { status?: string; providerType?: string; query?: string } = {},
+): Promise<AdminMarketplaceData> {
   const supabase = createSupabaseAdminClient();
   const since = getRangeStart(rangeDays);
   const [
@@ -1716,12 +1731,30 @@ export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promis
       }>>(),
     supabase
       .from("vendors")
-      .select("id, business_name")
-      .returns<Array<{ id: string; business_name: string }>>(),
+      .select("id, business_name, category, city, state, zip_code, status, is_verified")
+      .returns<Array<{
+        id: string;
+        business_name: string;
+        category: string;
+        city: string;
+        state: string | null;
+        zip_code: string;
+        status: "active" | "paused" | "pending_review";
+        is_verified: boolean;
+      }>>(),
     supabase
       .from("planners")
-      .select("id, business_name")
-      .returns<Array<{ id: string; business_name: string }>>(),
+      .select("id, business_name, services, city, state, zip_code, status, is_verified")
+      .returns<Array<{
+        id: string;
+        business_name: string;
+        services: string[] | null;
+        city: string;
+        state: string | null;
+        zip_code: string;
+        status: "active" | "paused" | "pending_review";
+        is_verified: boolean;
+      }>>(),
   ]);
 
   const eventById = new Map((events ?? []).map((event) => [event.id, event] as const));
@@ -1729,7 +1762,44 @@ export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promis
   const plannerById = new Map((planners ?? []).map((planner) => [planner.id, planner.business_name] as const));
   const clickEvents = (analytics ?? []).filter((entry) => entry.event_name === "shopping_link_clicked");
   const replacementCount = (analytics ?? []).filter((entry) => entry.event_name === "shopping_pick_replaced").length;
-  const marketplaceLeads = leads ?? [];
+  const normalizedQuery = filters.query?.trim().toLowerCase() ?? "";
+  const marketplaceLeads = (leads ?? []).filter((lead) => {
+    const providerType = lead.lead_type === "vendor" ? "vendor" : "planner";
+    const providerName = providerType === "vendor"
+      ? vendorById.get(lead.vendor_id ?? "") ?? ""
+      : plannerById.get(lead.planner_id ?? "") ?? "";
+
+    if (filters.status && filters.status !== "all" && lead.status !== filters.status) {
+      return false;
+    }
+
+    if (filters.providerType && filters.providerType !== "all" && providerType !== filters.providerType) {
+      return false;
+    }
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    return [
+      providerName,
+      lead.contact_name,
+      lead.contact_email,
+      lead.event_zip_code,
+      lead.event_type,
+      lead.message,
+    ]
+      .filter(Boolean)
+      .some((value) => value!.toLowerCase().includes(normalizedQuery));
+  });
+  const leadCountByVendor = (leads ?? []).reduce<Map<string, number>>((map, lead) => {
+    if (lead.vendor_id) map.set(lead.vendor_id, (map.get(lead.vendor_id) ?? 0) + 1);
+    return map;
+  }, new Map());
+  const leadCountByPlanner = (leads ?? []).reduce<Map<string, number>>((map, lead) => {
+    if (lead.planner_id) map.set(lead.planner_id, (map.get(lead.planner_id) ?? 0) + 1);
+    return map;
+  }, new Map());
 
   const topEventTypes = [...clickEvents.reduce<Map<string, number>>((map, entry) => {
     const eventType = entry.event_id ? eventById.get(entry.event_id)?.event_type ?? "unknown" : "unknown";
@@ -1791,6 +1861,32 @@ export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promis
         createdAt: lead.created_at,
       };
     }),
+    providers: [
+      ...(vendors ?? []).map((vendor) => ({
+        id: vendor.id,
+        providerType: "vendor" as const,
+        name: vendor.business_name,
+        categoryOrServices: vendor.category,
+        city: vendor.city,
+        state: vendor.state,
+        zipCode: vendor.zip_code,
+        status: vendor.status,
+        isVerified: vendor.is_verified,
+        leadCount: leadCountByVendor.get(vendor.id) ?? 0,
+      })),
+      ...(planners ?? []).map((planner) => ({
+        id: planner.id,
+        providerType: "planner" as const,
+        name: planner.business_name,
+        categoryOrServices: (planner.services ?? []).slice(0, 2).join(", ") || "Planning",
+        city: planner.city,
+        state: planner.state,
+        zipCode: planner.zip_code,
+        status: planner.status,
+        isVerified: planner.is_verified,
+        leadCount: leadCountByPlanner.get(planner.id) ?? 0,
+      })),
+    ].sort((a, b) => b.leadCount - a.leadCount || a.name.localeCompare(b.name)),
   };
 }
 

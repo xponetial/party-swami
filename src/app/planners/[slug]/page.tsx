@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { getPlannerBySlug } from "@/lib/marketplace";
+import { getLeadEventDefaults, getPlannerBySlug } from "@/lib/marketplace";
 
 function formatMoney(value: number | null) {
   if (value == null) return "Custom";
@@ -24,7 +24,10 @@ export default async function PlannerProfilePage({
   searchParams: Promise<{ created?: string; lead?: string; error?: string; eventId?: string }>;
 }) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const planner = await getPlannerBySlug(slug);
+  const [planner, eventDefaults] = await Promise.all([
+    getPlannerBySlug(slug),
+    getLeadEventDefaults(query.eventId),
+  ]);
 
   if (!planner) {
     notFound();
@@ -130,22 +133,26 @@ export default async function PlannerProfilePage({
             </div>
             <div className="space-y-2">
               <Label htmlFor="eventZipCode">Event ZIP</Label>
-              <Input id="eventZipCode" name="eventZipCode" inputMode="numeric" maxLength={5} placeholder={planner.zipCode} />
+              <Input id="eventZipCode" name="eventZipCode" inputMode="numeric" maxLength={5} placeholder={planner.zipCode} defaultValue={eventDefaults?.eventZipCode ?? ""} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="eventType">Event type</Label>
-                <Input id="eventType" name="eventType" placeholder="Baby shower" />
+                <Input id="eventType" name="eventType" placeholder="Baby shower" defaultValue={eventDefaults?.eventType ?? ""} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="budget">Budget</Label>
-                <Input id="budget" name="budget" type="number" min="0" step="0.01" placeholder="2000" />
+                <Input id="budget" name="budget" type="number" min="0" step="0.01" placeholder="2000" defaultValue={eventDefaults?.budget ?? ""} />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="message">What do you need?</Label>
               <textarea id="message" name="message" required rows={4} className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-brand/50 focus:ring-4 focus:ring-brand/10" placeholder="Share your date, guest count, budget, and where you want expert help." />
             </div>
+            <label className="flex gap-3 rounded-2xl border border-border bg-white/70 p-4 text-sm leading-6 text-ink-muted">
+              <input className="mt-1 size-4 accent-[#2f8fff]" name="marketplaceAgreement" required type="checkbox" value="accepted" />
+              I understand Party Swami is a referral marketplace. This planner handles quotes, contracts, refunds, payment, and service delivery.
+            </label>
             <SubmitButton pendingLabel="Sending request...">Send planner request</SubmitButton>
           </form>
           <div className="mt-5 flex flex-wrap gap-3">

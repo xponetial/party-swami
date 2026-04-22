@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
 const blankToNullNumber = z.preprocess((value) => {
   if (value === "" || value === null || value === undefined) return null;
@@ -67,6 +68,16 @@ const leadSchema = z.object({
   eventZipCode: z.string().trim().regex(/^\d{5}$/, "Use a 5-digit ZIP code.").optional().or(z.literal("")),
   budget: blankToNullNumber,
   message: z.string().trim().min(20, "Add a short note about what you need."),
+  marketplaceAgreement: z.literal("accepted", {
+    error: "Confirm that you understand providers handle quotes, payment, and service delivery.",
+  }),
+  returnTo: z.string().startsWith("/"),
+});
+
+const providerLeadStatusSchema = z.object({
+  leadId: z.string().uuid(),
+  status: z.enum(["new", "contacted", "quoted", "won", "lost"]),
+  providerType: z.enum(["vendor", "planner"]),
   returnTo: z.string().startsWith("/"),
 });
 
@@ -234,6 +245,7 @@ export async function createMarketplaceLeadAction(formData: FormData) {
     eventZipCode: formData.get("eventZipCode") || "",
     budget: formData.get("budget"),
     message: formData.get("message"),
+    marketplaceAgreement: formData.get("marketplaceAgreement"),
     returnTo: formData.get("returnTo"),
   });
 
@@ -285,7 +297,102 @@ export async function createMarketplaceLeadAction(formData: FormData) {
     redirectWithError(parsed.data.returnTo, error.message);
   }
 
+  await Promise.all([
+    trackAnalyticsEvent(supabase, {
+      eventName: "marketplace_lead_submitted",
+      userId: user.id,
+      eventId,
+      metadata: {
+        provider_type: parsed.data.providerType,
+        provider_id: parsed.data.providerId,
+        lead_type: parsed.data.leadType,
+        event_zip_code: parsed.data.eventZipCode || null,
+      },
+    }),
+    createAuditLog(supabase, {
+      action: "marketplace_lead_submitted",
+      userId: user.id,
+      eventId,
+      metadata: {
+        provider_type: parsed.data.providerType,
+        provider_id: parsed.data.providerId,
+        lead_type: parsed.data.leadType,
+      },
+    }),
+  ]);
+
   revalidatePath("/vendors/dashboard");
   revalidatePath("/planners/dashboard");
   redirect(`${parsed.data.returnTo}?lead=sent`);
+}
+
+export async function updateProviderLeadStatusAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = providerLeadStatusSchema.safeParse({
+    leadId: formData.get("leadId"),
+    status: formData.get("status"),
+    providerType: formData.get("providerType"),
+    returnTo: formData.get("returnTo") || "/dashboard",
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/dashboard", parsed.error.issues[0]?.message ?? "Could not update lead status.");
+  }
+
+  const providerTable = parsed.data.providerType === "vendor" ? "vendors" : "planners";
+  const providerColumn = parsed.data.providerType === "vendor" ? "vendor_id" : "planner_id";
+  const { data: lead } = await supabase
+    .from("marketplace_leads")
+    .select(`id, ${providerColumn}`)
+    .eq("id", parsed.data.leadId)
+    .maybeSingle<Record<string, string | null>>();
+
+  const providerId = lead?.[providerColumn];
+  if (!providerId) {
+    redirectWithError(parsed.data.returnTo, "Lead not found.");
+  }
+
+  const { data: ownedProvider } = await supabase
+    .from(providerTable)
+    .select("id")
+    .eq("id", providerId)
+    .eq("owner_id", user.id)
+    .maybeSingle<{ id: string }>();
+
+  if (!ownedProvider) {
+    redirectWithError(parsed.data.returnTo, "You do not own this provider profile.");
+  }
+
+  const { error } = await supabase
+    .from("marketplace_leads")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.leadId);
+
+  if (error) {
+    redirectWithError(parsed.data.returnTo, error.message);
+  }
+
+  await Promise.all([
+    trackAnalyticsEvent(supabase, {
+      eventName: "marketplace_lead_status_updated",
+      userId: user.id,
+      metadata: {
+        lead_id: parsed.data.leadId,
+        status: parsed.data.status,
+        source: `${parsed.data.providerType}_dashboard`,
+      },
+    }),
+    createAuditLog(supabase, {
+      action: "marketplace_lead_status_updated",
+      userId: user.id,
+      metadata: {
+        lead_id: parsed.data.leadId,
+        status: parsed.data.status,
+        source: `${parsed.data.providerType}_dashboard`,
+      },
+    }),
+  ]);
+
+  revalidatePath(parsed.data.returnTo);
+  redirect(`${parsed.data.returnTo}?status=updated`);
 }

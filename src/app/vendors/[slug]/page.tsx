@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { getVendorBySlug } from "@/lib/marketplace";
+import { getLeadEventDefaults, getVendorBySlug } from "@/lib/marketplace";
 
 function formatMoney(value: number | null) {
   if (value == null) return "Custom quote";
@@ -30,7 +30,10 @@ export default async function VendorProfilePage({
   searchParams: Promise<{ created?: string; lead?: string; error?: string; eventId?: string }>;
 }) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const vendor = await getVendorBySlug(slug);
+  const [vendor, eventDefaults] = await Promise.all([
+    getVendorBySlug(slug),
+    getLeadEventDefaults(query.eventId),
+  ]);
 
   if (!vendor) {
     notFound();
@@ -122,22 +125,26 @@ export default async function VendorProfilePage({
             </div>
             <div className="space-y-2">
               <Label htmlFor="eventZipCode">Event ZIP</Label>
-              <Input id="eventZipCode" name="eventZipCode" inputMode="numeric" maxLength={5} placeholder={vendor.zipCode} />
+              <Input id="eventZipCode" name="eventZipCode" inputMode="numeric" maxLength={5} placeholder={vendor.zipCode} defaultValue={eventDefaults?.eventZipCode ?? ""} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="eventType">Event type</Label>
-                <Input id="eventType" name="eventType" placeholder="Birthday" />
+                <Input id="eventType" name="eventType" placeholder="Birthday" defaultValue={eventDefaults?.eventType ?? ""} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="budget">Budget</Label>
-                <Input id="budget" name="budget" type="number" min="0" step="0.01" placeholder="500" />
+                <Input id="budget" name="budget" type="number" min="0" step="0.01" placeholder="500" defaultValue={eventDefaults?.budget ?? ""} />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="message">What do you need?</Label>
               <textarea id="message" name="message" required rows={4} className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-brand/50 focus:ring-4 focus:ring-brand/10" placeholder="Share your date, guest count, and what you want quoted." />
             </div>
+            <label className="flex gap-3 rounded-2xl border border-border bg-white/70 p-4 text-sm leading-6 text-ink-muted">
+              <input className="mt-1 size-4 accent-[#2f8fff]" name="marketplaceAgreement" required type="checkbox" value="accepted" />
+              I understand Party Swami is a referral marketplace. This provider handles quotes, contracts, refunds, payment, and service delivery.
+            </label>
             <SubmitButton pendingLabel="Sending request...">Send request</SubmitButton>
           </form>
           <div className="mt-5 flex flex-wrap gap-3">

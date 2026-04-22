@@ -73,6 +73,15 @@ export type MarketplaceFilters = {
   service?: string;
 };
 
+export type LeadEventDefaults = {
+  id: string;
+  title: string;
+  eventType: string;
+  eventDate: string | null;
+  eventZipCode: string;
+  budget: number | null;
+};
+
 function normalizeZip(value?: string | null) {
   return value?.replace(/\D/g, "").slice(0, 5) || "";
 }
@@ -216,6 +225,42 @@ export async function getPlannerBySlug(slug: string) {
     .maybeSingle<PlannerRow>();
 
   return data ? mapPlanner(data) : null;
+}
+
+export async function getLeadEventDefaults(eventId?: string | null): Promise<LeadEventDefaults | null> {
+  if (!eventId) return null;
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("id, title, event_type, event_date, location, budget")
+    .eq("id", eventId)
+    .eq("owner_id", user.id)
+    .maybeSingle<{
+      id: string;
+      title: string;
+      event_type: string;
+      event_date: string | null;
+      location: string | null;
+      budget: number | null;
+    }>();
+
+  if (!event) return null;
+
+  return {
+    id: event.id,
+    title: event.title,
+    eventType: event.event_type,
+    eventDate: event.event_date,
+    eventZipCode: normalizeZip(event.location),
+    budget: event.budget,
+  };
 }
 
 export async function getOwnedVendorDashboard(userId: string) {

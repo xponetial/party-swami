@@ -12,4 +12,8 @@ export const ANALYTICS_EVENTS = [
   "shopping_pick_replaced",
   "task_completed",
   "feedback_submitted",
+  "marketplace_viewed",
+  "marketplace_lead_submitted",
+  "marketplace_lead_status_updated",
+  "marketplace_provider_status_updated",
 ] as const;
