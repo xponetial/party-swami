@@ -32,13 +32,17 @@ export default async function VendorDashboardPage() {
     getOwnedVendorReviews(user.id),
   ]);
   const packagesByProfileId = new Map(packagesByProfileEntries);
+  const activeProfiles = profiles.filter((profile) => profile.status === "active").length;
+  const pendingProfiles = profiles.filter((profile) => profile.status === "pending_review").length;
+  const pausedProfiles = profiles.filter((profile) => profile.status === "paused").length;
+  const hasOnlyPendingProfiles = pendingProfiles > 0 && activeProfiles === 0 && pausedProfiles === 0;
 
   return (
     <AppShell
       currentSection="/marketplace"
       title="Vendor dashboard"
-      description="Manage storefront visibility and review tracked lead requests. Payments and fulfillment stay external for Phase 3."
-      actions={<Button asChild><Link href="/vendors/signup">New storefront</Link></Button>}
+      description="Manage storefront visibility and review tracked lead requests. New signups stay in review until marketplace admin approval."
+      actions={<Button asChild><Link href="/vendors/signup">{profiles.length ? "Add storefront" : "Start storefront"}</Link></Button>}
     >
       <div className="grid gap-4 lg:grid-cols-[0.82fr_1.18fr]">
         <Card>
@@ -48,16 +52,36 @@ export default async function VendorDashboardPage() {
             </div>
             <div>
               <h2 className="text-2xl font-semibold text-ink">Storefronts</h2>
-              <p className="text-sm text-ink-muted">{profiles.length} active profile{profiles.length === 1 ? "" : "s"}</p>
+              <p className="text-sm text-ink-muted">
+                {profiles.length} total storefront{profiles.length === 1 ? "" : "s"}
+                {activeProfiles ? ` | ${activeProfiles} active` : ""}
+                {pendingProfiles ? ` | ${pendingProfiles} in review` : ""}
+                {pausedProfiles ? ` | ${pausedProfiles} paused` : ""}
+              </p>
             </div>
           </div>
           <div className="mt-5 grid gap-3">
             {profiles.length ? profiles.map((profile) => (
               <div key={profile.id} className="rounded-3xl border border-border bg-white/65 p-4">
                 <Link href={`/vendors/${profile.slug}`} className="block transition hover:text-brand">
-                  <p className="font-semibold text-ink">{profile.businessName}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-semibold text-ink">{profile.businessName}</p>
+                    <span className="rounded-full bg-canvas px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink-muted">
+                      {profile.status === "pending_review" ? "in review" : profile.status}
+                    </span>
+                  </div>
                   <p className="mt-1 text-sm text-ink-muted">{profile.category} | {profile.city}, {profile.state ?? profile.zipCode}</p>
                 </Link>
+                {profile.status === "pending_review" ? (
+                  <p className="mt-3 rounded-2xl bg-canvas px-4 py-3 text-sm text-ink-muted">
+                    Your storefront has been submitted and is waiting for approval from marketplace admin. It will appear in marketplace search after review.
+                  </p>
+                ) : null}
+                {profile.status === "paused" ? (
+                  <p className="mt-3 rounded-2xl bg-canvas px-4 py-3 text-sm text-ink-muted">
+                    This storefront is paused and hidden from marketplace search until it is reactivated.
+                  </p>
+                ) : null}
                 <details className="mt-4">
                   <summary className="cursor-pointer text-sm font-medium text-ink">Edit storefront</summary>
                   <form action={updateVendorProfileAction} className="mt-4 grid gap-3">
@@ -118,7 +142,7 @@ export default async function VendorDashboardPage() {
               </div>
             )) : (
               <p className="rounded-3xl border border-border bg-white/60 p-5 text-sm text-ink-muted">
-                No vendor storefront yet. Create one to start receiving marketplace leads.
+                No vendor application yet. Submit a storefront to start the review process.
               </p>
             )}
           </div>
@@ -177,7 +201,9 @@ export default async function VendorDashboardPage() {
               </div>
             )) : (
               <p className="rounded-3xl border border-border bg-white/60 p-5 text-sm text-ink-muted">
-                No leads yet. Share your storefront or wait for marketplace discovery.
+                {hasOnlyPendingProfiles
+                  ? "Your storefront is in review. Lead requests will start showing up after approval."
+                  : "No leads yet. Share your storefront or wait for marketplace discovery."}
               </p>
             )}
           </div>

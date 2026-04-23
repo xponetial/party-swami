@@ -32,13 +32,17 @@ export default async function PlannerDashboardPage() {
     getOwnedPlannerReviews(user.id),
   ]);
   const packagesByProfileId = new Map(packagesByProfileEntries);
+  const activeProfiles = profiles.filter((profile) => profile.status === "active").length;
+  const pendingProfiles = profiles.filter((profile) => profile.status === "pending_review").length;
+  const pausedProfiles = profiles.filter((profile) => profile.status === "paused").length;
+  const hasOnlyPendingProfiles = pendingProfiles > 0 && activeProfiles === 0 && pausedProfiles === 0;
 
   return (
     <AppShell
       currentSection="/marketplace"
       title="Planner dashboard"
-      description="Review consultation and full-service lead requests. Phase 3 keeps payment handling external while demand is validated."
-      actions={<Button asChild><Link href="/planners/signup">New planner profile</Link></Button>}
+      description="Review consultation and full-service lead requests. New planner signups stay in review until marketplace admin approval."
+      actions={<Button asChild><Link href="/planners/signup">{profiles.length ? "Add planner profile" : "Start planner profile"}</Link></Button>}
     >
       <div className="grid gap-4 lg:grid-cols-[0.82fr_1.18fr]">
         <Card>
@@ -48,16 +52,36 @@ export default async function PlannerDashboardPage() {
             </div>
             <div>
               <h2 className="text-2xl font-semibold text-ink">Profiles</h2>
-              <p className="text-sm text-ink-muted">{profiles.length} active profile{profiles.length === 1 ? "" : "s"}</p>
+              <p className="text-sm text-ink-muted">
+                {profiles.length} total profile{profiles.length === 1 ? "" : "s"}
+                {activeProfiles ? ` | ${activeProfiles} active` : ""}
+                {pendingProfiles ? ` | ${pendingProfiles} in review` : ""}
+                {pausedProfiles ? ` | ${pausedProfiles} paused` : ""}
+              </p>
             </div>
           </div>
           <div className="mt-5 grid gap-3">
             {profiles.length ? profiles.map((profile) => (
               <div key={profile.id} className="rounded-3xl border border-border bg-white/65 p-4">
                 <Link href={`/planners/${profile.slug}`} className="block transition hover:text-brand">
-                  <p className="font-semibold text-ink">{profile.businessName}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-semibold text-ink">{profile.businessName}</p>
+                    <span className="rounded-full bg-canvas px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink-muted">
+                      {profile.status === "pending_review" ? "in review" : profile.status}
+                    </span>
+                  </div>
                   <p className="mt-1 text-sm text-ink-muted">{profile.services.slice(0, 2).join(" | ") || "Planning"} | {profile.city}, {profile.state ?? profile.zipCode}</p>
                 </Link>
+                {profile.status === "pending_review" ? (
+                  <p className="mt-3 rounded-2xl bg-canvas px-4 py-3 text-sm text-ink-muted">
+                    Your planner profile has been submitted and is waiting for approval from marketplace admin. It will appear publicly after review.
+                  </p>
+                ) : null}
+                {profile.status === "paused" ? (
+                  <p className="mt-3 rounded-2xl bg-canvas px-4 py-3 text-sm text-ink-muted">
+                    This planner profile is paused and hidden from marketplace search until it is reactivated.
+                  </p>
+                ) : null}
                 <details className="mt-4">
                   <summary className="cursor-pointer text-sm font-medium text-ink">Edit profile</summary>
                   <form action={updatePlannerProfileAction} className="mt-4 grid gap-3">
@@ -122,7 +146,7 @@ export default async function PlannerDashboardPage() {
               </div>
             )) : (
               <p className="rounded-3xl border border-border bg-white/60 p-5 text-sm text-ink-muted">
-                No planner profile yet. Create one to receive consultation and full-service requests.
+                No planner application yet. Submit a planner profile to start the review process.
               </p>
             )}
           </div>
@@ -183,7 +207,9 @@ export default async function PlannerDashboardPage() {
               </div>
             )) : (
               <p className="rounded-3xl border border-border bg-white/60 p-5 text-sm text-ink-muted">
-                No client requests yet. Your public planner profile is the top of this funnel.
+                {hasOnlyPendingProfiles
+                  ? "Your planner profile is in review. Client requests will show up after approval."
+                  : "No client requests yet. Your public planner profile is the top of this funnel."}
               </p>
             )}
           </div>
