@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Building2, DollarSign, Globe2, MapPin } from "lucide-react";
-import { createVendorProfileAction } from "@/app/marketplace/actions";
+import { createPublicVendorSignupAction } from "@/app/marketplace/actions";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,15 +14,25 @@ import { VENDOR_CATEGORIES } from "@/types/marketplace";
 export default async function VendorSignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; submitted?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, submitted } = await searchParams;
 
   return (
     <ShellFrame
       eyebrow="Vendor onboarding"
-      title="Create a vendor storefront"
-      description="Phase 3 starts with lead generation: list your service, receive qualified host requests, and handle payment directly while Party Swami tracks the lead."
+      title="Sign up as a Party Swami vendor"
+      description="Signup is free. Vendors get their first two leads free, then Phase 3 lets Party Swami track qualified introductions while you handle quotes and payment directly."
+      brandVisual={
+        <Image
+          src="/vendor-membership.png"
+          alt="Party Swami vendor membership badge"
+          width={300}
+          height={300}
+          className="h-auto w-full max-w-[300px] rounded-[1.75rem] bg-white object-contain"
+          priority
+        />
+      }
     >
       <div className="grid gap-5 lg:grid-cols-[0.75fr_1.25fr]">
         <Card className="h-fit">
@@ -50,16 +61,21 @@ export default async function VendorSignupPage({
             ))}
           </div>
           <Button asChild className="mt-5 w-full" variant="secondary">
-            <Link href="/vendors/dashboard">Open vendor dashboard</Link>
+            <Link href="/login?next=%2Fvendors%2Fdashboard">Already signed up? Login</Link>
           </Button>
         </Card>
 
         <Card>
-          <form action={createVendorProfileAction} className="grid gap-5">
+          <form action={createPublicVendorSignupAction} className="grid gap-5">
             <div>
               <Badge>Storefront details</Badge>
               <h2 className="mt-4 text-2xl font-semibold text-ink">Tell hosts what you can deliver</h2>
             </div>
+            {submitted ? (
+              <p className="rounded-2xl border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">
+                Vendor signup submitted. Check your email for a secure login link, then marketplace admin will review your storefront before it appears publicly.
+              </p>
+            ) : null}
             {error ? (
               <p className="rounded-2xl border border-brand/20 bg-brand/10 px-4 py-3 text-sm text-brand">{error}</p>
             ) : null}
@@ -138,7 +154,7 @@ export default async function VendorSignupPage({
                 <textarea id="portfolioUrls" name="portfolioUrls" rows={3} className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-brand/50 focus:ring-4 focus:ring-brand/10" placeholder="One URL per line, or comma-separated" />
               </div>
             </div>
-            <SubmitButton pendingLabel="Creating storefront...">Create vendor storefront</SubmitButton>
+            <SubmitButton pendingLabel="Submitting vendor signup...">Submit free vendor signup</SubmitButton>
           </form>
         </Card>
       </div>

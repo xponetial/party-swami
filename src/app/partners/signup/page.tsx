@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   BadgeDollarSign,
@@ -42,8 +43,10 @@ const providerPaths = [
       "Best for bakeries, DJs, caterers, balloon artists, decorators, entertainers, venues, rentals, and specialty services.",
     benefits: ["Public storefront", "ZIP-radius matching", "Package or custom quote leads"],
     cost: "Free signup. First 2 leads free for vendors.",
-    href: "/signup?next=%2Fvendors%2Fsignup",
+    href: "/vendors/signup",
     cta: "Sign up as a vendor",
+    imageSrc: "/vendor-membership.png",
+    imageAlt: "Party Swami vendor membership badge",
   },
   {
     id: "planner",
@@ -54,8 +57,10 @@ const providerPaths = [
       "Best for planners who offer quick consults, hourly help, day-of coordination, or full-service party planning.",
     benefits: ["Consult and full-service profiles", "Lead tracking dashboard", "Review and response tools"],
     cost: "Free signup during Phase 3.",
-    href: "/signup?next=%2Fplanners%2Fsignup",
+    href: "/planners/signup",
     cta: "Sign up as a planner",
+    imageSrc: "/party-planner-membership.png",
+    imageAlt: "Party Swami professional party planner membership badge",
   },
 ];
 
@@ -85,7 +90,7 @@ export default function PartnerSignupPage() {
                 className="bg-[linear-gradient(135deg,#ff4fc3_0%,#8b4dff_42%,#168bff_100%)] px-7 py-4 text-base shadow-[0_20px_40px_rgba(120,75,255,0.22)]"
                 size="lg"
               >
-                <Link href="/signup?next=%2Fvendors%2Fsignup">
+                <Link href="/vendors/signup">
                   Vendor signup
                   <ArrowRight className="size-5" />
                 </Link>
@@ -96,7 +101,7 @@ export default function PartnerSignupPage() {
                 size="lg"
                 variant="secondary"
               >
-                <Link href="/signup?next=%2Fplanners%2Fsignup">
+                <Link href="/planners/signup">
                   Planner signup
                   <Sparkles className="size-5" />
                 </Link>
@@ -133,6 +138,13 @@ export default function PartnerSignupPage() {
         <section className="grid gap-5 xl:grid-cols-2">
           {providerPaths.map((path) => (
             <Card key={path.id} id={path.id} className="scroll-mt-6">
+              <Image
+                src={path.imageSrc}
+                alt={path.imageAlt}
+                width={260}
+                height={260}
+                className="mb-5 h-auto w-full max-w-[260px] rounded-[1.5rem] bg-white object-contain"
+              />
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <Badge>{path.eyebrow}</Badge>

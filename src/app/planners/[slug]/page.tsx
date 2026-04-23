@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, CalendarClock, DollarSign, MapPin, ShieldCheck } from "lucide-react";
 import { createMarketplaceLeadAction, createMarketplaceReviewAction } from "@/app/marketplace/actions";
@@ -46,6 +47,16 @@ export default async function PlannerProfilePage({
       eyebrow="Planner profile"
       title={planner.businessName}
       description={`Professional planning from ${planner.city}${planner.state ? `, ${planner.state}` : ""}. Consultations and full-service requests are handled as tracked leads in Phase 3.`}
+      brandVisual={
+        <Image
+          src={planner.profileImageUrl || "/party-planner-membership.png"}
+          alt={`${planner.businessName} party planner badge`}
+          width={300}
+          height={300}
+          className="h-auto w-full max-w-[300px] rounded-[1.75rem] bg-white object-contain"
+          priority
+        />
+      }
     >
       <div className="grid gap-5 lg:grid-cols-[1fr_0.82fr]">
         <div className="grid gap-5">

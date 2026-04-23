@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { getAppOrigin } from "@/lib/auth/urls";
 import { notifyMarketplaceLead } from "@/lib/email/marketplace";
+import { getInviteFromEmail, getResendClient } from "@/lib/email/resend";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
@@ -128,6 +131,122 @@ function parseUrlList(value?: string) {
     .slice(0, 8);
 }
 
+function buildCallbackUrl(origin: string, nextPath: string) {
+  const callbackUrl = new URL("/callback", origin);
+  callbackUrl.searchParams.set("next", nextPath);
+  return callbackUrl.toString();
+}
+
+function buildMagicLinkCallbackUrl(origin: string, nextPath: string, tokenHash: string, type: string) {
+  const callbackUrl = new URL("/callback", origin);
+  callbackUrl.searchParams.set("next", nextPath);
+  callbackUrl.searchParams.set("token_hash", tokenHash);
+  callbackUrl.searchParams.set("type", type);
+  return callbackUrl.toString();
+}
+
+function buildProviderWelcomeEmail({
+  providerType,
+  providerName,
+  ctaUrl,
+}: {
+  providerType: "vendor" | "planner";
+  providerName: string;
+  ctaUrl: string;
+}) {
+  const label = providerType === "vendor" ? "vendor" : "party planner";
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827; line-height: 1.6;">
+      <h1 style="font-size: 24px; margin-bottom: 16px;">Welcome to Party Swami</h1>
+      <p>Your ${label} profile for <strong>${providerName}</strong> was submitted for review.</p>
+      <p>Use this secure link to open your dashboard. After this, you can always return through the normal Party Swami login page with the same email address.</p>
+      <p>
+        <a
+          href="${ctaUrl}"
+          style="display: inline-block; padding: 12px 18px; background: #111827; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600;"
+        >
+          Open your dashboard
+        </a>
+      </p>
+      <p>Profiles stay pending until marketplace admin approves them.</p>
+    </div>
+  `;
+}
+
+async function createProviderLoginLink({
+  email,
+  fullName,
+  nextPath,
+}: {
+  email: string;
+  fullName: string;
+  nextPath: "/vendors/dashboard" | "/planners/dashboard";
+}) {
+  const origin = await getAppOrigin();
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+    options: {
+      data: {
+        full_name: fullName,
+        membership_type: nextPath === "/vendors/dashboard" ? "vendor" : "planner",
+      },
+      redirectTo: buildCallbackUrl(origin, nextPath),
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const tokenHash = data.properties?.hashed_token;
+  const verificationType = data.properties?.verification_type;
+
+  if (!data.user?.id || !tokenHash || !verificationType) {
+    throw new Error("Unable to create a secure provider login link right now.");
+  }
+
+  return {
+    supabase,
+    userId: data.user.id,
+    magicLink: buildMagicLinkCallbackUrl(origin, nextPath, tokenHash, verificationType),
+  };
+}
+
+async function sendProviderWelcomeEmail({
+  email,
+  providerType,
+  providerName,
+  magicLink,
+}: {
+  email: string;
+  providerType: "vendor" | "planner";
+  providerName: string;
+  magicLink: string;
+}) {
+  const resend = getResendClient();
+
+  if (!resend) {
+    throw new Error("Provider login email is not configured on the server yet.");
+  }
+
+  const { error } = await resend.emails.send({
+    from: getInviteFromEmail(),
+    to: email,
+    subject: "Your Party Swami provider login",
+    html: buildProviderWelcomeEmail({
+      providerType,
+      providerName,
+      ctaUrl: magicLink,
+    }),
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 async function requireUser() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -200,6 +319,94 @@ export async function createVendorProfileAction(formData: FormData) {
   redirect(`/vendors/dashboard?created=pending_review`);
 }
 
+export async function createPublicVendorSignupAction(formData: FormData) {
+  const parsed = vendorSignupSchema.safeParse({
+    businessName: formData.get("businessName"),
+    category: formData.get("category"),
+    city: formData.get("city"),
+    state: formData.get("state") || undefined,
+    zipCode: formData.get("zipCode"),
+    serviceRadiusMiles: formData.get("serviceRadiusMiles") || 25,
+    contactName: formData.get("contactName") || undefined,
+    contactEmail: formData.get("contactEmail"),
+    contactPhone: formData.get("contactPhone") || undefined,
+    websiteUrl: formData.get("websiteUrl") || "",
+    affiliateUrl: formData.get("affiliateUrl") || "",
+    pricingModel: formData.get("pricingModel"),
+    startingPrice: formData.get("startingPrice"),
+    description: formData.get("description"),
+    portfolioUrls: formData.get("portfolioUrls") || undefined,
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/vendors/signup", parsed.error.issues[0]?.message ?? "Check your vendor details.");
+  }
+
+  let login;
+  try {
+    login = await createProviderLoginLink({
+      email: parsed.data.contactEmail,
+      fullName: parsed.data.contactName?.trim() || parsed.data.businessName,
+      nextPath: "/vendors/dashboard",
+    });
+  } catch (error) {
+    redirectWithError("/vendors/signup", error instanceof Error ? error.message : "Could not create provider login.");
+  }
+
+  const { error } = await login.supabase.from("vendors").insert({
+    owner_id: login.userId,
+    business_name: parsed.data.businessName,
+    slug: createSlug(parsed.data.businessName),
+    category: parsed.data.category,
+    city: parsed.data.city,
+    state: parsed.data.state?.trim() || null,
+    zip_code: parsed.data.zipCode,
+    service_radius_miles: parsed.data.serviceRadiusMiles,
+    contact_name: parsed.data.contactName?.trim() || null,
+    contact_email: parsed.data.contactEmail,
+    contact_phone: parsed.data.contactPhone?.trim() || null,
+    website_url: parsed.data.websiteUrl || null,
+    affiliate_url: parsed.data.affiliateUrl || null,
+    pricing_model: parsed.data.pricingModel,
+    starting_price: parsed.data.startingPrice,
+    description: parsed.data.description,
+    portfolio_urls: parseUrlList(parsed.data.portfolioUrls),
+    profile_image_url: "/vendor-membership.png",
+    status: "pending_review",
+  });
+
+  if (error) {
+    redirectWithError("/vendors/signup", error.message);
+  }
+
+  try {
+    await sendProviderWelcomeEmail({
+      email: parsed.data.contactEmail,
+      providerType: "vendor",
+      providerName: parsed.data.businessName,
+      magicLink: login.magicLink,
+    });
+  } catch (error) {
+    redirectWithError("/vendors/signup", error instanceof Error ? error.message : "Vendor profile was created, but the login email could not be sent.");
+  }
+
+  await Promise.all([
+    trackAnalyticsEvent(login.supabase, {
+      eventName: "marketplace_provider_profile_updated",
+      userId: login.userId,
+      metadata: { provider_type: "vendor", source: "public_signup" },
+    }),
+    createAuditLog(login.supabase, {
+      action: "marketplace_vendor_public_signup_submitted",
+      userId: login.userId,
+      metadata: { business_name: parsed.data.businessName, contact_email: parsed.data.contactEmail },
+    }),
+  ]);
+
+  revalidatePath("/admin/marketplace");
+  redirect("/vendors/signup?submitted=1");
+}
+
 export async function createPlannerProfileAction(formData: FormData) {
   const { supabase, user } = await requireUser();
   const parsed = plannerSignupSchema.safeParse({
@@ -257,6 +464,98 @@ export async function createPlannerProfileAction(formData: FormData) {
   revalidatePath("/planners");
   revalidatePath("/planners/dashboard");
   redirect(`/planners/dashboard?created=pending_review`);
+}
+
+export async function createPublicPlannerSignupAction(formData: FormData) {
+  const parsed = plannerSignupSchema.safeParse({
+    businessName: formData.get("businessName"),
+    contactName: formData.get("contactName"),
+    city: formData.get("city"),
+    state: formData.get("state") || undefined,
+    zipCode: formData.get("zipCode"),
+    serviceRadiusMiles: formData.get("serviceRadiusMiles") || 35,
+    contactEmail: formData.get("contactEmail"),
+    contactPhone: formData.get("contactPhone") || undefined,
+    websiteUrl: formData.get("websiteUrl") || "",
+    yearsExperience: formData.get("yearsExperience"),
+    certifications: formData.get("certifications") || undefined,
+    consultationPrice: formData.get("consultationPrice"),
+    hourlyRate: formData.get("hourlyRate"),
+    fullServiceMinimum: formData.get("fullServiceMinimum"),
+    bio: formData.get("bio"),
+    services: formData.getAll("services"),
+    availabilityNote: formData.get("availabilityNote") || undefined,
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/planners/signup", parsed.error.issues[0]?.message ?? "Check your planner details.");
+  }
+
+  let login;
+  try {
+    login = await createProviderLoginLink({
+      email: parsed.data.contactEmail,
+      fullName: parsed.data.contactName,
+      nextPath: "/planners/dashboard",
+    });
+  } catch (error) {
+    redirectWithError("/planners/signup", error instanceof Error ? error.message : "Could not create planner login.");
+  }
+
+  const { error } = await login.supabase.from("planners").insert({
+    owner_id: login.userId,
+    business_name: parsed.data.businessName,
+    slug: createSlug(parsed.data.businessName),
+    city: parsed.data.city,
+    state: parsed.data.state?.trim() || null,
+    zip_code: parsed.data.zipCode,
+    service_radius_miles: parsed.data.serviceRadiusMiles,
+    contact_name: parsed.data.contactName,
+    contact_email: parsed.data.contactEmail,
+    contact_phone: parsed.data.contactPhone?.trim() || null,
+    website_url: parsed.data.websiteUrl || null,
+    years_experience: parsed.data.yearsExperience,
+    certifications: parsed.data.certifications?.trim() || null,
+    consultation_price: parsed.data.consultationPrice,
+    hourly_rate: parsed.data.hourlyRate,
+    full_service_minimum: parsed.data.fullServiceMinimum,
+    bio: parsed.data.bio,
+    services: parsed.data.services,
+    availability_note: parsed.data.availabilityNote?.trim() || null,
+    profile_image_url: "/party-planner-membership.png",
+    status: "pending_review",
+  });
+
+  if (error) {
+    redirectWithError("/planners/signup", error.message);
+  }
+
+  try {
+    await sendProviderWelcomeEmail({
+      email: parsed.data.contactEmail,
+      providerType: "planner",
+      providerName: parsed.data.businessName,
+      magicLink: login.magicLink,
+    });
+  } catch (error) {
+    redirectWithError("/planners/signup", error instanceof Error ? error.message : "Planner profile was created, but the login email could not be sent.");
+  }
+
+  await Promise.all([
+    trackAnalyticsEvent(login.supabase, {
+      eventName: "marketplace_provider_profile_updated",
+      userId: login.userId,
+      metadata: { provider_type: "planner", source: "public_signup" },
+    }),
+    createAuditLog(login.supabase, {
+      action: "marketplace_planner_public_signup_submitted",
+      userId: login.userId,
+      metadata: { business_name: parsed.data.businessName, contact_email: parsed.data.contactEmail },
+    }),
+  ]);
+
+  revalidatePath("/admin/marketplace");
+  redirect("/planners/signup?submitted=1");
 }
 
 export async function createMarketplaceLeadAction(formData: FormData) {

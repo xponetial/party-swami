@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { CalendarClock, Handshake, MapPin } from "lucide-react";
-import { createPlannerProfileAction } from "@/app/marketplace/actions";
+import { createPublicPlannerSignupAction } from "@/app/marketplace/actions";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,15 +14,25 @@ import { PLANNER_SERVICES } from "@/types/marketplace";
 export default async function PlannerSignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; submitted?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, submitted } = await searchParams;
 
   return (
     <ShellFrame
       eyebrow="Planner onboarding"
-      title="Create a professional planner profile"
-      description="Offer quick consultations or full-service planning. Phase 3 tracks leads while payments happen externally."
+      title="Sign up as a professional party planner"
+      description="Signup is free. Offer quick consultations or full-service planning while Phase 3 tracks leads and payments happen directly between you and the host."
+      brandVisual={
+        <Image
+          src="/party-planner-membership.png"
+          alt="Party Swami professional party planner membership badge"
+          width={300}
+          height={300}
+          className="h-auto w-full max-w-[300px] rounded-[1.75rem] bg-white object-contain"
+          priority
+        />
+      }
     >
       <div className="grid gap-5 lg:grid-cols-[0.75fr_1.25fr]">
         <Card className="h-fit">
@@ -50,16 +61,21 @@ export default async function PlannerSignupPage({
             ))}
           </div>
           <Button asChild className="mt-5 w-full" variant="secondary">
-            <Link href="/planners/dashboard">Open planner dashboard</Link>
+            <Link href="/login?next=%2Fplanners%2Fdashboard">Already signed up? Login</Link>
           </Button>
         </Card>
 
         <Card>
-          <form action={createPlannerProfileAction} className="grid gap-5">
+          <form action={createPublicPlannerSignupAction} className="grid gap-5">
             <div>
               <Badge>Profile details</Badge>
               <h2 className="mt-4 text-2xl font-semibold text-ink">Show hosts how you help</h2>
             </div>
+            {submitted ? (
+              <p className="rounded-2xl border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">
+                Planner signup submitted. Check your email for a secure login link, then marketplace admin will review your profile before it appears publicly.
+              </p>
+            ) : null}
             {error ? (
               <p className="rounded-2xl border border-brand/20 bg-brand/10 px-4 py-3 text-sm text-brand">{error}</p>
             ) : null}
@@ -142,7 +158,7 @@ export default async function PlannerSignupPage({
                 <Input id="availabilityNote" name="availabilityNote" placeholder="Weekday consults, weekend events, 2-week notice preferred..." />
               </div>
             </div>
-            <SubmitButton pendingLabel="Creating profile...">Create planner profile</SubmitButton>
+            <SubmitButton pendingLabel="Submitting planner signup...">Submit free planner signup</SubmitButton>
           </form>
         </Card>
       </div>

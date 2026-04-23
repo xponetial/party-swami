@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, BadgeDollarSign, Mail, MapPin, ShieldCheck } from "lucide-react";
 import { createMarketplaceLeadAction, createMarketplaceReviewAction } from "@/app/marketplace/actions";
@@ -52,6 +53,16 @@ export default async function VendorProfilePage({
       eyebrow="Vendor storefront"
       title={vendor.businessName}
       description={`${vendor.category} serving ${vendor.city}${vendor.state ? `, ${vendor.state}` : ""} within ${vendor.serviceRadiusMiles} miles.`}
+      brandVisual={
+        <Image
+          src={vendor.profileImageUrl || "/vendor-membership.png"}
+          alt={`${vendor.businessName} vendor badge`}
+          width={300}
+          height={300}
+          className="h-auto w-full max-w-[300px] rounded-[1.75rem] bg-white object-contain"
+          priority
+        />
+      }
     >
       <div className="grid gap-5 lg:grid-cols-[1fr_0.82fr]">
         <div className="grid gap-5">
