@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { requireAdminAccess } from "@/lib/admin";
 import { getPlanners, getVendors } from "@/lib/marketplace";
 import { PLANNER_SERVICES, VENDOR_CATEGORIES } from "@/types/marketplace";
 
@@ -14,6 +15,8 @@ export default async function MarketplacePage({
 }: {
   searchParams: Promise<{ zip?: string; category?: string; service?: string; radius?: string }>;
 }) {
+  await requireAdminAccess();
+
   const filters = await searchParams;
   const radiusMiles = filters.radius ? Number(filters.radius) : 50;
   const [vendors, planners] = await Promise.all([
@@ -182,7 +185,7 @@ export default async function MarketplacePage({
                 <h2 className="mt-3 text-2xl font-semibold text-ink">Book direct, track the lead</h2>
               </div>
               <Button asChild variant="secondary">
-                <Link href="/vendors/signup">Join as vendor</Link>
+                <Link href="/partners/signup#vendor">Join as vendor</Link>
               </Button>
             </div>
             <div className="mt-5 grid gap-3">
@@ -218,7 +221,7 @@ export default async function MarketplacePage({
                 <h2 className="mt-3 text-2xl font-semibold text-ink">Consults or full service</h2>
               </div>
               <Button asChild variant="secondary">
-                <Link href="/planners/signup">Join as planner</Link>
+                <Link href="/partners/signup#planner">Join as planner</Link>
               </Button>
             </div>
             <div className="mt-5 grid gap-3">

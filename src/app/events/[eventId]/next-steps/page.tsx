@@ -23,7 +23,6 @@ export default async function EventNextStepsPage({
     getVendors({ zip: eventZip || undefined }),
     getPlanners({ zip: eventZip || undefined }),
   ]);
-  const marketplaceQuery = eventZip ? `?zip=${eventZip}` : "";
 
   return (
     <AppShell
@@ -74,12 +73,9 @@ export default async function EventNextStepsPage({
               </p>
             ) : null}
           </div>
-          <Button asChild className="mt-5 w-full" variant="secondary">
-            <Link href={`/marketplace${marketplaceQuery}`}>
-              Browse planners
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
+          <p className="mt-5 rounded-2xl bg-canvas px-4 py-3 text-sm text-ink-muted">
+            Showing the top local planner matches for this event.
+          </p>
         </Card>
 
         <Card className="xl:col-span-1">
@@ -103,12 +99,9 @@ export default async function EventNextStepsPage({
               </p>
             ) : null}
           </div>
-          <Button asChild className="mt-5 w-full" variant="secondary">
-            <Link href={`/marketplace${marketplaceQuery}`}>
-              Browse vendors
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
+          <p className="mt-5 rounded-2xl bg-canvas px-4 py-3 text-sm text-ink-muted">
+            Showing the top local vendor matches for this event.
+          </p>
         </Card>
       </section>
 

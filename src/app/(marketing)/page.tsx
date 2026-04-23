@@ -75,8 +75,8 @@ export default function MarketingHomePage() {
             </Button>
             <DashboardPreviewButton />
             <Button asChild size="lg" variant="secondary">
-              <Link href="/marketplace">
-                Browse marketplace
+              <Link href="/partners/signup">
+                Vendor and planner signup
                 <ShoppingBag className="size-4" />
               </Link>
             </Button>

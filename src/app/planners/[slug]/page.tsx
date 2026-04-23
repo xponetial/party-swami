@@ -250,7 +250,7 @@ export default async function PlannerProfilePage({
               </Button>
             ) : null}
             <Button asChild variant="ghost">
-              <Link href="/marketplace">Back to marketplace</Link>
+              <Link href="/dashboard">Back to dashboard</Link>
             </Button>
           </div>
         </Card>
