@@ -682,10 +682,10 @@ export function GuestListCard(_: {
         <div className="mt-6 rounded-3xl border border-border bg-white/85 p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Next step</p>
           <p className="text-sm leading-6 text-ink-muted">
-            Guest details are in place. Continue to shopping recommendations to review items, retailer options, and estimated spend.
+            Guest list is in place. Pick how you want to execute: DIY shopping, professional planner help, or both.
           </p>
           <Button asChild className="mt-3">
-            <Link href={`/events/${eventId}/shopping`}>Next Shopping Recomendations</Link>
+            <Link href={`/events/${eventId}/next-steps`}>Pick your path</Link>
           </Button>
         </div>
       </Card>

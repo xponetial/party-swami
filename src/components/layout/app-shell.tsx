@@ -14,7 +14,6 @@ import { ImageBudgetMeter } from "@/components/layout/image-budget-meter";
 import { BrandLockup } from "@/components/layout/brand-lockup";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SupportFab } from "@/components/contact/support-fab";
-import { TourManager } from "@/components/tour/tour-manager";
 import { Button } from "@/components/ui/button";
 import { getInviteImageUsageForUser } from "@/lib/ai/usage";
 import { getMarketplaceMembershipTier } from "@/lib/marketplace";
@@ -34,8 +33,9 @@ const eventSections = [
   { key: "overview", href: "", label: "Overview" },
   { key: "invite", href: "/invite", label: "Invite" },
   { key: "guests", href: "/guests/add", label: "Guests" },
+  { key: "next-steps", href: "/next-steps", label: "Pick Your Path" },
   { key: "shopping", href: "/shopping", label: "Shopping" },
-  { key: "next-steps", href: "/next-steps", label: "Next Steps" },
+  { key: "planners", href: "/planners", label: "Planner Search" },
   { key: "timeline", href: "/timeline", label: "Timeline" },
   { key: "settings", href: "/settings", label: "Settings" },
 ] as const;
@@ -252,7 +252,6 @@ export async function AppShell({
           <SiteFooter contactContext={contactContext} pageLabel={title} />
         </div>
       </div>
-      {user && !providerWorkspace ? <TourManager /> : null}
     </>
   );
 }
