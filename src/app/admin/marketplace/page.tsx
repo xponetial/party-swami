@@ -37,6 +37,9 @@ export default async function AdminMarketplacePage({
       query: resolved.q,
     }),
   ]);
+  const pendingProviders = marketplace.providers.filter((provider) => provider.status === "pending_review");
+  const activeProviders = marketplace.providers.filter((provider) => provider.status === "active");
+  const verifiedProviders = marketplace.providers.filter((provider) => provider.isVerified);
   const currentPath = `/admin/marketplace?${new URLSearchParams(
     Object.entries({
       range: resolved.range,
@@ -77,6 +80,8 @@ export default async function AdminMarketplacePage({
           { label: "Shopping clicks", value: String(marketplace.totalClicks) },
           { label: "Replacement actions", value: String(marketplace.totalReplacementActions) },
           { label: "Reviews", value: String(marketplace.reviews.length) },
+          { label: "Pending providers", value: String(pendingProviders.length) },
+          { label: "Verified providers", value: String(verifiedProviders.length) },
         ].map((item) => (
           <div key={item.label} className="rounded-[2rem] border border-white/75 bg-canvas p-6 shadow-party">
             <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">{item.label}</p>
@@ -84,6 +89,59 @@ export default async function AdminMarketplacePage({
           </div>
         ))}
       </div>
+
+      <DashboardPanel
+        title="Approval queue"
+        description="Providers waiting on admin approval or verification are grouped here so the marketplace can be opened up faster."
+      >
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="rounded-3xl bg-canvas p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Pending review</p>
+            <p className="mt-3 text-3xl font-semibold text-ink">{pendingProviders.length}</p>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">These providers are not yet public and still need a status decision.</p>
+          </div>
+          <div className="rounded-3xl bg-canvas p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Active providers</p>
+            <p className="mt-3 text-3xl font-semibold text-ink">{activeProviders.length}</p>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">These providers are visible in marketplace search and can receive new leads.</p>
+          </div>
+          <div className="rounded-3xl bg-canvas p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Verified providers</p>
+            <p className="mt-3 text-3xl font-semibold text-ink">{verifiedProviders.length}</p>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">Verified providers are ranked ahead of non-verified providers on public marketplace pages.</p>
+          </div>
+        </div>
+        <div className="mt-5 space-y-3">
+          {pendingProviders.length ? pendingProviders.map((provider) => (
+            <div key={`pending-${provider.providerType}-${provider.id}`} className="rounded-3xl border border-border bg-white/70 p-5">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <p className="text-lg font-semibold text-ink">{provider.name}</p>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    {provider.providerType} | {provider.categoryOrServices} | {provider.city}, {provider.state ?? provider.zipCode}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full bg-canvas px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink-muted">pending_review</span>
+                  <span className="rounded-full bg-canvas px-3 py-1 text-xs uppercase tracking-[0.16em] text-ink-muted">{provider.leadCount} leads</span>
+                </div>
+              </div>
+              <form action={updateAdminMarketplaceProviderStatusAction} className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-canvas p-3">
+                <input type="hidden" name="providerId" value={provider.id} />
+                <input type="hidden" name="providerType" value={provider.providerType} />
+                <input type="hidden" name="returnTo" value={currentPath} />
+                <input type="hidden" name="status" value="active" />
+                <input type="hidden" name="isVerified" value={provider.isVerified ? "true" : "false"} />
+                <Button type="submit" variant="secondary">Approve provider</Button>
+              </form>
+            </div>
+          )) : (
+            <p className="rounded-3xl border border-border bg-white/70 p-5 text-sm text-ink-muted">
+              No providers are waiting in the approval queue right now.
+            </p>
+          )}
+        </div>
+      </DashboardPanel>
 
       <DashboardPanel
         title="Marketplace leads"

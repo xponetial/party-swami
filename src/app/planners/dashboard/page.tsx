@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Handshake } from "lucide-react";
+import { CalendarRange, CheckCircle2, Clock3, Handshake } from "lucide-react";
 import {
   createProviderPackageAction,
   updatePlannerProfileAction,
@@ -20,6 +20,27 @@ import {
 } from "@/lib/marketplace";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MARKETPLACE_LEAD_STATUSES, PLANNER_SERVICES } from "@/types/marketplace";
+
+function getPlannerChecklist(profile: {
+  bio: string;
+  websiteUrl: string | null;
+  certifications: string | null;
+  consultationPrice: number | null;
+  hourlyRate: number | null;
+  fullServiceMinimum: number | null;
+  serviceNotes: string | null;
+  services: string[];
+}) {
+  return [
+    { label: "Planning bio added", done: profile.bio.trim().length >= 40 },
+    { label: "Website added", done: Boolean(profile.websiteUrl) },
+    { label: "Services selected", done: profile.services.length > 0 },
+    { label: "Consultation price added", done: profile.consultationPrice != null },
+    { label: "Hourly or full-service rate added", done: profile.hourlyRate != null || profile.fullServiceMinimum != null },
+    { label: "Certifications or specialties added", done: Boolean(profile.certifications?.trim()) },
+    { label: "Service notes added", done: Boolean(profile.serviceNotes?.trim()) },
+  ];
+}
 
 export default async function PlannerDashboardPage() {
   const supabase = await createSupabaseServerClient();
@@ -43,6 +64,24 @@ export default async function PlannerDashboardPage() {
   const pendingProfiles = profiles.filter((profile) => profile.status === "pending_review").length;
   const pausedProfiles = profiles.filter((profile) => profile.status === "paused").length;
   const hasOnlyPendingProfiles = pendingProfiles > 0 && activeProfiles === 0 && pausedProfiles === 0;
+  const primaryProfile = profiles[0] ?? null;
+  const checklist = primaryProfile ? getPlannerChecklist(primaryProfile) : [];
+  const completedChecklistCount = checklist.filter((item) => item.done).length;
+  const completionPercent = checklist.length ? Math.round((completedChecklistCount / checklist.length) * 100) : 0;
+  const statusLabel = hasOnlyPendingProfiles
+    ? "Pending review"
+    : activeProfiles > 0
+      ? "Live in marketplace"
+      : pausedProfiles > 0
+        ? "Paused"
+        : "No application";
+  const statusDetail = hasOnlyPendingProfiles
+    ? "Marketplace admin still needs to review and approve this planner profile."
+    : activeProfiles > 0
+      ? "Your planner profile is searchable and can receive consultation and full-service leads."
+      : pausedProfiles > 0
+        ? "Your planner profile is hidden until it is reactivated."
+        : "Submit your planner application to start the review process.";
 
   return (
     <AppShell
@@ -59,6 +98,54 @@ export default async function PlannerDashboardPage() {
         )
       }
     >
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Card>
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-accent-soft p-3 text-accent">
+              {hasOnlyPendingProfiles ? <Clock3 className="size-5" /> : <CheckCircle2 className="size-5" />}
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Profile status</p>
+              <p className="mt-1 text-2xl font-semibold text-ink">{statusLabel}</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-ink-muted">{statusDetail}</p>
+        </Card>
+        <Card>
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-accent-soft p-3 text-accent">
+              <Handshake className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Profile completeness</p>
+              <p className="mt-1 text-2xl font-semibold text-ink">{completionPercent}%</p>
+            </div>
+          </div>
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-canvas">
+            <div className="h-full rounded-full bg-[linear-gradient(135deg,#ff7bd5_0%,#a54dff_36%,#2f8fff_100%)]" style={{ width: `${completionPercent}%` }} />
+          </div>
+          <p className="mt-3 text-sm text-ink-muted">
+            {completedChecklistCount} of {checklist.length || 0} planner profile basics are filled in.
+          </p>
+        </Card>
+        <Card>
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-accent-soft p-3 text-accent">
+              <CalendarRange className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Packages and requests</p>
+              <p className="mt-1 text-2xl font-semibold text-ink">
+                {(packagesByProfileId.get(primaryProfile?.id ?? "")?.length ?? 0)} / {leads.length}
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-ink-muted">
+            Package count first, lead count second. Add packages so hosts can choose between consults and fuller planning support.
+          </p>
+        </Card>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[0.82fr_1.18fr]">
         <Card>
           <div className="flex items-center gap-3">
@@ -97,6 +184,16 @@ export default async function PlannerDashboardPage() {
                     This planner profile is paused and hidden from marketplace search until it is reactivated.
                   </p>
                 ) : null}
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {getPlannerChecklist(profile).map((item) => (
+                    <div key={item.label} className="rounded-2xl bg-canvas px-4 py-3 text-sm text-ink-muted">
+                      <span className={item.done ? "font-semibold text-ink" : ""}>
+                        {item.done ? "Done" : "Missing"}:
+                      </span>{" "}
+                      {item.label}
+                    </div>
+                  ))}
+                </div>
                 <details className="mt-4">
                   <summary className="cursor-pointer text-sm font-medium text-ink">Edit profile</summary>
                   <form action={updatePlannerProfileAction} className="mt-4 grid gap-3">
