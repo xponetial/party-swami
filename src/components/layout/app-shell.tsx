@@ -91,25 +91,54 @@ export async function AppShell({
         .maybeSingle<{ plan_tier: string | null }>()
     : { data: null };
   const marketplaceMembershipTier = user ? await getMarketplaceMembershipTier(user.id, user.email) : null;
-  const planTier = profile?.plan_tier ?? marketplaceMembershipTier ?? "free";
+  const providerWorkspace =
+    user?.user_metadata?.membership_type === "vendor"
+      ? "vendor"
+      : user?.user_metadata?.membership_type === "planner"
+        ? "planner"
+        : marketplaceMembershipTier === "vendor"
+          ? "vendor"
+          : marketplaceMembershipTier === "professional_party_planner"
+            ? "planner"
+            : null;
+  const planTier =
+    providerWorkspace === "vendor"
+      ? "vendor"
+      : providerWorkspace === "planner"
+        ? "professional_party_planner"
+        : profile?.plan_tier ?? "free";
   const hasImageAccess = planTier === "pro" || planTier === "admin";
   const imageUsage =
     user && hasImageAccess
       ? await getInviteImageUsageForUser(supabase, user.id, planTier === "admin" ? "admin" : "pro")
       : null;
-  const visibleSections = [
-    ...sections.slice(0, 3),
-    ...(hasImageAccess ? [{ href: "/images", label: "Image Library", icon: Images }] : []),
-    ...sections.slice(3),
-    ...(planTier === "admin" ? [{ href: "/admin", label: "Admin", icon: Sparkles }] : []),
-  ];
+  const providerDashboardHref = providerWorkspace === "vendor" ? "/vendors/dashboard" : "/planners/dashboard";
+  const visibleSections = providerWorkspace
+    ? [
+        {
+          href: providerDashboardHref,
+          label: providerWorkspace === "vendor" ? "Vendor Dashboard" : "Planner Dashboard",
+          icon: Store,
+        },
+      ]
+    : [
+        ...sections.slice(0, 3),
+        ...(hasImageAccess ? [{ href: "/images", label: "Image Library", icon: Images }] : []),
+        ...sections.slice(3),
+        ...(planTier === "admin" ? [{ href: "/admin", label: "Admin", icon: Sparkles }] : []),
+      ];
   const contactContext = getAppContactContext(currentSection, eventNav?.active);
 
   return (
     <>
       {user ? (
         <div className="fixed right-4 top-4 z-[70] sm:right-6 sm:top-5 lg:right-8 lg:top-6">
-          <MembershipMenu email={user.email} planTier={profile?.plan_tier} />
+          <MembershipMenu
+            email={user.email}
+            planTier={planTier}
+            dashboardHref={providerWorkspace ? providerDashboardHref : "/dashboard"}
+            providerOnly={Boolean(providerWorkspace)}
+          />
         </div>
       ) : null}
       <div className="mx-auto flex min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -118,7 +147,13 @@ export async function AppShell({
         <div className="rounded-3xl bg-white/30 p-4">
           <BrandLockup
             imageWidth={210}
-            subtitle="Browser-based planning, invites, guests, shopping, and tasks in one host workspace."
+            subtitle={
+              providerWorkspace
+                ? providerWorkspace === "vendor"
+                  ? "Vendor workspace for storefront status, lead requests, packages, and review responses."
+                  : "Planner workspace for profile status, client requests, packages, and review responses."
+                : "Browser-based planning, invites, guests, shopping, and tasks in one host workspace."
+            }
             priority
           />
         </div>
@@ -139,7 +174,7 @@ export async function AppShell({
             </Link>
           ))}
         </nav>
-        {eventNav ? (
+        {!providerWorkspace && eventNav ? (
           <div className="mt-6 rounded-[1.75rem] border border-white/70 bg-white/35 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Current event</p>
             <p className="mt-2 text-sm font-semibold text-ink">{eventNav.eventTitle ?? "Event workspace"}</p>
@@ -167,14 +202,26 @@ export async function AppShell({
           </div>
         ) : null}
         <div className="mt-auto space-y-3">
-          {imageUsage ? (
+          {!providerWorkspace && imageUsage ? (
             <ImageBudgetMeter initialUsage={imageUsage} />
           ) : null}
           <div className="rounded-3xl bg-[linear-gradient(135deg,_rgba(38,146,255,0.96),_rgba(139,70,255,0.92))] px-4 py-5 text-white">
-            <p className="text-sm uppercase tracking-[0.18em] text-white/70">AI host operating system</p>
-            <p className="mt-2 text-lg font-semibold">Plan, invite, track, and execute</p>
+            <p className="text-sm uppercase tracking-[0.18em] text-white/70">
+              {providerWorkspace ? "Marketplace provider account" : "AI host operating system"}
+            </p>
+            <p className="mt-2 text-lg font-semibold">
+              {providerWorkspace
+                ? providerWorkspace === "vendor"
+                  ? "Review leads and grow your storefront"
+                  : "Manage inquiries and planning packages"
+                : "Plan, invite, track, and execute"}
+            </p>
             <p className="mt-2 text-sm leading-6 text-white/85">
-              The workspace now carries the Party Swami brand through the shell so every flow feels connected.
+              {providerWorkspace
+                ? providerWorkspace === "vendor"
+                  ? "This workspace is dedicated to your vendor profile, approval status, packages, and lead follow-up."
+                  : "This workspace is dedicated to your planner profile, approval status, service packages, and client follow-up."
+                : "The workspace now carries the Party Swami brand through the shell so every flow feels connected."}
             </p>
           </div>
         </div>
@@ -205,7 +252,7 @@ export async function AppShell({
           <SiteFooter contactContext={contactContext} pageLabel={title} />
         </div>
       </div>
-      {user ? <TourManager /> : null}
+      {user && !providerWorkspace ? <TourManager /> : null}
     </>
   );
 }

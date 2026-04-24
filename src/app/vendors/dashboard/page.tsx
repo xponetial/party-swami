@@ -46,10 +46,18 @@ export default async function VendorDashboardPage() {
 
   return (
     <AppShell
-      currentSection="/marketplace"
+      currentSection="/vendors/dashboard"
       title="Vendor dashboard"
       description="Manage storefront visibility and review tracked lead requests. New signups stay in review until marketplace admin approval."
-      actions={<Button asChild><Link href="/vendors/signup">{profiles.length ? "Add storefront" : "Start storefront"}</Link></Button>}
+      actions={
+        hasOnlyPendingProfiles ? (
+          <Button type="button" variant="secondary" disabled>
+            Pending approval
+          </Button>
+        ) : (
+          <Button asChild><Link href="/vendors/signup">{profiles.length ? "Add storefront" : "Start storefront"}</Link></Button>
+        )
+      }
     >
       <div className="grid gap-4 lg:grid-cols-[0.82fr_1.18fr]">
         <Card>

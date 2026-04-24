@@ -46,10 +46,18 @@ export default async function PlannerDashboardPage() {
 
   return (
     <AppShell
-      currentSection="/marketplace"
+      currentSection="/planners/dashboard"
       title="Planner dashboard"
       description="Review consultation and full-service lead requests. New planner signups stay in review until marketplace admin approval."
-      actions={<Button asChild><Link href="/planners/signup">{profiles.length ? "Add planner profile" : "Start planner profile"}</Link></Button>}
+      actions={
+        hasOnlyPendingProfiles ? (
+          <Button type="button" variant="secondary" disabled>
+            Pending approval
+          </Button>
+        ) : (
+          <Button asChild><Link href="/planners/signup">{profiles.length ? "Add planner profile" : "Start planner profile"}</Link></Button>
+        )
+      }
     >
       <div className="grid gap-4 lg:grid-cols-[0.82fr_1.18fr]">
         <Card>
