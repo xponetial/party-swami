@@ -1,11 +1,13 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { InvitePreviewCard } from "@/components/invite/invite-preview-card";
+import { Button } from "@/components/ui/button";
 import { getEventContext } from "@/lib/events";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import type { InviteFeatureAccess } from "@/lib/invite-feature-access";
 import { getInviteImageLibraryForUser } from "@/lib/invite-image-library";
 import { getInviteTemplateCatalog } from "@/lib/invite-template-catalog";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import Link from "next/link";
 
 export default async function EventInvitePage({
   params,
@@ -63,6 +65,11 @@ export default async function EventInvitePage({
       description="Invite editing, guest messaging, RSVP tracking, and reminder controls in one place."
       backHref={`/events/${eventId}`}
       eventNav={{ eventId, eventTitle: event.title, active: "invite" }}
+      actions={
+        <Button asChild variant="secondary">
+          <Link href={`/events/${eventId}/next-steps`}>Next steps</Link>
+        </Button>
+      }
     >
       <InvitePreviewCard
         event={event}

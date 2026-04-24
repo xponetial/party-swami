@@ -6,6 +6,8 @@ import { LogoutButton } from "@/components/auth/logout-button";
 type MembershipMenuProps = {
   planTier: string | null | undefined;
   email?: string | null;
+  dashboardHref?: string;
+  providerOnly?: boolean;
 };
 
 type MembershipBadge = {
@@ -45,7 +47,7 @@ function normalizeTier(planTier: string | null | undefined) {
   return BADGES[value] ? value : "free";
 }
 
-export function MembershipMenu({ planTier, email }: MembershipMenuProps) {
+export function MembershipMenu({ planTier, email, dashboardHref = "/dashboard", providerOnly = false }: MembershipMenuProps) {
   const normalizedTier = normalizeTier(planTier);
   const activeBadge = BADGES[normalizedTier];
 
@@ -83,26 +85,34 @@ export function MembershipMenu({ planTier, email }: MembershipMenuProps) {
 
         <div className="mt-3 grid gap-2">
           <Link
-            href="/billing"
-            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink transition hover:border-brand/35 hover:text-brand"
-          >
-            <CreditCard className="size-4" />
-            Billing
-          </Link>
-          <Link
-            href="/events/new"
-            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink transition hover:border-brand/35 hover:text-brand"
-          >
-            <UserCircle2 className="size-4" />
-            New Event
-          </Link>
-          <Link
-            href="/dashboard"
+            href={dashboardHref}
             className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink transition hover:border-brand/35 hover:text-brand"
           >
             <Settings className="size-4" />
-            Workspace
+            {normalizedTier === "vendor"
+              ? "Vendor dashboard"
+              : normalizedTier === "professional_party_planner"
+                ? "Planner dashboard"
+                : "Workspace"}
           </Link>
+          {!providerOnly ? (
+            <>
+              <Link
+                href="/billing"
+                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink transition hover:border-brand/35 hover:text-brand"
+              >
+                <CreditCard className="size-4" />
+                Billing
+              </Link>
+              <Link
+                href="/events/new"
+                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink transition hover:border-brand/35 hover:text-brand"
+              >
+                <UserCircle2 className="size-4" />
+                New Event
+              </Link>
+            </>
+          ) : null}
         </div>
 
         <div className="mt-4">

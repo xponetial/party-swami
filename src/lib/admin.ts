@@ -426,9 +426,53 @@ export type AdminSupportData = {
 export type AdminMarketplaceData = {
   totalClicks: number;
   totalReplacementActions: number;
+  totalLeads: number;
+  newLeads: number;
+  vendorLeads: number;
+  plannerLeads: number;
   topEventTypes: Array<{ label: string; count: number }>;
   topShoppingCategories: Array<{ label: string; count: number }>;
   topClickedEvents: Array<{ label: string; count: number }>;
+  notificationCounts: Array<{ label: string; count: number }>;
+  recentLeads: Array<{
+    id: string;
+    leadType: "vendor" | "planner_consultation" | "planner_full_service";
+    providerName: string;
+    providerType: "Vendor" | "Planner";
+    contactName: string;
+    contactEmail: string;
+    contactPhone: string | null;
+    eventTitle: string | null;
+    eventType: string | null;
+    eventZipCode: string | null;
+    budget: number | null;
+    message: string;
+    status: "new" | "contacted" | "quoted" | "won" | "lost";
+    createdAt: string;
+  }>;
+  providers: Array<{
+    id: string;
+    providerType: "vendor" | "planner";
+    name: string;
+    categoryOrServices: string;
+    city: string;
+    state: string | null;
+    zipCode: string;
+    status: "active" | "paused" | "pending_review";
+    isVerified: boolean;
+    leadCount: number;
+  }>;
+  reviews: Array<{
+    id: string;
+    providerName: string;
+    providerType: "Vendor" | "Planner";
+    rating: number;
+    title: string;
+    body: string;
+    providerResponse: string | null;
+    status: "pending_review" | "approved" | "rejected";
+    createdAt: string;
+  }>;
 };
 
 export type AdminIntegrationStatus = {
@@ -1631,10 +1675,22 @@ export async function getAdminSocialMediaData(): Promise<AdminSocialMediaData> {
   };
 }
 
-export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promise<AdminMarketplaceData> {
+export async function getAdminMarketplaceData(
+  rangeDays: AdminRangeDays,
+  filters: { status?: string; providerType?: string; query?: string } = {},
+): Promise<AdminMarketplaceData> {
   const supabase = createSupabaseAdminClient();
   const since = getRangeStart(rangeDays);
-  const [{ data: analytics = [] }, { data: events = [] }, { data: shoppingItems = [] }] = await Promise.all([
+  const [
+    { data: analytics = [] },
+    { data: events = [] },
+    { data: shoppingItems = [] },
+    { data: leads = [] },
+    { data: vendors = [] },
+    { data: planners = [] },
+    { data: notifications = [] },
+    { data: reviews = [] },
+  ] = await Promise.all([
     supabase
       .from("analytics_events")
       .select("id, user_id, event_id, event_name, metadata, created_at")
@@ -1665,11 +1721,120 @@ export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promis
           error: items.error,
         };
       }),
+    supabase
+      .from("marketplace_leads")
+      .select("id, lead_type, contact_name, contact_email, contact_phone, event_id, vendor_id, planner_id, event_type, event_zip_code, budget, message, status, created_at")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(30)
+      .returns<Array<{
+        id: string;
+        lead_type: "vendor" | "planner_consultation" | "planner_full_service";
+        contact_name: string;
+        contact_email: string;
+        contact_phone: string | null;
+        event_id: string | null;
+        vendor_id: string | null;
+        planner_id: string | null;
+        event_type: string | null;
+        event_zip_code: string | null;
+        budget: number | null;
+        message: string;
+        status: "new" | "contacted" | "quoted" | "won" | "lost";
+        created_at: string;
+      }>>(),
+    supabase
+      .from("vendors")
+      .select("id, business_name, category, city, state, zip_code, status, is_verified")
+      .returns<Array<{
+        id: string;
+        business_name: string;
+        category: string;
+        city: string;
+        state: string | null;
+        zip_code: string;
+        status: "active" | "paused" | "pending_review";
+        is_verified: boolean;
+      }>>(),
+    supabase
+      .from("planners")
+      .select("id, business_name, services, city, state, zip_code, status, is_verified")
+      .returns<Array<{
+        id: string;
+        business_name: string;
+        services: string[] | null;
+        city: string;
+        state: string | null;
+        zip_code: string;
+        status: "active" | "paused" | "pending_review";
+        is_verified: boolean;
+      }>>(),
+    supabase
+      .from("marketplace_notifications")
+      .select("status")
+      .gte("created_at", since)
+      .returns<Array<{ status: "pending" | "sent" | "skipped" | "failed" }>>(),
+    supabase
+      .from("marketplace_reviews")
+      .select("id, vendor_id, planner_id, rating, title, body, provider_response, status, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .returns<Array<{
+        id: string;
+        vendor_id: string | null;
+        planner_id: string | null;
+        rating: number;
+        title: string;
+        body: string;
+        provider_response: string | null;
+        status: "pending_review" | "approved" | "rejected";
+        created_at: string;
+      }>>(),
   ]);
 
   const eventById = new Map((events ?? []).map((event) => [event.id, event] as const));
+  const vendorById = new Map((vendors ?? []).map((vendor) => [vendor.id, vendor.business_name] as const));
+  const plannerById = new Map((planners ?? []).map((planner) => [planner.id, planner.business_name] as const));
   const clickEvents = (analytics ?? []).filter((entry) => entry.event_name === "shopping_link_clicked");
   const replacementCount = (analytics ?? []).filter((entry) => entry.event_name === "shopping_pick_replaced").length;
+  const normalizedQuery = filters.query?.trim().toLowerCase() ?? "";
+  const marketplaceLeads = (leads ?? []).filter((lead) => {
+    const providerType = lead.lead_type === "vendor" ? "vendor" : "planner";
+    const providerName = providerType === "vendor"
+      ? vendorById.get(lead.vendor_id ?? "") ?? ""
+      : plannerById.get(lead.planner_id ?? "") ?? "";
+
+    if (filters.status && filters.status !== "all" && lead.status !== filters.status) {
+      return false;
+    }
+
+    if (filters.providerType && filters.providerType !== "all" && providerType !== filters.providerType) {
+      return false;
+    }
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    return [
+      providerName,
+      lead.contact_name,
+      lead.contact_email,
+      lead.event_zip_code,
+      lead.event_type,
+      lead.message,
+    ]
+      .filter(Boolean)
+      .some((value) => value!.toLowerCase().includes(normalizedQuery));
+  });
+  const leadCountByVendor = (leads ?? []).reduce<Map<string, number>>((map, lead) => {
+    if (lead.vendor_id) map.set(lead.vendor_id, (map.get(lead.vendor_id) ?? 0) + 1);
+    return map;
+  }, new Map());
+  const leadCountByPlanner = (leads ?? []).reduce<Map<string, number>>((map, lead) => {
+    if (lead.planner_id) map.set(lead.planner_id, (map.get(lead.planner_id) ?? 0) + 1);
+    return map;
+  }, new Map());
 
   const topEventTypes = [...clickEvents.reduce<Map<string, number>>((map, entry) => {
     const eventType = entry.event_id ? eventById.get(entry.event_id)?.event_type ?? "unknown" : "unknown";
@@ -1696,13 +1861,90 @@ export async function getAdminMarketplaceData(rangeDays: AdminRangeDays): Promis
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
+  const notificationCounts = [...(notifications ?? []).reduce<Map<string, number>>((map, notification) => {
+    map.set(notification.status, (map.get(notification.status) ?? 0) + 1);
+    return map;
+  }, new Map()).entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
 
   return {
     totalClicks: clickEvents.length,
     totalReplacementActions: replacementCount,
+    totalLeads: marketplaceLeads.length,
+    newLeads: marketplaceLeads.filter((lead) => lead.status === "new").length,
+    vendorLeads: marketplaceLeads.filter((lead) => lead.lead_type === "vendor").length,
+    plannerLeads: marketplaceLeads.filter((lead) => lead.lead_type !== "vendor").length,
     topEventTypes,
     topShoppingCategories,
     topClickedEvents,
+    notificationCounts,
+    recentLeads: marketplaceLeads.map((lead) => {
+      const isVendorLead = lead.lead_type === "vendor";
+      const providerName = isVendorLead
+        ? vendorById.get(lead.vendor_id ?? "") ?? "Unknown vendor"
+        : plannerById.get(lead.planner_id ?? "") ?? "Unknown planner";
+      const event = lead.event_id ? eventById.get(lead.event_id) ?? null : null;
+
+      return {
+        id: lead.id,
+        leadType: lead.lead_type,
+        providerName,
+        providerType: isVendorLead ? "Vendor" : "Planner",
+        contactName: lead.contact_name,
+        contactEmail: lead.contact_email,
+        contactPhone: lead.contact_phone,
+        eventTitle: event?.title ?? null,
+        eventType: lead.event_type ?? event?.event_type ?? null,
+        eventZipCode: lead.event_zip_code,
+        budget: lead.budget,
+        message: lead.message,
+        status: lead.status,
+        createdAt: lead.created_at,
+      };
+    }),
+    providers: [
+      ...(vendors ?? []).map((vendor) => ({
+        id: vendor.id,
+        providerType: "vendor" as const,
+        name: vendor.business_name,
+        categoryOrServices: vendor.category,
+        city: vendor.city,
+        state: vendor.state,
+        zipCode: vendor.zip_code,
+        status: vendor.status,
+        isVerified: vendor.is_verified,
+        leadCount: leadCountByVendor.get(vendor.id) ?? 0,
+      })),
+      ...(planners ?? []).map((planner) => ({
+        id: planner.id,
+        providerType: "planner" as const,
+        name: planner.business_name,
+        categoryOrServices: (planner.services ?? []).slice(0, 2).join(", ") || "Planning",
+        city: planner.city,
+        state: planner.state,
+        zipCode: planner.zip_code,
+        status: planner.status,
+        isVerified: planner.is_verified,
+        leadCount: leadCountByPlanner.get(planner.id) ?? 0,
+      })),
+    ].sort((a, b) => b.leadCount - a.leadCount || a.name.localeCompare(b.name)),
+    reviews: (reviews ?? []).map((review) => {
+      const isVendorReview = Boolean(review.vendor_id);
+      return {
+        id: review.id,
+        providerName: isVendorReview
+          ? vendorById.get(review.vendor_id ?? "") ?? "Unknown vendor"
+          : plannerById.get(review.planner_id ?? "") ?? "Unknown planner",
+        providerType: isVendorReview ? "Vendor" : "Planner",
+        rating: review.rating,
+        title: review.title,
+        body: review.body,
+        providerResponse: review.provider_response,
+        status: review.status,
+        createdAt: review.created_at,
+      };
+    }),
   };
 }
 

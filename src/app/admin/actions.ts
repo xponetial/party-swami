@@ -13,6 +13,7 @@ import {
 import { requireAdminAccess } from "@/lib/admin";
 import { uploadSocialMediaAsset } from "@/lib/social-media-assets";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
 const planTierSchema = z.object({
   userId: z.string().uuid(),
@@ -35,6 +36,26 @@ const adminNoteSchema = z.object({
   scopeType: z.enum(["user", "event"]),
   scopeId: z.string().uuid(),
   note: z.string().trim().min(5).max(2000),
+});
+
+const marketplaceLeadStatusSchema = z.object({
+  leadId: z.string().uuid(),
+  status: z.enum(["new", "contacted", "quoted", "won", "lost"]),
+  returnTo: z.string().startsWith("/admin/marketplace").default("/admin/marketplace"),
+});
+
+const marketplaceProviderStatusSchema = z.object({
+  providerId: z.string().uuid(),
+  providerType: z.enum(["vendor", "planner"]),
+  status: z.enum(["active", "paused", "pending_review"]),
+  isVerified: z.coerce.boolean().optional(),
+  returnTo: z.string().startsWith("/admin/marketplace").default("/admin/marketplace"),
+});
+
+const marketplaceReviewStatusSchema = z.object({
+  reviewId: z.string().uuid(),
+  status: z.enum(["pending_review", "approved", "rejected"]),
+  returnTo: z.string().startsWith("/admin/marketplace").default("/admin/marketplace"),
 });
 
 const socialMediaBrandProfileSchema = z.object({
@@ -479,6 +500,139 @@ export async function updateFeatureFlagAction(formData: FormData) {
   }
 
   revalidatePath("/admin/flags");
+}
+
+export async function updateAdminMarketplaceLeadStatusAction(formData: FormData) {
+  const admin = await requireAdminAccess();
+  const parsed = marketplaceLeadStatusSchema.safeParse({
+    leadId: formData.get("leadId"),
+    status: formData.get("status"),
+    returnTo: formData.get("returnTo") || "/admin/marketplace",
+  });
+
+  if (!parsed.success) {
+    redirect("/admin/marketplace");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("marketplace_leads")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.leadId);
+
+  if (!error) {
+    await Promise.all([
+      trackAnalyticsEvent(supabase, {
+        eventName: "marketplace_lead_status_updated",
+        userId: admin.userId,
+        metadata: {
+          lead_id: parsed.data.leadId,
+          status: parsed.data.status,
+          source: "admin",
+        },
+      }),
+      createAuditLog(supabase, {
+        action: "marketplace_lead_status_updated",
+        userId: admin.userId,
+        metadata: {
+          lead_id: parsed.data.leadId,
+          status: parsed.data.status,
+          source: "admin",
+        },
+      }),
+    ]);
+  }
+
+  revalidatePath("/admin/marketplace");
+  redirect(parsed.data.returnTo);
+}
+
+export async function updateAdminMarketplaceProviderStatusAction(formData: FormData) {
+  const admin = await requireAdminAccess();
+  const parsed = marketplaceProviderStatusSchema.safeParse({
+    providerId: formData.get("providerId"),
+    providerType: formData.get("providerType"),
+    status: formData.get("status"),
+    isVerified: formData.get("isVerified") === "true",
+    returnTo: formData.get("returnTo") || "/admin/marketplace",
+  });
+
+  if (!parsed.success) {
+    redirect("/admin/marketplace");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const table = parsed.data.providerType === "vendor" ? "vendors" : "planners";
+  const { error } = await supabase
+    .from(table)
+    .update({
+      status: parsed.data.status,
+      is_verified: parsed.data.isVerified ?? false,
+    })
+    .eq("id", parsed.data.providerId);
+
+  if (!error) {
+    await Promise.all([
+      trackAnalyticsEvent(supabase, {
+        eventName: "marketplace_provider_status_updated",
+        userId: admin.userId,
+        metadata: {
+          provider_id: parsed.data.providerId,
+          provider_type: parsed.data.providerType,
+          status: parsed.data.status,
+          is_verified: parsed.data.isVerified ?? false,
+        },
+      }),
+      createAuditLog(supabase, {
+        action: "marketplace_provider_status_updated",
+        userId: admin.userId,
+        metadata: {
+          provider_id: parsed.data.providerId,
+          provider_type: parsed.data.providerType,
+          status: parsed.data.status,
+          is_verified: parsed.data.isVerified ?? false,
+        },
+      }),
+    ]);
+  }
+
+  revalidatePath("/admin/marketplace");
+  revalidatePath("/marketplace");
+  redirect(parsed.data.returnTo);
+}
+
+export async function updateAdminMarketplaceReviewStatusAction(formData: FormData) {
+  const admin = await requireAdminAccess();
+  const parsed = marketplaceReviewStatusSchema.safeParse({
+    reviewId: formData.get("reviewId"),
+    status: formData.get("status"),
+    returnTo: formData.get("returnTo") || "/admin/marketplace",
+  });
+
+  if (!parsed.success) {
+    redirect("/admin/marketplace");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("marketplace_reviews")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.reviewId);
+
+  if (!error) {
+    await createAuditLog(supabase, {
+      action: "marketplace_review_status_updated",
+      userId: admin.userId,
+      metadata: {
+        review_id: parsed.data.reviewId,
+        status: parsed.data.status,
+      },
+    });
+  }
+
+  revalidatePath("/admin/marketplace");
+  revalidatePath("/marketplace");
+  redirect(parsed.data.returnTo);
 }
 
 export async function createAdminNoteAction(formData: FormData) {
