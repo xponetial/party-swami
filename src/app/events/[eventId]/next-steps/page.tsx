@@ -72,7 +72,7 @@ export default async function EventNextStepsPage({
             ) : null}
           </div>
           <Button asChild variant="secondary" className="mt-5 w-full">
-            <Link href="/planners">
+            <Link href={`/events/${eventId}/planners`}>
               Browse all planners
               <ArrowRight className="size-4" />
             </Link>
@@ -99,7 +99,7 @@ export default async function EventNextStepsPage({
               </Link>
             </Button>
             <Button asChild variant="secondary" className="w-full">
-              <Link href="/planners">Browse planners</Link>
+              <Link href={`/events/${eventId}/planners`}>Browse planners</Link>
             </Button>
           </div>
         </Card>
