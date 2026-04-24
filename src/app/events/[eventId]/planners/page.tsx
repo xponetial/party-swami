@@ -148,6 +148,17 @@ export default async function EventPlannerSearchPage({
           </Card>
         ) : null}
       </section>
+
+      <Card className="bg-white/80">
+        <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Next step</p>
+        <h3 className="mt-2 text-xl font-semibold text-ink">Turn the plan into a host-ready timeline</h3>
+        <p className="mt-2 text-sm leading-6 text-ink-muted">
+          Once you&apos;ve reached out to a planner or decided to run the party yourself, move into the timeline to lock your checklist and day-of run-of-show.
+        </p>
+        <Button asChild className="mt-4">
+          <Link href={`/events/${eventId}/timeline`}>Next: Timeline and tasks</Link>
+        </Button>
+      </Card>
     </AppShell>
   );
 }
