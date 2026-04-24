@@ -140,9 +140,9 @@ function getPrimaryStep({
 
   if (shoppingItems.length === 0) {
     return {
-      href: `/events/${eventId}/shopping`,
-      label: "Review shopping recommendations",
-      detail: "Turn the plan into a real item list with spend and retailer choices.",
+      href: `/events/${eventId}/next-steps`,
+      label: "Pick your path",
+      detail: "Decide between DIY shopping, professional planner help, or both before diving in.",
       step: "Step 3 of 4",
     };
   }
