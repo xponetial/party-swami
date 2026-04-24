@@ -14,7 +14,6 @@ import { ImageBudgetMeter } from "@/components/layout/image-budget-meter";
 import { BrandLockup } from "@/components/layout/brand-lockup";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SupportFab } from "@/components/contact/support-fab";
-import { TourManager } from "@/components/tour/tour-manager";
 import { Button } from "@/components/ui/button";
 import { getInviteImageUsageForUser } from "@/lib/ai/usage";
 import { getMarketplaceMembershipTier } from "@/lib/marketplace";
@@ -252,7 +251,6 @@ export async function AppShell({
           <SiteFooter contactContext={contactContext} pageLabel={title} />
         </div>
       </div>
-      {user && !providerWorkspace ? <TourManager /> : null}
     </>
   );
 }
