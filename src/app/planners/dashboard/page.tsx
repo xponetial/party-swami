@@ -11,7 +11,13 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getLeadActivity, getOwnedPlannerDashboard, getOwnedPlannerReviews, getPlannerPackages } from "@/lib/marketplace";
+import {
+  claimPendingPlannerProfilesForOwner,
+  getLeadActivity,
+  getOwnedPlannerDashboard,
+  getOwnedPlannerReviews,
+  getPlannerPackages,
+} from "@/lib/marketplace";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MARKETPLACE_LEAD_STATUSES, PLANNER_SERVICES } from "@/types/marketplace";
 
@@ -25,6 +31,7 @@ export default async function PlannerDashboardPage() {
     redirect("/login");
   }
 
+  await claimPendingPlannerProfilesForOwner(user.id, user.email);
   const { profiles, leads } = await getOwnedPlannerDashboard(user.id);
   const [packagesByProfileEntries, activityByLeadId, reviews] = await Promise.all([
     Promise.all(profiles.map(async (profile) => [profile.id, await getPlannerPackages(profile.id)] as const)),

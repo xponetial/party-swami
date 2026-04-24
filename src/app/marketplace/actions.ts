@@ -260,6 +260,15 @@ async function requireUser() {
   return { supabase, user };
 }
 
+async function getOptionalUser() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return { supabase, user };
+}
+
 function redirectWithError(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
@@ -340,6 +349,53 @@ export async function createPublicVendorSignupAction(formData: FormData) {
 
   if (!parsed.success) {
     redirectWithError("/vendors/signup", parsed.error.issues[0]?.message ?? "Check your vendor details.");
+  }
+
+  const { user } = await getOptionalUser();
+  if (user) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.from("vendors").insert({
+      owner_id: user.id,
+      business_name: parsed.data.businessName,
+      slug: createSlug(parsed.data.businessName),
+      category: parsed.data.category,
+      city: parsed.data.city,
+      state: parsed.data.state?.trim() || null,
+      zip_code: parsed.data.zipCode,
+      service_radius_miles: parsed.data.serviceRadiusMiles,
+      contact_name: parsed.data.contactName?.trim() || null,
+      contact_email: parsed.data.contactEmail,
+      contact_phone: parsed.data.contactPhone?.trim() || null,
+      website_url: parsed.data.websiteUrl || null,
+      affiliate_url: parsed.data.affiliateUrl || null,
+      pricing_model: parsed.data.pricingModel,
+      starting_price: parsed.data.startingPrice,
+      description: parsed.data.description,
+      portfolio_urls: parseUrlList(parsed.data.portfolioUrls),
+      profile_image_url: "/vendor-membership.png",
+      status: "pending_review",
+    });
+
+    if (error) {
+      redirectWithError("/vendors/signup", error.message);
+    }
+
+    await Promise.all([
+      trackAnalyticsEvent(supabase, {
+        eventName: "marketplace_provider_profile_updated",
+        userId: user.id,
+        metadata: { provider_type: "vendor", source: "public_signup_authenticated" },
+      }),
+      createAuditLog(supabase, {
+        action: "marketplace_vendor_public_signup_submitted",
+        userId: user.id,
+        metadata: { business_name: parsed.data.businessName, contact_email: parsed.data.contactEmail },
+      }),
+    ]);
+
+    revalidatePath("/admin/marketplace");
+    revalidatePath("/vendors/dashboard");
+    redirect("/vendors/dashboard?created=pending_review");
   }
 
   let login;
@@ -489,6 +545,55 @@ export async function createPublicPlannerSignupAction(formData: FormData) {
 
   if (!parsed.success) {
     redirectWithError("/planners/signup", parsed.error.issues[0]?.message ?? "Check your planner details.");
+  }
+
+  const { user } = await getOptionalUser();
+  if (user) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.from("planners").insert({
+      owner_id: user.id,
+      business_name: parsed.data.businessName,
+      slug: createSlug(parsed.data.businessName),
+      city: parsed.data.city,
+      state: parsed.data.state?.trim() || null,
+      zip_code: parsed.data.zipCode,
+      service_radius_miles: parsed.data.serviceRadiusMiles,
+      contact_name: parsed.data.contactName,
+      contact_email: parsed.data.contactEmail,
+      contact_phone: parsed.data.contactPhone?.trim() || null,
+      website_url: parsed.data.websiteUrl || null,
+      years_experience: parsed.data.yearsExperience,
+      certifications: parsed.data.certifications?.trim() || null,
+      consultation_price: parsed.data.consultationPrice,
+      hourly_rate: parsed.data.hourlyRate,
+      full_service_minimum: parsed.data.fullServiceMinimum,
+      bio: parsed.data.bio,
+      services: parsed.data.services,
+      availability_note: parsed.data.availabilityNote?.trim() || null,
+      profile_image_url: "/party-planner-membership.png",
+      status: "pending_review",
+    });
+
+    if (error) {
+      redirectWithError("/planners/signup", error.message);
+    }
+
+    await Promise.all([
+      trackAnalyticsEvent(supabase, {
+        eventName: "marketplace_provider_profile_updated",
+        userId: user.id,
+        metadata: { provider_type: "planner", source: "public_signup_authenticated" },
+      }),
+      createAuditLog(supabase, {
+        action: "marketplace_planner_public_signup_submitted",
+        userId: user.id,
+        metadata: { business_name: parsed.data.businessName, contact_email: parsed.data.contactEmail },
+      }),
+    ]);
+
+    revalidatePath("/admin/marketplace");
+    revalidatePath("/planners/dashboard");
+    redirect("/planners/dashboard?created=pending_review");
   }
 
   let login;

@@ -11,7 +11,13 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getLeadActivity, getOwnedVendorDashboard, getOwnedVendorReviews, getVendorPackages } from "@/lib/marketplace";
+import {
+  claimPendingVendorProfilesForOwner,
+  getLeadActivity,
+  getOwnedVendorDashboard,
+  getOwnedVendorReviews,
+  getVendorPackages,
+} from "@/lib/marketplace";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MARKETPLACE_LEAD_STATUSES, VENDOR_CATEGORIES } from "@/types/marketplace";
 
@@ -25,6 +31,7 @@ export default async function VendorDashboardPage() {
     redirect("/login");
   }
 
+  await claimPendingVendorProfilesForOwner(user.id, user.email);
   const { profiles, leads } = await getOwnedVendorDashboard(user.id);
   const [packagesByProfileEntries, activityByLeadId, reviews] = await Promise.all([
     Promise.all(profiles.map(async (profile) => [profile.id, await getVendorPackages(profile.id)] as const)),

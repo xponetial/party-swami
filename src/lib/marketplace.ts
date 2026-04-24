@@ -1,5 +1,6 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   MarketplaceLead,
   MarketplaceLeadActivity,
@@ -534,6 +535,28 @@ export async function getOwnedVendorDashboard(userId: string) {
   };
 }
 
+export async function claimPendingVendorProfilesForOwner(userId: string, email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { data: ownedProfiles } = await supabase
+    .from("vendors")
+    .select("id")
+    .eq("owner_id", userId)
+    .limit(1)
+    .returns<Array<{ id: string }>>();
+
+  if ((ownedProfiles ?? []).length) return;
+
+  await supabase
+    .from("vendors")
+    .update({ owner_id: userId })
+    .ilike("contact_email", normalizedEmail)
+    .eq("status", "pending_review")
+    .neq("owner_id", userId);
+}
+
 export async function getOwnedVendorReviews(userId: string) {
   const supabase = await createSupabaseServerClient();
   const { data: vendors } = await supabase
@@ -593,6 +616,28 @@ export async function getOwnedPlannerDashboard(userId: string) {
       packageTitle: lead.package_id ? packageTitleById.get(lead.package_id) ?? null : null,
     })) ?? [],
   };
+}
+
+export async function claimPendingPlannerProfilesForOwner(userId: string, email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { data: ownedProfiles } = await supabase
+    .from("planners")
+    .select("id")
+    .eq("owner_id", userId)
+    .limit(1)
+    .returns<Array<{ id: string }>>();
+
+  if ((ownedProfiles ?? []).length) return;
+
+  await supabase
+    .from("planners")
+    .update({ owner_id: userId })
+    .ilike("contact_email", normalizedEmail)
+    .eq("status", "pending_review")
+    .neq("owner_id", userId);
 }
 
 export async function getOwnedPlannerReviews(userId: string) {
