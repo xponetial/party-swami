@@ -48,3 +48,46 @@ export function mergeTourState(current: unknown, patch: Partial<TourState>): Tou
   });
 }
 
+export function getTourPageKeyFromPath(pathname: string): string | null {
+  if (/^\/events\/[^/]+$/.test(pathname)) {
+    return "overview";
+  }
+
+  if (pathname === "/dashboard") {
+    return "dashboard";
+  }
+
+  if (pathname === "/events/new") {
+    return "create-event";
+  }
+
+  if (pathname.includes("/invite")) {
+    return "invite";
+  }
+
+  if (pathname.includes("/guests")) {
+    return "guests";
+  }
+
+  if (pathname.includes("/next-steps")) {
+    return "next-steps";
+  }
+
+  if (pathname.includes("/timeline")) {
+    return "timeline";
+  }
+
+  if (pathname.includes("/settings")) {
+    return "settings";
+  }
+
+  if (pathname.includes("/shopping")) {
+    return "shopping";
+  }
+
+  if (pathname === "/billing" || pathname === "/images") {
+    return "premium";
+  }
+
+  return null;
+}

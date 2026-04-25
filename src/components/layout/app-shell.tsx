@@ -14,6 +14,7 @@ import { ImageBudgetMeter } from "@/components/layout/image-budget-meter";
 import { BrandLockup } from "@/components/layout/brand-lockup";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SupportFab } from "@/components/contact/support-fab";
+import { TourHeaderButton } from "@/components/tour/tour-header-button";
 import { TourManager } from "@/components/tour/tour-manager";
 import { Button } from "@/components/ui/button";
 import { getInviteImageUsageForUser } from "@/lib/ai/usage";
@@ -206,6 +207,7 @@ export async function AppShell({
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">{description}</p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-3">
+                {user ? <TourHeaderButton /> : null}
                 {actions ? actions : null}
               </div>
             </div>

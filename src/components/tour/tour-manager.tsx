@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, HelpCircle, Map, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { normalizeTourState, TOUR_STEP_COUNT, TourState } from "@/lib/tour";
+import { getTourPageKeyFromPath, normalizeTourState, TOUR_STEP_COUNT, TourState } from "@/lib/tour";
 import { cn } from "@/lib/utils";
 
 type TourStep = {
@@ -93,6 +93,12 @@ const tourSteps: TourStep[] = [
 ];
 
 const pageTours: Record<string, TourStep> = {
+  overview: {
+    key: "overview-mini",
+    title: "Overview tour",
+    body: "Overview is your event snapshot: invite readiness, guest progress, shopping momentum, and checklist status in one place.",
+    selector: "[data-tour-id='event-nav-overview']",
+  },
   dashboard: {
     key: "dashboard-mini",
     title: "Dashboard tour",
@@ -119,11 +125,23 @@ const pageTours: Record<string, TourStep> = {
     body: "Use this workspace to add guests, monitor RSVP status, and keep outreach organized.",
     selector: "[data-tour-id='event-nav-guests']",
   },
-  planning: {
-    key: "planning-mini",
-    title: "Planning tools tour",
-    body: "Next steps, tasks, timelines, and marketplace paths turn the party plan into a sequence you can execute.",
+  "next-steps": {
+    key: "next-steps-mini",
+    title: "Next steps tour",
+    body: "Next Steps helps you choose the execution path: DIY shopping, planner support, or direct vendor outreach.",
     selector: "[data-tour-id='event-nav-next-steps']",
+  },
+  timeline: {
+    key: "timeline-mini",
+    title: "Timeline tour",
+    body: "Timeline keeps preparation and day-of execution structured with tasks, milestones, and completion tracking.",
+    selector: "[data-tour-id='event-nav-timeline']",
+  },
+  settings: {
+    key: "settings-mini",
+    title: "Settings tour",
+    body: "Settings covers profile controls, privacy and billing context, plus AI plan version history and restore options.",
+    selector: "[data-tour-id='event-nav-settings']",
   },
   shopping: {
     key: "shopping-mini",
@@ -139,38 +157,6 @@ const pageTours: Record<string, TourStep> = {
     href: "/billing",
   },
 };
-
-function pageKeyFromPath(pathname: string) {
-  if (pathname === "/dashboard") {
-    return "dashboard";
-  }
-
-  if (pathname === "/events/new") {
-    return "create-event";
-  }
-
-  if (pathname.includes("/invite")) {
-    return "invite";
-  }
-
-  if (pathname.includes("/guests")) {
-    return "guests";
-  }
-
-  if (pathname.includes("/next-steps") || pathname.includes("/timeline") || pathname.includes("/settings")) {
-    return "planning";
-  }
-
-  if (pathname.includes("/shopping")) {
-    return "shopping";
-  }
-
-  if (pathname === "/billing" || pathname === "/images") {
-    return "premium";
-  }
-
-  return null;
-}
 
 async function persistPatch(patch: Partial<TourState>) {
   const response = await fetch("/api/tour-update", {
@@ -196,7 +182,7 @@ export function TourManager() {
   const [pageTourKey, setPageTourKey] = useState<string | null>(null);
   const [targetBox, setTargetBox] = useState<TargetBox | null>(null);
 
-  const currentPageKey = useMemo(() => pageKeyFromPath(pathname), [pathname]);
+  const currentPageKey = useMemo(() => getTourPageKeyFromPath(pathname), [pathname]);
   const activeStep = mode === "page" && pageTourKey
     ? pageTours[pageTourKey]
     : tourSteps[tourState?.current_step ?? 0];
@@ -234,10 +220,15 @@ export function TourManager() {
       const requestedStep = Number.isInteger(customEvent.detail?.step) ? Number(customEvent.detail?.step) : 0;
       const requestedMode = customEvent.detail?.mode ?? "full";
 
-      if (requestedMode === "page" && customEvent.detail?.pageKey) {
+      if (requestedMode === "page") {
+        const resolvedPageKey = customEvent.detail?.pageKey ?? getTourPageKeyFromPath(pathname);
+        if (!resolvedPageKey || !pageTours[resolvedPageKey]) {
+          return;
+        }
+
         requestAnimationFrame(() => {
           setMode("page");
-          setPageTourKey(customEvent.detail?.pageKey ?? null);
+          setPageTourKey(resolvedPageKey);
           setIsMenuOpen(false);
           setIsOpen(true);
         });
@@ -267,7 +258,7 @@ export function TourManager() {
     return () => {
       window.removeEventListener("party-swami-tour:open", handler as EventListener);
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     if (!tourState || !currentPageKey) {
