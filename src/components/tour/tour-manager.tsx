@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, HelpCircle, Map, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Map, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_TOUR_STATE, getTourPageKeyFromPath, normalizeTourState, TOUR_STEP_COUNT, TourState } from "@/lib/tour";
 import { cn } from "@/lib/utils";
@@ -873,10 +873,6 @@ export function TourManager() {
                 </div>
               </div>
             </div>
-          </div>
-          <div className="pointer-events-none fixed bottom-24 right-6 hidden items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-xs font-medium text-ink shadow-party md:flex">
-            <HelpCircle className="size-3.5 text-brand" />
-            Help / Tour
           </div>
         </div>
       ) : null}
