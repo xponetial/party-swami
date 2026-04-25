@@ -65,6 +65,14 @@ export function getTourPageKeyFromPath(pathname: string): string | null {
     return "create-event";
   }
 
+  if (pathname === "/vendors/dashboard") {
+    return "vendor-dashboard";
+  }
+
+  if (pathname === "/planners/dashboard") {
+    return "planner-dashboard";
+  }
+
   if (pathname === "/marketplace") {
     return "marketplace";
   }

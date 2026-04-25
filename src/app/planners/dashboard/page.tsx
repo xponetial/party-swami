@@ -98,7 +98,7 @@ export default async function PlannerDashboardPage() {
         )
       }
     >
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div data-tour-id="planner-dashboard-summary" className="grid gap-4 xl:grid-cols-3">
         <Card>
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-accent-soft p-3 text-accent">
@@ -147,7 +147,7 @@ export default async function PlannerDashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[0.82fr_1.18fr]">
-        <Card>
+        <Card data-tour-id="planner-dashboard-profiles">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-accent-soft p-3 text-accent">
               <Handshake className="size-5" />
@@ -264,7 +264,7 @@ export default async function PlannerDashboardPage() {
           </div>
         </Card>
 
-        <Card>
+        <Card data-tour-id="planner-dashboard-requests">
           <h2 className="text-2xl font-semibold text-ink">Client requests</h2>
           <div className="mt-5 grid gap-3">
             {leads.length ? leads.map((lead) => (
@@ -328,7 +328,7 @@ export default async function PlannerDashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card data-tour-id="planner-dashboard-reviews">
         <h2 className="text-2xl font-semibold text-ink">Review responses</h2>
         <p className="mt-2 text-sm leading-6 text-ink-muted">
           Respond to host reviews. Responses show publicly once the review is approved.
