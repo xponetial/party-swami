@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRef } from "react";
 import { ChevronDown, CreditCard, Settings, UserCircle2, WandSparkles } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 
@@ -50,13 +51,15 @@ function normalizeTier(planTier: string | null | undefined) {
 export function MembershipMenu({ planTier, email }: MembershipMenuProps) {
   const normalizedTier = normalizeTier(planTier);
   const activeBadge = BADGES[normalizedTier];
+  const detailsRef = useRef<HTMLDetailsElement>(null);
 
   function openTourFromMenu() {
+    detailsRef.current?.removeAttribute("open");
     window.dispatchEvent(new CustomEvent("party-swami-tour:open", { detail: { mode: "full" } }));
   }
 
   return (
-    <details className="group relative">
+    <details ref={detailsRef} className="group relative">
       <summary className="list-none inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/80 bg-[linear-gradient(135deg,rgba(255,247,255,0.92)_0%,rgba(240,232,255,0.92)_45%,rgba(236,245,255,0.92)_100%)] px-2 py-2 text-ink shadow-[0_14px_30px_rgba(101,85,176,0.12)] transition hover:border-brand/35 hover:bg-white">
         <Image
           alt={`${activeBadge.label} membership badge`}
