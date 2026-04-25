@@ -93,9 +93,13 @@ const tourSteps: TourStep[] = [
 ];
 
 const pageTourLabels: Record<string, string> = {
+  marketing: "Marketing",
   overview: "Overview",
   dashboard: "Dashboard",
   "create-event": "Create Event",
+  marketplace: "Marketplace",
+  images: "Image Library",
+  billing: "Billing",
   invite: "Invite",
   guests: "Guests",
   "next-steps": "Next Steps",
@@ -107,6 +111,27 @@ const pageTourLabels: Record<string, string> = {
 };
 
 const pageTours: Record<string, TourStep[]> = {
+  marketing: [
+    {
+      key: "marketing-hero",
+      title: "Marketing home",
+      body: "This page introduces Party Swami and guides first-time users into signup or preview flows.",
+      selector: "[data-tour-id='marketing-hero']",
+      href: "/",
+    },
+    {
+      key: "marketing-actions",
+      title: "Primary actions",
+      body: "These actions launch host onboarding, dashboard preview, or partner signup.",
+      selector: "[data-tour-id='marketing-actions']",
+    },
+    {
+      key: "marketing-preview",
+      title: "First-run preview",
+      body: "This preview explains the core product journey from setup through event execution.",
+      selector: "[data-tour-id='marketing-preview']",
+    },
+  ],
   overview: [
     {
       key: "overview-hero",
@@ -147,11 +172,29 @@ const pageTours: Record<string, TourStep[]> = {
   ],
   dashboard: [
     {
-      key: "dashboard-main",
-      title: "Dashboard view",
-      body: "This page collects active events, progress, and account context for returning users.",
-      selector: "[data-tour-id='page-main']",
+      key: "dashboard-metrics",
+      title: "Dashboard metrics",
+      body: "These top cards summarize active events, guests, tasks, and shopping momentum at a glance.",
+      selector: "[data-tour-id='dashboard-metrics']",
       href: "/dashboard",
+    },
+    {
+      key: "dashboard-events",
+      title: "Recent events",
+      body: "Manage active or completed workspaces from this panel with pagination and status controls.",
+      selector: "[data-tour-id='dashboard-recent-events']",
+    },
+    {
+      key: "dashboard-ai-summary",
+      title: "Latest AI summary",
+      body: "This panel shows the most recent AI plan output so you can reopen the latest generated event quickly.",
+      selector: "[data-tour-id='dashboard-ai-summary']",
+    },
+    {
+      key: "dashboard-telemetry",
+      title: "Usage and telemetry",
+      body: "These sections track connection health, AI usage, image usage, and product activity logs.",
+      selector: "[data-tour-id='dashboard-telemetry']",
     },
   ],
   "create-event": [
@@ -173,6 +216,63 @@ const pageTours: Record<string, TourStep[]> = {
       title: "Live invitation direction",
       body: "This preview updates as you edit so you can confirm the look and feel before creating the event.",
       selector: "[data-tour-id='create-event-preview']",
+    },
+  ],
+  marketplace: [
+    {
+      key: "marketplace-hero",
+      title: "Marketplace overview",
+      body: "This page helps hosts discover planners and vendors matched to local event context.",
+      selector: "[data-tour-id='marketplace-hero']",
+      href: "/marketplace",
+    },
+    {
+      key: "marketplace-search",
+      title: "Marketplace search",
+      body: "Filter by ZIP, category, radius, and planner service to narrow results quickly.",
+      selector: "[data-tour-id='marketplace-search']",
+    },
+    {
+      key: "marketplace-results",
+      title: "Marketplace results",
+      body: "Review vendor and planner cards here, then open profiles for details and outreach.",
+      selector: "[data-tour-id='marketplace-results']",
+    },
+  ],
+  images: [
+    {
+      key: "images-library",
+      title: "Image library",
+      body: "This page stores generated invite images so you can reuse them across events.",
+      selector: "[data-tour-id='images-library']",
+      href: "/images",
+    },
+    {
+      key: "images-grid",
+      title: "Generated image grid",
+      body: "Each card shows status, resolution, timestamp, and deep-links back to the event invite.",
+      selector: "[data-tour-id='images-grid']",
+    },
+  ],
+  billing: [
+    {
+      key: "billing-current-plan",
+      title: "Current plan",
+      body: "See your plan tier, billing status, and usage counters, then manage subscription actions from one place.",
+      selector: "[data-tour-id='billing-current-plan']",
+      href: "/billing",
+    },
+    {
+      key: "billing-pack-history",
+      title: "Image pack history",
+      body: "Track purchased image packs and when they were added to your account.",
+      selector: "[data-tour-id='billing-pack-history']",
+    },
+    {
+      key: "billing-stripe-sync",
+      title: "Stripe sync details",
+      body: "This troubleshooting panel helps verify customer, subscription, and price linkage.",
+      selector: "[data-tour-id='billing-stripe-sync']",
     },
   ],
   invite: [

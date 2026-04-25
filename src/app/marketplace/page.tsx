@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Handshake, MapPin, Search, Sparkles, Store } from "lucide-react";
-import { ShellFrame } from "@/components/layout/shell-frame";
+import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,14 +27,13 @@ export default async function MarketplacePage({
   const hasActiveSearch = Boolean(activeZip || filters.category || filters.service);
 
   return (
-    <ShellFrame
-      eyebrow="Phase 3 marketplace"
+    <AppShell
+      currentSection="/marketplace"
       title="Find party help near your event"
       description="Browse early vendor and professional planner profiles. Payments stay external in Phase 3 while Party Swami tracks introductions and demand."
-      contactContext="marketing"
     >
       <div className="grid gap-5">
-        <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
+        <section data-tour-id="marketplace-hero" className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
           <Card className="flex flex-col justify-between gap-6">
             <div>
               <Badge>Local matching MVP</Badge>
@@ -61,7 +60,7 @@ export default async function MarketplacePage({
             </div>
           </Card>
 
-          <Card>
+          <Card data-tour-id="marketplace-search">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-accent-soft p-3 text-accent">
                 <Search className="size-5" />
@@ -177,7 +176,7 @@ export default async function MarketplacePage({
           </Card>
         </section>
 
-        <section id="marketplace-results" className="scroll-mt-6 grid gap-5 xl:grid-cols-2">
+        <section data-tour-id="marketplace-results" id="marketplace-results" className="scroll-mt-6 grid gap-5 xl:grid-cols-2">
           <Card>
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -252,6 +251,6 @@ export default async function MarketplacePage({
           </Card>
         </section>
       </div>
-    </ShellFrame>
+    </AppShell>
   );
 }

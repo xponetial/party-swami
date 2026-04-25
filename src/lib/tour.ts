@@ -49,6 +49,10 @@ export function mergeTourState(current: unknown, patch: Partial<TourState>): Tou
 }
 
 export function getTourPageKeyFromPath(pathname: string): string | null {
+  if (pathname === "/") {
+    return "marketing";
+  }
+
   if (/^\/events\/[^/]+$/.test(pathname)) {
     return "overview";
   }
@@ -59,6 +63,18 @@ export function getTourPageKeyFromPath(pathname: string): string | null {
 
   if (pathname === "/events/new") {
     return "create-event";
+  }
+
+  if (pathname === "/marketplace") {
+    return "marketplace";
+  }
+
+  if (pathname === "/images") {
+    return "images";
+  }
+
+  if (pathname === "/billing") {
+    return "billing";
   }
 
   if (pathname.includes("/invite")) {
@@ -89,7 +105,7 @@ export function getTourPageKeyFromPath(pathname: string): string | null {
     return "planners";
   }
 
-  if (pathname === "/billing" || pathname === "/images") {
+  if (pathname === "/pricing") {
     return "premium";
   }
 

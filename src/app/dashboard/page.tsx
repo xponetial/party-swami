@@ -699,13 +699,14 @@ export default async function DashboardPage({
         </Button>
       }
     >
-      <div className="grid gap-4 xl:grid-cols-5">
+      <div data-tour-id="dashboard-metrics" className="grid gap-4 xl:grid-cols-5">
         {metrics.map((metric) => (
           <DashboardMetricCard key={metric.label} {...metric} />
         ))}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div data-tour-id="dashboard-recent-events">
         <DashboardPanel
           title={eventListScope === "completed" ? "Completed events" : "Recent events"}
           description={
@@ -805,7 +806,9 @@ export default async function DashboardPage({
             </div>
           )}
         </DashboardPanel>
+        </div>
 
+        <div data-tour-id="dashboard-ai-summary">
         <DashboardPanel
           title="Latest AI summary"
           description="A quick snapshot of the most recently generated plan stored in `party_plans`."
@@ -875,8 +878,10 @@ export default async function DashboardPage({
             </div>
           )}
         </DashboardPanel>
+        </div>
       </div>
 
+      <div data-tour-id="dashboard-telemetry">
       <DashboardPanel
         title="Connection status"
         description="Simple live read checks so you can verify frontend-to-database wiring quickly."
@@ -1214,6 +1219,7 @@ export default async function DashboardPage({
           </div>
         </div>
       </DashboardPanel>
+      </div>
     </AppShell>
   );
 }

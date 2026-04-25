@@ -54,7 +54,7 @@ export default function MarketingHomePage() {
           </Link>
         }
       >
-        <section className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+        <section data-tour-id="marketing-hero" className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
         <div className="space-y-6 rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(245,223,255,0.34)_0%,rgba(237,243,255,0.94)_56%,rgba(228,239,255,0.98)_100%)] p-6 shadow-party">
           <Badge>Welcome and onboarding</Badge>
           <div className="space-y-4">
@@ -66,7 +66,7 @@ export default function MarketingHomePage() {
               and event-day execution to live in the same product.
             </p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div data-tour-id="marketing-actions" className="flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href="/signup">
                 Start with your first event
@@ -103,7 +103,7 @@ export default function MarketingHomePage() {
           </div>
         </div>
 
-        <Card className="overflow-hidden border-white/60 bg-[rgba(244,247,255,0.86)] p-0 shadow-party">
+        <Card data-tour-id="marketing-preview" className="overflow-hidden border-white/60 bg-[rgba(244,247,255,0.86)] p-0 shadow-party">
           <div className="border-b border-border px-6 py-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">

@@ -38,14 +38,14 @@ export default async function ImagesPage() {
       description="All AI invite images generated in your workspace. Reuse these in any event invitation."
     >
       {!isPaidPlan ? (
-        <div className="rounded-[1.75rem] border border-border bg-white/80 p-6">
+        <div data-tour-id="images-library" className="rounded-[1.75rem] border border-border bg-white/80 p-6">
           <p className="text-sm text-ink-muted">Image library is available on Pro and Admin plans.</p>
           <Button asChild className="mt-4">
             <Link href="/billing">Upgrade to Pro</Link>
           </Button>
         </div>
       ) : images.length === 0 ? (
-        <div className="rounded-[1.75rem] border border-border bg-white/80 p-6">
+        <div data-tour-id="images-library" className="rounded-[1.75rem] border border-border bg-white/80 p-6">
           <p className="text-sm text-ink-muted">
             No images generated yet. Create invite backgrounds from any event&apos;s invitation generator.
           </p>
@@ -54,7 +54,8 @@ export default async function ImagesPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div data-tour-id="images-library" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div data-tour-id="images-grid" className="contents">
           {images.map((image) => (
             <div key={image.id} className="overflow-hidden rounded-[1.5rem] border border-border bg-white/80">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -78,6 +79,7 @@ export default async function ImagesPage() {
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
     </AppShell>

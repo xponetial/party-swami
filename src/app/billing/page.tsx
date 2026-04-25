@@ -147,7 +147,7 @@ export default async function BillingPage({
       }
     >
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card>
+        <Card data-tour-id="billing-current-plan">
           {billingState === "image_pack_success" ? (
             <div className="mb-4 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
               Image pack purchase successful. Your monthly image cap and budget were updated.
@@ -207,7 +207,7 @@ export default async function BillingPage({
           ) : null}
         </Card>
 
-        <Card className="bg-[rgba(244,247,255,0.9)]">
+        <Card data-tour-id="billing-pack-history" className="bg-[rgba(244,247,255,0.9)]">
           <h2 className="text-xl font-semibold text-ink">Image pack history</h2>
           {safePackGrants.length ? (
             <div className="mt-4 space-y-3">
@@ -233,7 +233,7 @@ export default async function BillingPage({
         </Card>
 
         {showStripeSyncDetails ? (
-          <Card className="bg-[rgba(244,247,255,0.9)]">
+          <Card data-tour-id="billing-stripe-sync" className="bg-[rgba(244,247,255,0.9)]">
             <h2 className="text-xl font-semibold text-ink">Stripe sync details</h2>
             <div className="mt-5 grid gap-3">
               {[
