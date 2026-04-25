@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { DEFAULT_TOUR_STATE, getTourPageKeyFromPath, normalizeTourState, TOUR_STEP_COUNT, TourState } from "@/lib/tour";
 import { cn } from "@/lib/utils";
 
+const TOUR_ENABLED_STORAGE_KEY = "party-swami-tour-enabled";
+
 type TourStep = {
   key: string;
   title: string;
@@ -559,6 +561,16 @@ export function TourManager() {
   const pathname = usePathname();
   const [tourState, setTourState] = useState<TourState>(DEFAULT_TOUR_STATE);
   const [tourStateLoaded, setTourStateLoaded] = useState(false);
+  const [localTourEnabled, setLocalTourEnabled] = useState<boolean | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    try {
+      return window.localStorage.getItem(TOUR_ENABLED_STORAGE_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mode, setMode] = useState<"full" | "page">("full");
@@ -580,6 +592,7 @@ export function TourManager() {
       : activePageSteps.length > 0
         ? (clampedPageStepIndex + 1) / activePageSteps.length
         : 1;
+  const isTourEnabled = (localTourEnabled ?? true) && !tourState.skipped;
 
   useEffect(() => {
     let isMounted = true;
@@ -615,6 +628,10 @@ export function TourManager() {
       const requestedMode = customEvent.detail?.mode ?? "full";
 
       if (requestedMode === "page") {
+        if (!isTourEnabled) {
+          return;
+        }
+
         const resolvedPageKey = customEvent.detail?.pageKey ?? getTourPageKeyFromPath(pathname);
         const resolvedSteps = resolvedPageKey ? pageTours[resolvedPageKey] : null;
         if (!resolvedPageKey || !resolvedSteps?.length) {
@@ -658,16 +675,32 @@ export function TourManager() {
       });
     };
 
+    const enabledChangedHandler = (event: Event) => {
+      const customEvent = event as CustomEvent<{ enabled?: boolean }>;
+      const nextEnabled = customEvent.detail?.enabled === true;
+      setLocalTourEnabled(nextEnabled);
+      if (!nextEnabled) {
+        setIsOpen(false);
+        setIsMenuOpen(false);
+      }
+    };
+
     window.addEventListener("party-swami-tour:open", handler as EventListener);
     window.addEventListener("party-swami-tour:close", closeHandler as EventListener);
+    window.addEventListener("party-swami-tour:enabled-changed", enabledChangedHandler as EventListener);
     return () => {
       window.removeEventListener("party-swami-tour:open", handler as EventListener);
       window.removeEventListener("party-swami-tour:close", closeHandler as EventListener);
+      window.removeEventListener("party-swami-tour:enabled-changed", enabledChangedHandler as EventListener);
     };
-  }, [pathname]);
+  }, [isTourEnabled, pathname]);
 
   useEffect(() => {
     if (!tourStateLoaded) {
+      return;
+    }
+
+    if (localTourEnabled === null) {
       return;
     }
 
@@ -690,7 +723,7 @@ export function TourManager() {
     }
 
     if (
-      !tourState.skipped &&
+      isTourEnabled &&
       !isOpen &&
       currentPageKey &&
       !tourState.page_tours_completed.includes(currentPageKey) &&
@@ -703,7 +736,7 @@ export function TourManager() {
         setIsOpen(true);
       });
     }
-  }, [currentPageKey, isOpen, tourState, tourStateLoaded]);
+  }, [currentPageKey, isOpen, isTourEnabled, localTourEnabled, tourState, tourStateLoaded]);
 
   useEffect(() => {
     if (!isOpen || !activeStep?.selector) {

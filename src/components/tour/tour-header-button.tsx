@@ -5,14 +5,32 @@ import { useEffect, useState } from "react";
 import { ToggleLeft, ToggleRight } from "lucide-react";
 import { getTourPageKeyFromPath, normalizeTourState } from "@/lib/tour";
 
+const TOUR_ENABLED_STORAGE_KEY = "party-swami-tour-enabled";
+
 export function TourHeaderButton() {
   const pathname = usePathname();
   const pageKey = getTourPageKeyFromPath(pathname);
-  const [enabled, setEnabled] = useState(true);
+  const [enabled, setEnabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+    try {
+      return window.localStorage.getItem(TOUR_ENABLED_STORAGE_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
+    const localEnabled = (() => {
+      try {
+        return window.localStorage.getItem(TOUR_ENABLED_STORAGE_KEY) !== "0";
+      } catch {
+        return true;
+      }
+    })();
 
     fetch("/api/tour-state")
       .then((response) => (response.ok ? response.json() : null))
@@ -21,7 +39,8 @@ export function TourHeaderButton() {
           return;
         }
         const state = normalizeTourState(payload.tour_state);
-        setEnabled(!state.skipped);
+        const enabledFromServer = !state.skipped;
+        setEnabled(localEnabled && enabledFromServer);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -38,6 +57,14 @@ export function TourHeaderButton() {
   async function toggleTour() {
     const nextEnabled = !enabled;
     setEnabled(nextEnabled);
+    try {
+      window.localStorage.setItem(TOUR_ENABLED_STORAGE_KEY, nextEnabled ? "1" : "0");
+    } catch {}
+    window.dispatchEvent(
+      new CustomEvent("party-swami-tour:enabled-changed", {
+        detail: { enabled: nextEnabled },
+      }),
+    );
 
     await fetch("/api/tour-update", {
       method: "POST",
