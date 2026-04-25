@@ -492,11 +492,6 @@ export function TourManager() {
 
         const nextState = normalizeTourState(payload.tour_state);
         setTourState(nextState);
-
-        if (!nextState.started && !nextState.completed && !nextState.skipped) {
-          setIsOpen(true);
-          setMode("full");
-        }
       })
       .catch(() => {
         if (!isMounted) {
@@ -585,25 +580,6 @@ export function TourManager() {
           setTourState((current) => current ? { ...current, visited_pages: visitedPages } : current);
         }
       });
-    }
-
-    if (
-      tourState.started &&
-      !tourState.completed &&
-      !tourState.skipped &&
-      !isOpen
-    ) {
-      const stepPageKey = tourSteps[tourState.current_step]?.pageKey;
-
-      if (stepPageKey && stepPageKey === currentPageKey) {
-        requestAnimationFrame(() => {
-          setMode("full");
-          setPageTourKey(null);
-          setPageStepIndex(0);
-          setIsOpen(true);
-        });
-        return;
-      }
     }
 
     if (
@@ -903,16 +879,6 @@ export function TourManager() {
             Help / Tour
           </div>
         </div>
-      ) : null}
-
-      {!isOpen && !isMenuOpen && !tourState.completed && !tourState.skipped ? (
-        <button
-          type="button"
-          className="fixed bottom-[7.25rem] right-[5.75rem] z-[61] hidden rounded-full bg-white px-3 py-2 text-xs font-semibold text-ink shadow-party transition hover:text-brand sm:block"
-          onClick={() => void startFullTour(tourState.current_step)}
-        >
-          Continue tour
-        </button>
       ) : null}
     </>
   );
