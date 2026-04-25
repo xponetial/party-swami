@@ -49,71 +49,73 @@ export function mergeTourState(current: unknown, patch: Partial<TourState>): Tou
 }
 
 export function getTourPageKeyFromPath(pathname: string): string | null {
+  const normalizedPath = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
+
   if (pathname === "/") {
     return "marketing";
   }
 
-  if (/^\/events\/[^/]+$/.test(pathname)) {
+  if (/^\/events\/[^/]+$/.test(normalizedPath)) {
     return "overview";
   }
 
-  if (pathname === "/dashboard") {
+  if (normalizedPath === "/dashboard") {
     return "dashboard";
   }
 
-  if (pathname === "/events/new") {
+  if (normalizedPath === "/events/new") {
     return "create-event";
   }
 
-  if (pathname === "/vendors/dashboard") {
+  if (/^\/vendors\/dashboard$/.test(normalizedPath)) {
     return "vendor-dashboard";
   }
 
-  if (pathname === "/planners/dashboard") {
+  if (/^\/planners\/dashboard$/.test(normalizedPath)) {
     return "planner-dashboard";
   }
 
-  if (pathname === "/marketplace") {
+  if (normalizedPath === "/marketplace") {
     return "marketplace";
   }
 
-  if (pathname === "/images") {
+  if (normalizedPath === "/images") {
     return "images";
   }
 
-  if (pathname === "/billing") {
+  if (normalizedPath === "/billing") {
     return "billing";
   }
 
-  if (pathname.includes("/invite")) {
+  if (normalizedPath.includes("/invite")) {
     return "invite";
   }
 
-  if (pathname.includes("/guests")) {
+  if (normalizedPath.includes("/guests")) {
     return "guests";
   }
 
-  if (pathname.includes("/next-steps")) {
+  if (normalizedPath.includes("/next-steps")) {
     return "next-steps";
   }
 
-  if (pathname.includes("/timeline")) {
+  if (normalizedPath.includes("/timeline")) {
     return "timeline";
   }
 
-  if (pathname.includes("/settings")) {
+  if (normalizedPath.includes("/settings")) {
     return "settings";
   }
 
-  if (pathname.includes("/shopping")) {
+  if (normalizedPath.includes("/shopping")) {
     return "shopping";
   }
 
-  if (/^\/events\/[^/]+\/planners/.test(pathname)) {
+  if (/^\/events\/[^/]+\/planners/.test(normalizedPath)) {
     return "planners";
   }
 
-  if (pathname === "/pricing") {
+  if (normalizedPath === "/pricing") {
     return "premium";
   }
 
