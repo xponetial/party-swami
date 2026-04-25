@@ -2,34 +2,116 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
-  CalendarClock,
-  CheckCheck,
-  Mail,
+  BadgeCheck,
+  BrainCircuit,
+  ConciergeBell,
+  ListChecks,
+  MapPin,
+  Search,
   ShoppingBag,
-  Wand2,
+  Sparkles,
+  Store,
+  Users,
 } from "lucide-react";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { AuthSessionRedirect } from "@/components/auth/auth-session-redirect";
-import { DashboardPreviewButton } from "@/components/marketing/dashboard-preview-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-const highlights = [
+const heroBullets = [
   {
-    title: "Set up one event",
-    description: "Start with the basics: event type, guest count, date, budget, and an optional theme.",
-    icon: Wand2,
+    text: "Create invitations and plan your event with AI",
+    icon: BrainCircuit,
   },
   {
-    title: "Watch AI fill in the blanks",
-    description: "Generate invite copy, menu ideas, shopping categories, and a host checklist in one pass.",
-    icon: Mail,
+    text: "Shop curated party supplies instantly",
+    icon: ShoppingBag,
   },
   {
-    title: "Run everything from one hub",
-    description: "Track RSVP progress, shopping totals, and day-of tasks without leaving the dashboard.",
-    icon: CheckCheck,
+    text: "Connect with local vendors and venues",
+    icon: MapPin,
+  },
+  {
+    text: "Get help from professional party planners",
+    icon: ConciergeBell,
+  },
+];
+
+const journeySteps = [
+  {
+    title: "Step 1: Create Your Event",
+    description:
+      "Tell Party Swami what you're planning. Our AI generates your invite, theme, and plan instantly.",
+    icon: Sparkles,
+  },
+  {
+    title: "Step 2: Get Smart Recommendations",
+    description:
+      "Automatically receive shopping lists, decorations, food ideas, and activities tailored to your event.",
+    icon: ShoppingBag,
+  },
+  {
+    title: "Step 3: Book Vendors or Get Help",
+    description:
+      "Browse local vendors, venues, DJs, and bakers or hire a professional planner to handle everything.",
+    icon: Search,
+  },
+  {
+    title: "Step 4: Execute with Confidence",
+    description: "Track tasks, manage guests, and stay on budget all in one place.",
+    icon: BadgeCheck,
+  },
+];
+
+const platformFeatures = [
+  {
+    badge: "AI Event Planning",
+    headline: "Your Personal AI Party Planner",
+    copy: "Party Swami uses AI to generate everything you need, from invitations and themes to timelines and checklists. No more guesswork.",
+    bullets: [
+      "AI-generated invitations and wording",
+      "Smart guest management and RSVP tracking",
+      "Automated timelines and reminders",
+      "Budget tracking and planning tools",
+    ],
+    icon: BrainCircuit,
+  },
+  {
+    badge: "Smart Shopping Experience",
+    headline: "Everything You Need, Already Picked for You",
+    copy: "Based on your event, Party Swami builds a complete shopping list across decorations, food, drinks, and more.",
+    bullets: [
+      "Curated product recommendations",
+      "One-click shopping experience",
+      "Organized by category",
+      "Designed for your specific party type",
+    ],
+    icon: ShoppingBag,
+  },
+  {
+    badge: "Vendor Marketplace",
+    headline: "Find and Book Trusted Vendors",
+    copy: "Search and connect with local vendors including venues, DJs, bakers, and entertainers.",
+    bullets: [
+      "Search by location and category",
+      "Compare vendors and packages",
+      "Send requests and receive quotes",
+      "Read verified reviews",
+    ],
+    icon: Store,
+  },
+  {
+    badge: "Professional Party Planners",
+    headline: "Need Help? Bring in a Pro",
+    copy: "Work directly with experienced party planners who can guide you or fully manage your event.",
+    bullets: [
+      "Basic guidance or full-service planning",
+      "Personalized recommendations",
+      "Direct communication inside the platform",
+      "Flexible service levels",
+    ],
+    icon: Users,
   },
 ];
 
@@ -38,6 +120,9 @@ export default function MarketingHomePage() {
     <>
       <AuthSessionRedirect to="/dashboard" />
       <ShellFrame
+        eyebrow="AI-powered planning and marketplace"
+        title="Plan the Perfect Party. Book Everything in One Place."
+        description="Party Swami connects AI planning, curated shopping, trusted vendors, and professional planners in one end-to-end platform."
         brandVisual={
           <Link
             href="/"
@@ -54,122 +139,178 @@ export default function MarketingHomePage() {
           </Link>
         }
       >
-        <section data-tour-id="marketing-hero" className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <div className="space-y-6 rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(245,223,255,0.34)_0%,rgba(237,243,255,0.94)_56%,rgba(228,239,255,0.98)_100%)] p-6 shadow-party">
-          <Badge>Welcome and onboarding</Badge>
-          <div className="space-y-4">
-            <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
-              Turn a party idea into a full plan, invite, shopping list, and timeline in one guided flow.
-            </h1>
-            <p className="max-w-2xl text-lg leading-8 text-ink-muted">
-              Party Swami is the AI planning workspace for hosts who want setup, invites, commerce,
-              and event-day execution to live in the same product.
-            </p>
-          </div>
-          <div data-tour-id="marketing-actions" className="flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href="/signup">
-                Start with your first event
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <DashboardPreviewButton />
-            <Button asChild size="lg" variant="secondary">
-              <Link href="/partners/signup">
-                Vendor and planner signup
-                <ShoppingBag className="size-4" />
-              </Link>
-            </Button>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="bg-[rgba(255,255,255,0.42)]">
-              <p className="text-sm font-medium text-ink-muted">Best for</p>
-              <p className="mt-2 text-lg font-semibold text-ink">
-                Birthdays, brunches, showers, and holiday hosting
-              </p>
-            </Card>
-            <Card className="bg-[rgba(255,255,255,0.42)]">
-              <p className="text-sm font-medium text-ink-muted">MVP style</p>
-              <p className="mt-2 text-lg font-semibold text-ink">
-                Wizard-style setup with editable AI output
-              </p>
-            </Card>
-            <Card className="bg-[rgba(255,255,255,0.42)]">
-              <p className="text-sm font-medium text-ink-muted">Product promise</p>
-              <p className="mt-2 text-lg font-semibold text-ink">
-                Minimal input, maximum planning momentum
-              </p>
-            </Card>
-          </div>
-        </div>
-
-        <Card data-tour-id="marketing-preview" className="overflow-hidden border-white/60 bg-[rgba(244,247,255,0.86)] p-0 shadow-party">
-          <div className="border-b border-border px-6 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-brand" />
-                <span className="size-3 rounded-full bg-accent" />
-                <span className="size-3 rounded-full bg-warning" />
+        <div className="space-y-8">
+          <section data-tour-id="marketing-hero" className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <Card className="space-y-5 border-white/70 bg-[linear-gradient(135deg,rgba(245,223,255,0.34)_0%,rgba(237,243,255,0.94)_56%,rgba(228,239,255,0.98)_100%)] p-6 shadow-party sm:p-8">
+              <Badge>AI + Marketplace + Vendors + Planners</Badge>
+              <div className="space-y-4">
+                <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+                  Plan the Perfect Party. Book Everything in One Place.
+                </h1>
+                <p className="max-w-3xl text-base leading-7 text-ink-muted sm:text-lg sm:leading-8">
+                  AI-powered party planning meets a full marketplace of vendors, supplies, and professional planners. From idea to execution, Party Swami does it all.
+                </p>
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-ink-muted">
+                  Plan It. Shop It. Book It. Done.
+                </p>
               </div>
-              <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">First-run preview</p>
-            </div>
-          </div>
-          <div className="grid gap-5 p-6">
-            <div className="rounded-[1.75rem] border border-border bg-white/90 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
-                    Optional first event
-                  </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-ink">
-                    Summer backyard birthday
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-ink-muted">
-                    18 guests, Saturday at 4:00 PM, sunny citrus palette, under $450.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-accent-soft p-3 text-accent">
-                  <CalendarClock className="size-5" />
-                </div>
+              <div data-tour-id="marketing-actions" className="flex flex-col gap-3 sm:flex-row">
+                <Button asChild size="lg">
+                  <Link href="/create-event">
+                    Start Planning Your Party
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="secondary">
+                  <Link href="/marketplace">
+                    Explore Vendors
+                    <ShoppingBag className="size-4" />
+                  </Link>
+                </Button>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                {["Theme preview", "Invite draft", "Checklist", "Shopping cart"].map((item) => (
-                  <div key={item} className="rounded-2xl bg-canvas px-4 py-3 text-sm font-medium text-ink">
-                    {item}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {heroBullets.map((item) => (
+                  <div key={item.text} className="flex gap-3 rounded-2xl border border-white/60 bg-white/55 p-4">
+                    <item.icon className="mt-0.5 size-4 shrink-0 text-brand" />
+                    <p className="text-sm leading-6 text-ink">{item.text}</p>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
-            {highlights.map((item) => (
-              <div
-                key={item.title}
-                className="rounded-3xl border border-border bg-white/80 p-5 transition-transform duration-200 hover:-translate-y-1"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-accent-soft p-3 text-accent">
-                    <item.icon className="size-5" />
+            <Card className="h-full border-white/60 bg-[rgba(244,247,255,0.86)] p-6 shadow-party sm:p-8">
+              <Badge>From Idea to Celebration in Minutes</Badge>
+              <div className="mt-5 grid gap-4">
+                {journeySteps.map((step) => (
+                  <div key={step.title} className="rounded-3xl border border-border bg-white/85 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-accent-soft p-2.5 text-accent">
+                        <step.icon className="size-4" />
+                      </div>
+                      <h2 className="text-base font-semibold text-ink">{step.title}</h2>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-ink-muted">{step.description}</p>
                   </div>
-                  <h2 className="text-lg font-semibold text-ink">{item.title}</h2>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-ink-muted">{item.description}</p>
+                ))}
               </div>
-            ))}
+            </Card>
+          </section>
 
-            <div className="rounded-3xl bg-brand px-5 py-4 text-white">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.2em] text-white/70">Embedded commerce</p>
-                  <p className="mt-2 text-xl font-semibold">
-                    Cart-ready shopping can hand off to Amazon or Walmart in one move.
-                  </p>
-                </div>
-                <ShoppingBag className="size-8 shrink-0" />
-              </div>
+          <section className="space-y-5">
+            <div className="space-y-2">
+              <Badge>Core platform</Badge>
+              <h2 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+                AI planning, shopping, vendors, and planners in one workflow
+              </h2>
+              <p className="max-w-3xl text-sm leading-6 text-ink-muted sm:text-base">
+                Party Swami removes the handoff gaps between planning, purchasing, and booking so hosts can execute faster with fewer tools.
+              </p>
             </div>
-          </div>
-        </Card>
-        </section>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {platformFeatures.map((feature) => (
+                <Card key={feature.headline} className="h-full border-white/70 bg-[rgba(255,255,255,0.72)] p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-accent-soft p-3 text-accent">
+                      <feature.icon className="size-5" />
+                    </div>
+                    <Badge>{feature.badge}</Badge>
+                  </div>
+                  <h3 className="mt-4 text-2xl font-semibold text-ink">{feature.headline}</h3>
+                  <p className="mt-3 text-sm leading-6 text-ink-muted">{feature.copy}</p>
+                  <ul className="mt-4 grid gap-2">
+                    {feature.bullets.map((bullet) => (
+                      <li key={bullet} className="flex gap-2 text-sm leading-6 text-ink">
+                        <ListChecks className="mt-1 size-4 shrink-0 text-accent" />
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              ))}
+            </div>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <Card className="border-white/70 bg-[rgba(255,255,255,0.75)] p-6 sm:p-8">
+              <Badge>Marketplace value</Badge>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+                Not Just Planning. A Complete Party Ecosystem.
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-muted sm:text-base">
+                Party Swami brings together everything you need in one place. No more jumping between apps, websites, and vendors.
+              </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-3xl border border-border bg-canvas p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Without Party Swami</p>
+                  <ul className="mt-3 grid gap-2 text-sm text-ink-muted">
+                    <li>Multiple apps</li>
+                    <li>Endless searching</li>
+                    <li>Disconnected planning</li>
+                  </ul>
+                </div>
+                <div className="rounded-3xl border border-accent/30 bg-accent-soft p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">With Party Swami</p>
+                  <ul className="mt-3 grid gap-2 text-sm text-ink">
+                    <li>One platform</li>
+                    <li>AI-powered decisions</li>
+                    <li>Integrated vendors and shopping</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="border-white/70 bg-[rgba(252,246,235,0.8)] p-6 sm:p-8">
+              <Badge>Built for scale</Badge>
+              <h2 className="mt-4 text-2xl font-semibold text-ink sm:text-3xl">
+                Built for Hosts, Vendors, and Planners
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-ink-muted sm:text-base">
+                Whether you&apos;re hosting your first party or running a professional event business, Party Swami scales with you.
+              </p>
+              <div className="mt-5 rounded-3xl bg-white/80 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Platform outcomes</p>
+                <ul className="mt-3 grid gap-2 text-sm leading-6 text-ink">
+                  <li>Faster setup from prompt to plan</li>
+                  <li>Clear handoff from planning to execution</li>
+                  <li>One system for hosts and service providers</li>
+                </ul>
+              </div>
+            </Card>
+          </section>
+
+          <section className="space-y-4 rounded-[2rem] border border-white/70 bg-brand p-6 text-white shadow-party sm:p-8">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Start Planning Smarter Today</h2>
+            <p className="max-w-3xl text-sm leading-6 text-white/80 sm:text-base">
+              Create your event, explore vendors, and bring your party to life in minutes.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg" variant="secondary">
+                <Link href="/create-event">Start Your Party</Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary">
+                <Link href="/vendors/signup">Join as a Vendor</Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary">
+                <Link href="/planners/signup">Become a Planner</Link>
+              </Button>
+            </div>
+          </section>
+
+          <section className="rounded-[1.5rem] border border-white/70 bg-white/55 p-5 sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">Footer entry points</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <Link href="/create-event" className="rounded-2xl border border-border bg-white/75 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/40">
+                For Hosts
+              </Link>
+              <Link href="/vendors/signup" className="rounded-2xl border border-border bg-white/75 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/40">
+                For Vendors
+              </Link>
+              <Link href="/planners/signup" className="rounded-2xl border border-border bg-white/75 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/40">
+                For Professional Planners
+              </Link>
+            </div>
+          </section>
+        </div>
       </ShellFrame>
     </>
   );
