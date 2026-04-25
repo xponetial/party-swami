@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, HelpCircle, Map, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getTourPageKeyFromPath, normalizeTourState, TOUR_STEP_COUNT, TourState } from "@/lib/tour";
+import { DEFAULT_TOUR_STATE, getTourPageKeyFromPath, normalizeTourState, TOUR_STEP_COUNT, TourState } from "@/lib/tour";
 import { cn } from "@/lib/utils";
 
 type TourStep = {
@@ -181,7 +181,7 @@ async function persistPatch(patch: Partial<TourState>) {
 
 export function TourManager() {
   const pathname = usePathname();
-  const [tourState, setTourState] = useState<TourState | null>(null);
+  const [tourState, setTourState] = useState<TourState>(DEFAULT_TOUR_STATE);
   const [isOpen, setIsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mode, setMode] = useState<"full" | "page">("full");
@@ -199,9 +199,9 @@ export function TourManager() {
     let isMounted = true;
 
     fetch("/api/tour-state")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload: { tour_state?: unknown } | null) => {
-        if (!isMounted || !payload) {
+      .then((response) => (response.ok ? response.json() : { tour_state: DEFAULT_TOUR_STATE }))
+      .then((payload: { tour_state?: unknown }) => {
+        if (!isMounted) {
           return;
         }
 
@@ -213,7 +213,12 @@ export function TourManager() {
           setMode("full");
         }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+        setTourState(DEFAULT_TOUR_STATE);
+      });
 
     return () => {
       isMounted = false;
@@ -276,7 +281,7 @@ export function TourManager() {
   }, [pathname]);
 
   useEffect(() => {
-    if (!tourState || !currentPageKey) {
+    if (!currentPageKey) {
       return;
     }
 
@@ -392,7 +397,7 @@ export function TourManager() {
   }
 
   async function markPageTourDone() {
-    if (!tourState || !pageTourKey) {
+    if (!pageTourKey) {
       setIsOpen(false);
       return;
     }
@@ -407,10 +412,6 @@ export function TourManager() {
   }
 
   async function goNext() {
-    if (!tourState) {
-      return;
-    }
-
     if (mode === "page") {
       await markPageTourDone();
       return;
@@ -432,7 +433,7 @@ export function TourManager() {
   }
 
   async function goBack() {
-    if (!tourState || mode !== "full") {
+    if (mode !== "full") {
       return;
     }
 
@@ -446,10 +447,6 @@ export function TourManager() {
     setPageTourKey(key);
     setIsMenuOpen(false);
     setIsOpen(true);
-  }
-
-  if (!tourState) {
-    return null;
   }
 
   return (
