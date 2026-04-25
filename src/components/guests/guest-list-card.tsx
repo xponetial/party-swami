@@ -131,7 +131,7 @@ function SummaryStrip({
 function AddGuestSection({ eventId }: { eventId: string }) {
   return (
     <div className="mt-6 space-y-4">
-      <div className="grid gap-4 rounded-[1.75rem] bg-canvas p-5 md:grid-cols-2">
+      <div data-tour-id="guests-add-single" className="grid gap-4 rounded-[1.75rem] bg-canvas p-5 md:grid-cols-2">
         <div className="md:col-span-2">
           <p className="text-sm font-semibold text-ink">Add one guest</p>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
@@ -162,7 +162,7 @@ function AddGuestSection({ eventId }: { eventId: string }) {
         </form>
       </div>
 
-      <div className="rounded-[1.75rem] border border-border bg-white/80 p-5">
+      <div data-tour-id="guests-bulk-import" className="rounded-[1.75rem] border border-border bg-white/80 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-ink">Bulk guest import</p>
@@ -194,7 +194,7 @@ function ActivitySection({
   const hasMoreLogs = guestMessages.length > visibleLogCount;
 
   return (
-    <div className="mt-6 space-y-4">
+    <div data-tour-id="guests-activity-log" className="mt-6 space-y-4">
       {guestMessages.length ? (
         <>
           {displayedGuestMessages.map((message) => (
@@ -305,7 +305,7 @@ function RosterSection({
 
   return (
     <>
-      <div className="mt-6 rounded-[1.75rem] border border-border bg-white/80 p-5">
+      <div data-tour-id="guests-roster-controls" className="mt-6 rounded-[1.75rem] border border-border bg-white/80 p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Roster controls</p>
@@ -592,7 +592,7 @@ export function GuestListCard(_: {
             <h2 className="mt-2 text-xl font-semibold text-ink">{sectionTitle.title}</h2>
             <p className="mt-2 text-sm leading-6 text-ink-muted">{sectionTitle.detail}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div data-tour-id="guests-section-tabs" className="flex flex-wrap gap-2">
             {[
               { href: `/events/${eventId}/guests/add`, label: "Add / Import", key: "add" as const },
               { href: `/events/${eventId}/guests`, label: "All guests", key: "all" as const },
@@ -606,6 +606,7 @@ export function GuestListCard(_: {
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-tour-id={`guests-tab-${item.key}`}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                     isActive
                       ? "bg-[linear-gradient(135deg,#ff7bd5_0%,#a54dff_36%,#2f8fff_100%)] text-white shadow-[0_14px_30px_rgba(101,85,176,0.12)]"
@@ -627,7 +628,7 @@ export function GuestListCard(_: {
         />
 
         {section === "all" || section === "pending" ? (
-          <div className="mt-6 rounded-[1.75rem] border border-border bg-white/80 p-5">
+          <div data-tour-id="guests-invite-actions" className="mt-6 rounded-[1.75rem] border border-border bg-white/80 p-5">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Invite actions</p>
             <h3 className="mt-2 text-lg font-semibold text-ink">Keep outreach on the main guest screen</h3>
             <p className="mt-2 text-sm leading-6 text-ink-muted">

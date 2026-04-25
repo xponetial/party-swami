@@ -245,7 +245,7 @@ export function ShoppingListCard({
 
   return (
     <div className="grid gap-4">
-      <Card className="bg-white/85">
+      <Card data-tour-id="shopping-hero" className="bg-white/85">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-3xl">
             <Badge>Amazon-style recommendations</Badge>
@@ -275,7 +275,7 @@ export function ShoppingListCard({
             </div>
           </div>
 
-          <div className="w-full max-w-md rounded-[1.9rem] border border-white/80 bg-[linear-gradient(140deg,rgba(39,147,255,0.92)_0%,rgba(118,97,255,0.9)_48%,rgba(187,119,255,0.86)_100%)] p-5 text-white shadow-party">
+          <div data-tour-id="shopping-regenerate" className="w-full max-w-md rounded-[1.9rem] border border-white/80 bg-[linear-gradient(140deg,rgba(39,147,255,0.92)_0%,rgba(118,97,255,0.9)_48%,rgba(187,119,255,0.86)_100%)] p-5 text-white shadow-party">
             <p className="text-xs uppercase tracking-[0.22em] text-white/70">Refresh action</p>
             <h3 className="mt-3 text-2xl font-semibold">Regenerate recommendations</h3>
             <p className="mt-3 text-sm leading-6 text-white/85">
@@ -287,7 +287,7 @@ export function ShoppingListCard({
         </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div data-tour-id="shopping-summary-metrics" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
           {
             label: "Recommendation groups",
@@ -319,7 +319,7 @@ export function ShoppingListCard({
       </div>
 
       <div className="grid gap-4 [@media(min-width:1700px)]:grid-cols-[1.15fr_0.85fr]">
-        <Card className="bg-[rgba(244,247,255,0.9)]">
+        <Card data-tour-id="shopping-groups" className="bg-[rgba(244,247,255,0.9)]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Recommendation groups</p>
@@ -415,7 +415,7 @@ export function ShoppingListCard({
         </Card>
 
         <div className="grid gap-4">
-          <Card className="bg-white/80">
+          <Card data-tour-id="shopping-next-step" className="bg-white/80">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Next step</p>
             <h3 className="mt-2 text-xl font-semibold text-ink">Turn the plan into a host-ready timeline</h3>
             <p className="mt-2 text-sm leading-6 text-ink-muted">

@@ -29,8 +29,8 @@ export default async function EventNextStepsPage({
       backHref={`/events/${eventId}`}
       eventNav={{ eventId, eventTitle: event.title, active: "next-steps" }}
     >
-      <section className="grid gap-4 xl:grid-cols-3">
-        <Card className="xl:col-span-1">
+      <section data-tour-id="next-steps-paths" className="grid gap-4 xl:grid-cols-3">
+        <Card data-tour-id="next-steps-diy" className="xl:col-span-1">
           <Badge>Path 1</Badge>
           <div className="mt-5 rounded-3xl bg-white/55 p-4 text-brand">
             <ShoppingBag className="size-7" />
@@ -50,7 +50,7 @@ export default async function EventNextStepsPage({
           </Button>
         </Card>
 
-        <Card className="xl:col-span-1">
+        <Card data-tour-id="next-steps-planner" className="xl:col-span-1">
           <Badge>Path 2</Badge>
           <div className="mt-5 rounded-3xl bg-white/55 p-4 text-accent">
             <Handshake className="size-7" />
@@ -79,7 +79,7 @@ export default async function EventNextStepsPage({
           </Button>
         </Card>
 
-        <Card className="xl:col-span-1">
+        <Card data-tour-id="next-steps-both" className="xl:col-span-1">
           <Badge>Path 3</Badge>
           <div className="mt-5 rounded-3xl bg-white/55 p-4 text-brand">
             <Sparkles className="size-7" />
@@ -105,7 +105,7 @@ export default async function EventNextStepsPage({
         </Card>
       </section>
 
-      <Card>
+      <Card data-tour-id="next-steps-ai-assist">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Badge>AI marketplace assist</Badge>

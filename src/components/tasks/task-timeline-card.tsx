@@ -42,7 +42,7 @@ export function TaskTimelineCard({
 
   return (
     <div className="grid gap-4">
-      <Card>
+      <Card data-tour-id="timeline-hero">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Step 4 of 4</p>
@@ -83,7 +83,7 @@ export function TaskTimelineCard({
           ))}
         </div>
 
-        <form action={addTaskAction} className="mt-6 grid gap-4 rounded-[1.75rem] bg-canvas p-5 md:grid-cols-3">
+        <form data-tour-id="timeline-add-task" action={addTaskAction} className="mt-6 grid gap-4 rounded-[1.75rem] bg-canvas p-5 md:grid-cols-3">
           <input type="hidden" name="eventId" value={eventId} />
           <div className="space-y-2 md:col-span-3">
             <Label htmlFor="task-title">Task title</Label>
@@ -113,6 +113,7 @@ export function TaskTimelineCard({
         </form>
 
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
+          <div data-tour-id="timeline-checklist-columns" className="contents">
           {Object.entries(grouped).map(([label, groupTasks]) => (
             <div key={label} className="rounded-[1.5rem] border border-border bg-white/80 p-5">
               <div className="flex items-center justify-between gap-3">
@@ -224,8 +225,9 @@ export function TaskTimelineCard({
               </div>
             </div>
           ))}
+          </div>
 
-          <div className="rounded-[1.5rem] border border-border bg-white/80 p-5">
+          <div data-tour-id="timeline-day-of" className="rounded-[1.5rem] border border-border bg-white/80 p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Day-of timeline</p>
               <Badge>{timelineItems.length} steps</Badge>
@@ -259,7 +261,7 @@ export function TaskTimelineCard({
           </div>
         </div>
 
-        <div className="mt-6 rounded-[1.75rem] border border-border bg-[rgba(244,247,255,0.92)] p-5">
+        <div data-tour-id="timeline-final-review" className="mt-6 rounded-[1.75rem] border border-border bg-[rgba(244,247,255,0.92)] p-5">
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Final review</p>
           <h3 className="mt-2 text-xl font-semibold text-ink">You are ready for the host pass</h3>
           <p className="mt-2 text-sm leading-6 text-ink-muted">

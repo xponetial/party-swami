@@ -92,76 +92,352 @@ const tourSteps: TourStep[] = [
   },
 ];
 
-const pageTours: Record<string, TourStep> = {
-  overview: {
-    key: "overview-mini",
-    title: "Overview tour",
-    body: "Overview is your event snapshot: invite readiness, guest progress, shopping momentum, and checklist status in one place.",
-    selector: "[data-tour-id='event-nav-overview']",
-  },
-  dashboard: {
-    key: "dashboard-mini",
-    title: "Dashboard tour",
-    body: "This is where returning hosts see active parties, AI plan snapshots, guest counts, tasks, shopping, and usage.",
-    selector: "[data-tour-id='page-main']",
-    href: "/dashboard",
-  },
-  "create-event": {
-    key: "create-event-mini",
-    title: "Create event tour",
-    body: "Fill in the party basics here. The selections you make become context for invites, plans, tasks, and shopping.",
-    selector: "[data-tour-id='page-main']",
-    href: "/events/new",
-  },
-  invite: {
-    key: "invite-mini",
-    title: "Invite builder tour",
-    body: "This page combines AI-generated invite copy, template customization, image access, sending, and RSVP controls.",
-    selector: "[data-tour-id='page-main']",
-  },
-  guests: {
-    key: "guests-mini",
-    title: "Guest management tour",
-    body: "Use this workspace to add guests, monitor RSVP status, and keep outreach organized.",
-    selector: "[data-tour-id='event-nav-guests']",
-  },
-  "next-steps": {
-    key: "next-steps-mini",
-    title: "Next steps tour",
-    body: "Next Steps helps you choose the execution path: DIY shopping, planner support, or direct vendor outreach.",
-    selector: "[data-tour-id='event-nav-next-steps']",
-  },
-  timeline: {
-    key: "timeline-mini",
-    title: "Timeline tour",
-    body: "Timeline keeps preparation and day-of execution structured with tasks, milestones, and completion tracking.",
-    selector: "[data-tour-id='event-nav-timeline']",
-  },
-  settings: {
-    key: "settings-mini",
-    title: "Settings tour",
-    body: "Settings covers profile controls, privacy and billing context, plus AI plan version history and restore options.",
-    selector: "[data-tour-id='event-nav-settings']",
-  },
-  shopping: {
-    key: "shopping-mini",
-    title: "Shopping tour",
-    body: "Categories, quantities, estimates, and AI regeneration help you build the party supply list from the plan.",
-    selector: "[data-tour-id='event-nav-shopping']",
-  },
-  planners: {
-    key: "planners-mini",
-    title: "Planner search tour",
-    body: "Planner Search lets you compare planning professionals tied to your event context and request help quickly.",
-    selector: "[data-tour-id='event-nav-planners']",
-  },
-  premium: {
-    key: "premium-mini",
-    title: "Premium feature tour",
-    body: "Billing shows the upgrade path for premium templates, AI image tools, higher limits, and image packs.",
-    selector: "[data-tour-id='billing-link']",
-    href: "/billing",
-  },
+const pageTourLabels: Record<string, string> = {
+  overview: "Overview",
+  dashboard: "Dashboard",
+  "create-event": "Create Event",
+  invite: "Invite",
+  guests: "Guests",
+  "next-steps": "Next Steps",
+  timeline: "Timeline",
+  settings: "Settings",
+  shopping: "Shopping",
+  planners: "Planner Search",
+  premium: "Premium",
+};
+
+const pageTours: Record<string, TourStep[]> = {
+  overview: [
+    {
+      key: "overview-hero",
+      title: "Overview workspace",
+      body: "This is the event control center where Party Swami summarizes your plan, highlights the next best action, and keeps the flow moving.",
+      selector: "[data-tour-id='overview-hero']",
+    },
+    {
+      key: "overview-next-step",
+      title: "Next best step",
+      body: "Use this card to continue from the highest-priority action instead of jumping between pages manually.",
+      selector: "[data-tour-id='overview-next-step']",
+    },
+    {
+      key: "overview-glance",
+      title: "At a glance",
+      body: "This panel calls out guest, shopping, and checklist status so you can quickly spot what still needs attention.",
+      selector: "[data-tour-id='overview-at-a-glance']",
+    },
+    {
+      key: "overview-ai-revision",
+      title: "AI revision",
+      body: "Revise one part of the plan here without rebuilding the whole event.",
+      selector: "[data-tour-id='overview-ai-revision']",
+    },
+    {
+      key: "overview-progress-cards",
+      title: "Progress cards",
+      body: "These cards link directly to Invite, Guests, Shopping, and Timeline with live status for each section.",
+      selector: "[data-tour-id='overview-progress-cards']",
+    },
+    {
+      key: "overview-workspace-path",
+      title: "Workspace path",
+      body: "This path gives you a clean sequence through the core pages so planning stays organized and predictable.",
+      selector: "[data-tour-id='overview-workspace-path']",
+    },
+  ],
+  dashboard: [
+    {
+      key: "dashboard-main",
+      title: "Dashboard view",
+      body: "This page collects active events, progress, and account context for returning users.",
+      selector: "[data-tour-id='page-main']",
+      href: "/dashboard",
+    },
+  ],
+  "create-event": [
+    {
+      key: "create-event-occasion",
+      title: "Choose occasion",
+      body: "Start with an event family. This selection drives the initial invite style and planning context.",
+      selector: "[data-tour-id='create-event-occasion-grid']",
+      href: "/events/new",
+    },
+    {
+      key: "create-event-details",
+      title: "Event details form",
+      body: "Guest count, budget, date, location, and vibe give Party Swami the data it needs to scaffold the workspace.",
+      selector: "[data-tour-id='create-event-details-form']",
+    },
+    {
+      key: "create-event-preview",
+      title: "Live invitation direction",
+      body: "This preview updates as you edit so you can confirm the look and feel before creating the event.",
+      selector: "[data-tour-id='create-event-preview']",
+    },
+  ],
+  invite: [
+    {
+      key: "invite-template-families",
+      title: "Template families",
+      body: "Pick a category family first, then choose the design that best matches your event mood.",
+      selector: "[data-tour-id='invite-template-families']",
+    },
+    {
+      key: "invite-template-grid",
+      title: "Template gallery",
+      body: "This gallery lets you switch designs while keeping your event copy and core details intact.",
+      selector: "[data-tour-id='invite-template-grid']",
+    },
+    {
+      key: "invite-editor",
+      title: "Invite details editor",
+      body: "Update title, date, location, and message here. This is the source for what guests actually read.",
+      selector: "[data-tour-id='invite-editor-form']",
+    },
+    {
+      key: "invite-preview",
+      title: "Live invite preview",
+      body: "Preview the card exactly as you edit so text and visuals stay aligned.",
+      selector: "[data-tour-id='invite-live-preview']",
+    },
+    {
+      key: "invite-media",
+      title: "Invite media tools",
+      body: "Download, upload, and AI image options are managed here based on your plan entitlements.",
+      selector: "[data-tour-id='invite-media-tools']",
+    },
+    {
+      key: "invite-next-step",
+      title: "Next step into Guests",
+      body: "Use this handoff to move straight into adding guests and sending invitations.",
+      selector: "[data-tour-id='invite-next-step']",
+    },
+  ],
+  guests: [
+    {
+      key: "guests-tabs",
+      title: "Guests sections",
+      body: "These tabs split guest work into focused views: Add / Import, All Guests, Pending, Accepted, Declined, and Activity.",
+      selector: "[data-tour-id='guests-section-tabs']",
+    },
+    {
+      key: "guests-add-import",
+      title: "Add / Import",
+      body: "Use Add / Import to bring people into the event either one by one or in bulk.",
+      selector: "[data-tour-id='guests-tab-add']",
+    },
+    {
+      key: "guests-all",
+      title: "All Guests",
+      body: "All Guests shows the full roster with search, filters, and batch actions.",
+      selector: "[data-tour-id='guests-tab-all']",
+    },
+    {
+      key: "guests-pending",
+      title: "Pending",
+      body: "Pending focuses on guests who still need an RSVP decision.",
+      selector: "[data-tour-id='guests-tab-pending']",
+    },
+    {
+      key: "guests-accepted",
+      title: "Accepted",
+      body: "Accepted helps you confirm attendance and plus-one seat impact.",
+      selector: "[data-tour-id='guests-tab-accepted']",
+    },
+    {
+      key: "guests-declined",
+      title: "Declined",
+      body: "Declined keeps non-attending guests out of active planning decisions.",
+      selector: "[data-tour-id='guests-tab-declined']",
+    },
+    {
+      key: "guests-activity",
+      title: "Activity",
+      body: "Activity tracks invitation sends, reminders, and response flow over time.",
+      selector: "[data-tour-id='guests-tab-activity']",
+    },
+    {
+      key: "guests-add-single",
+      title: "Add one guest",
+      body: "This form is for quick one-off additions when you need to add someone immediately.",
+      selector: "[data-tour-id='guests-add-single']",
+    },
+    {
+      key: "guests-bulk-import",
+      title: "Bulk guest import",
+      body: "Use bulk import to upload a CSV and add your full list at once.",
+      selector: "[data-tour-id='guests-bulk-import']",
+    },
+    {
+      key: "guests-invite-actions",
+      title: "Invite actions",
+      body: "Send pending invites and reminders from this panel without leaving the guest page.",
+      selector: "[data-tour-id='guests-invite-actions']",
+    },
+    {
+      key: "guests-roster-controls",
+      title: "Roster controls",
+      body: "Search, filter, and apply batch updates here so guest management stays fast at scale.",
+      selector: "[data-tour-id='guests-roster-controls']",
+    },
+    {
+      key: "guests-activity-log",
+      title: "Activity log list",
+      body: "When you open Activity, this feed shows delivery and reminder history per guest.",
+      selector: "[data-tour-id='guests-activity-log']",
+    },
+  ],
+  "next-steps": [
+    {
+      key: "next-steps-paths",
+      title: "Execution paths",
+      body: "This page helps you decide how to execute: DIY shopping, planner support, or a mix of both.",
+      selector: "[data-tour-id='next-steps-paths']",
+    },
+    {
+      key: "next-steps-diy",
+      title: "DIY shopping path",
+      body: "Choose this if you want to run purchasing directly from Party Swami recommendations.",
+      selector: "[data-tour-id='next-steps-diy']",
+    },
+    {
+      key: "next-steps-planner",
+      title: "Professional planner path",
+      body: "Choose this when you want to compare planners and request help with execution.",
+      selector: "[data-tour-id='next-steps-planner']",
+    },
+    {
+      key: "next-steps-both",
+      title: "Hybrid path",
+      body: "Use this when you want to keep control of shopping while handing off selected work to a planner.",
+      selector: "[data-tour-id='next-steps-both']",
+    },
+    {
+      key: "next-steps-ai",
+      title: "AI marketplace assist",
+      body: "This section captures context for smarter planner matching based on event details.",
+      selector: "[data-tour-id='next-steps-ai-assist']",
+    },
+  ],
+  timeline: [
+    {
+      key: "timeline-hero",
+      title: "Timeline and tracker",
+      body: "This page organizes prep and execution so you can run the event without missing key steps.",
+      selector: "[data-tour-id='timeline-hero']",
+    },
+    {
+      key: "timeline-add-task",
+      title: "Add task form",
+      body: "Add new tasks with phase and due labels to keep the checklist current.",
+      selector: "[data-tour-id='timeline-add-task']",
+    },
+    {
+      key: "timeline-checklists",
+      title: "Checklist groups",
+      body: "Tasks are grouped by phase so pre-event and event-week work stay clearly separated.",
+      selector: "[data-tour-id='timeline-checklist-columns']",
+    },
+    {
+      key: "timeline-day-of",
+      title: "Day-of timeline",
+      body: "This run-of-show block sequences the live event moments in order.",
+      selector: "[data-tour-id='timeline-day-of']",
+    },
+    {
+      key: "timeline-final-review",
+      title: "Final review handoff",
+      body: "When tasks look good, return to the event hub for one final cross-check.",
+      selector: "[data-tour-id='timeline-final-review']",
+    },
+  ],
+  settings: [
+    {
+      key: "settings-account",
+      title: "Account and security",
+      body: "Manage core profile details and billing entry points here.",
+      selector: "[data-tour-id='settings-account']",
+    },
+    {
+      key: "settings-privacy",
+      title: "Privacy and consent",
+      body: "This section explains data visibility, invite sharing, and billing sync behavior.",
+      selector: "[data-tour-id='settings-privacy']",
+    },
+    {
+      key: "settings-ai-status",
+      title: "AI planning status",
+      body: "Review current theme, generation metadata, and usage context for this event.",
+      selector: "[data-tour-id='settings-ai-status']",
+    },
+    {
+      key: "settings-plan-revisions",
+      title: "Plan revisions",
+      body: "Restore earlier AI plan snapshots from this revision history panel.",
+      selector: "[data-tour-id='settings-plan-revisions']",
+    },
+  ],
+  shopping: [
+    {
+      key: "shopping-hero",
+      title: "Shopping recommendations",
+      body: "This page translates your event plan into practical shopping groups.",
+      selector: "[data-tour-id='shopping-hero']",
+    },
+    {
+      key: "shopping-regenerate",
+      title: "Regenerate recommendations",
+      body: "Use this when budget, guest count, or plan context changes and you want a refreshed list.",
+      selector: "[data-tour-id='shopping-regenerate']",
+    },
+    {
+      key: "shopping-summary",
+      title: "Shopping summary cards",
+      body: "These metrics track groups, total recommendations, spend estimate, and purchase progress.",
+      selector: "[data-tour-id='shopping-summary-metrics']",
+    },
+    {
+      key: "shopping-groups",
+      title: "Grouped recommendations",
+      body: "Each category contains item links, recommendation context, and search terms used.",
+      selector: "[data-tour-id='shopping-groups']",
+    },
+    {
+      key: "shopping-next-step",
+      title: "Timeline handoff",
+      body: "Move to Timeline once shopping looks right so execution tasks stay in sync.",
+      selector: "[data-tour-id='shopping-next-step']",
+    },
+  ],
+  planners: [
+    {
+      key: "planners-search",
+      title: "Planner search",
+      body: "Search by ZIP to find providers near the event location.",
+      selector: "[data-tour-id='planners-search']",
+    },
+    {
+      key: "planners-results",
+      title: "Planner results",
+      body: "Compare profile details, services, rates, and response expectations in this grid.",
+      selector: "[data-tour-id='planners-results']",
+    },
+    {
+      key: "planners-next-step",
+      title: "Next step",
+      body: "After outreach, continue into Timeline to lock down execution details.",
+      selector: "[data-tour-id='planners-next-step']",
+    },
+  ],
+  premium: [
+    {
+      key: "premium-main",
+      title: "Premium feature tour",
+      body: "Billing shows the upgrade path for premium templates, AI image tools, higher limits, and image packs.",
+      selector: "[data-tour-id='billing-link']",
+      href: "/billing",
+    },
+  ],
 };
 
 async function persistPatch(patch: Partial<TourState>) {
@@ -186,14 +462,23 @@ export function TourManager() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mode, setMode] = useState<"full" | "page">("full");
   const [pageTourKey, setPageTourKey] = useState<string | null>(null);
+  const [pageStepIndex, setPageStepIndex] = useState(0);
   const [targetBox, setTargetBox] = useState<TargetBox | null>(null);
 
   const currentPageKey = useMemo(() => getTourPageKeyFromPath(pathname), [pathname]);
-  const activeStep = mode === "page" && pageTourKey
-    ? pageTours[pageTourKey]
-    : tourSteps[tourState?.current_step ?? 0];
-  const canGoBack = mode === "full" && Boolean(tourState?.current_step);
-  const progress = mode === "full" ? ((tourState?.current_step ?? 0) + 1) / TOUR_STEP_COUNT : 1;
+  const activePageSteps = mode === "page" && pageTourKey ? pageTours[pageTourKey] ?? [] : [];
+  const clampedPageStepIndex = Math.min(Math.max(pageStepIndex, 0), Math.max(activePageSteps.length - 1, 0));
+  const activeStep =
+    mode === "page"
+      ? activePageSteps[clampedPageStepIndex]
+      : tourSteps[tourState?.current_step ?? 0];
+  const canGoBack = mode === "full" ? Boolean(tourState?.current_step) : clampedPageStepIndex > 0;
+  const progress =
+    mode === "full"
+      ? ((tourState?.current_step ?? 0) + 1) / TOUR_STEP_COUNT
+      : activePageSteps.length > 0
+        ? (clampedPageStepIndex + 1) / activePageSteps.length
+        : 1;
 
   useEffect(() => {
     let isMounted = true;
@@ -233,13 +518,15 @@ export function TourManager() {
 
       if (requestedMode === "page") {
         const resolvedPageKey = customEvent.detail?.pageKey ?? getTourPageKeyFromPath(pathname);
-        if (!resolvedPageKey || !pageTours[resolvedPageKey]) {
+        const resolvedSteps = resolvedPageKey ? pageTours[resolvedPageKey] : null;
+        if (!resolvedPageKey || !resolvedSteps?.length) {
           return;
         }
 
         requestAnimationFrame(() => {
           setMode("page");
           setPageTourKey(resolvedPageKey);
+          setPageStepIndex(0);
           setIsMenuOpen(false);
           setIsOpen(true);
         });
@@ -260,6 +547,7 @@ export function TourManager() {
       requestAnimationFrame(() => {
         setMode("full");
         setPageTourKey(null);
+        setPageStepIndex(0);
         setIsMenuOpen(false);
         setIsOpen(true);
       });
@@ -310,6 +598,8 @@ export function TourManager() {
       if (stepPageKey && stepPageKey === currentPageKey) {
         requestAnimationFrame(() => {
           setMode("full");
+          setPageTourKey(null);
+          setPageStepIndex(0);
           setIsOpen(true);
         });
         return;
@@ -320,11 +610,13 @@ export function TourManager() {
       !tourState.skipped &&
       !isOpen &&
       currentPageKey &&
-      !tourState.page_tours_completed.includes(currentPageKey)
+      !tourState.page_tours_completed.includes(currentPageKey) &&
+      (pageTours[currentPageKey]?.length ?? 0) > 0
     ) {
       requestAnimationFrame(() => {
         setMode("page");
         setPageTourKey(currentPageKey);
+        setPageStepIndex(0);
         setIsOpen(true);
       });
     }
@@ -373,6 +665,7 @@ export function TourManager() {
     setTourState(nextState ?? normalizeTourState({ ...tourState, started: true, current_step: step }));
     setMode("full");
     setPageTourKey(null);
+    setPageStepIndex(0);
     setIsMenuOpen(false);
     setIsOpen(true);
   }
@@ -409,10 +702,15 @@ export function TourManager() {
     setTourState(nextState ?? { ...tourState, page_tours_completed });
     setIsOpen(false);
     setPageTourKey(null);
+    setPageStepIndex(0);
   }
 
   async function goNext() {
     if (mode === "page") {
+      if (activePageSteps.length > 0 && clampedPageStepIndex < activePageSteps.length - 1) {
+        setPageStepIndex((current) => current + 1);
+        return;
+      }
       await markPageTourDone();
       return;
     }
@@ -433,6 +731,11 @@ export function TourManager() {
   }
 
   async function goBack() {
+    if (mode === "page") {
+      setPageStepIndex((current) => Math.max(0, current - 1));
+      return;
+    }
+
     if (mode !== "full") {
       return;
     }
@@ -445,9 +748,12 @@ export function TourManager() {
   function openPageTour(key: string) {
     setMode("page");
     setPageTourKey(key);
+    setPageStepIndex(0);
     setIsMenuOpen(false);
     setIsOpen(true);
   }
+
+  const pageStepCount = Math.max(activePageSteps.length, 1);
 
   return (
     <>
@@ -488,14 +794,14 @@ export function TourManager() {
               Restart full tour
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(pageTours).map(([key, step]) => (
+              {Object.keys(pageTours).map((key) => (
                 <button
                   key={key}
                   type="button"
                   className="rounded-2xl border border-border bg-canvas px-3 py-2 text-left text-xs font-medium text-ink transition hover:border-brand/40 hover:bg-white"
                   onClick={() => openPageTour(key)}
                 >
-                  {step.title.replace(" tour", "")}
+                  {pageTourLabels[key] ?? key}
                 </button>
               ))}
             </div>
@@ -532,7 +838,9 @@ export function TourManager() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-                      {mode === "full" ? `Step ${(tourState.current_step ?? 0) + 1} of ${TOUR_STEP_COUNT}` : "Page guide"}
+                      {mode === "full"
+                        ? `Step ${(tourState.current_step ?? 0) + 1} of ${TOUR_STEP_COUNT}`
+                        : `Page step ${Math.min(clampedPageStepIndex + 1, pageStepCount)} of ${pageStepCount}`}
                     </p>
                     <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">{activeStep.title}</h2>
                   </div>
@@ -576,7 +884,13 @@ export function TourManager() {
                       </Button>
                     ) : null}
                     <Button type="button" onClick={() => void goNext()}>
-                      {mode === "full" && tourState.current_step >= TOUR_STEP_COUNT - 1 ? "Finish" : "Continue"}
+                      {mode === "full"
+                        ? tourState.current_step >= TOUR_STEP_COUNT - 1
+                          ? "Finish"
+                          : "Continue"
+                        : clampedPageStepIndex >= activePageSteps.length - 1
+                          ? "Finish page guide"
+                          : "Continue"}
                       <ChevronRight className="size-4" />
                     </Button>
                   </div>

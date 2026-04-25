@@ -42,7 +42,7 @@ export default async function EventPlannerSearchPage({
       backHref={`/events/${eventId}`}
       eventNav={{ eventId, eventTitle: event.title, active: "planners" }}
     >
-      <Card>
+      <Card data-tour-id="planners-search">
         <form method="get" className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <Label htmlFor="zip">Search ZIP</Label>
@@ -67,7 +67,7 @@ export default async function EventPlannerSearchPage({
         </form>
       </Card>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section data-tour-id="planners-results" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {planners.map((planner) => (
           <Card key={planner.id} className="flex flex-col">
             <div className="flex items-start justify-between gap-3">
@@ -149,7 +149,7 @@ export default async function EventPlannerSearchPage({
         ) : null}
       </section>
 
-      <Card className="bg-white/80">
+      <Card data-tour-id="planners-next-step" className="bg-white/80">
         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Next step</p>
         <h3 className="mt-2 text-xl font-semibold text-ink">Turn the plan into a host-ready timeline</h3>
         <p className="mt-2 text-sm leading-6 text-ink-muted">

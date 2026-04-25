@@ -49,7 +49,7 @@ export default async function EventSettingsPage({
       eventNav={{ eventId, eventTitle: event.title, active: "settings" }}
     >
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card>
+        <Card data-tour-id="settings-account">
           <h2 className="text-xl font-semibold text-ink">Account and security</h2>
           <form action={updateProfileAction} className="mt-5 space-y-4">
             <input type="hidden" name="eventId" value={eventId} />
@@ -90,7 +90,7 @@ export default async function EventSettingsPage({
           </div>
         </Card>
 
-        <Card className="bg-[rgba(244,247,255,0.9)]">
+        <Card data-tour-id="settings-privacy" className="bg-[rgba(244,247,255,0.9)]">
           <h2 className="text-xl font-semibold text-ink">Privacy and consent</h2>
           <div className="mt-5 grid gap-3">
             {[
@@ -108,7 +108,7 @@ export default async function EventSettingsPage({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card>
+        <Card data-tour-id="settings-ai-status">
           <h2 className="text-xl font-semibold text-ink">AI planning status</h2>
           <div className="mt-5 grid gap-3">
             {[
@@ -141,7 +141,7 @@ export default async function EventSettingsPage({
           ) : null}
         </Card>
 
-        <Card className="bg-[rgba(244,247,255,0.9)]">
+        <Card data-tour-id="settings-plan-revisions" className="bg-[rgba(244,247,255,0.9)]">
           <h2 className="text-xl font-semibold text-ink">Recent plan revisions</h2>
           {resolvedSearchParams.restoreSuccess ? (
             <div className="mt-4 rounded-3xl border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">

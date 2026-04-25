@@ -276,7 +276,7 @@ export async function EventWorkspaceOverview({
 
   return (
     <div className="grid gap-4">
-      <Card className="bg-white/85">
+      <Card data-tour-id="overview-hero" className="bg-white/85">
         <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
           <div className="rounded-[1.9rem] border border-border bg-[rgba(244,247,255,0.82)] p-5">
             <Badge variant="success">{event.status}</Badge>
@@ -287,7 +287,7 @@ export async function EventWorkspaceOverview({
             </p>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-center">
-              <div>
+              <div data-tour-id="overview-next-step">
                 <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Next best step</p>
                 <p className="mt-2 text-sm font-medium text-brand">{primaryStep.step}</p>
                 <h3 className="mt-3 text-2xl font-semibold text-ink">{primaryStep.label}</h3>
@@ -323,7 +323,7 @@ export async function EventWorkspaceOverview({
           </div>
 
           <div className="grid gap-4">
-            <div className="rounded-[1.9rem] border border-border bg-white/82 p-5">
+            <div data-tour-id="overview-at-a-glance" className="rounded-[1.9rem] border border-border bg-white/82 p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">At a glance</p>
               <div className="mt-4 space-y-3">
                 {quickSummary.map((item) => (
@@ -335,7 +335,7 @@ export async function EventWorkspaceOverview({
               </div>
             </div>
 
-            <div className="rounded-[1.9rem] border border-border bg-white/82 p-5">
+            <div data-tour-id="overview-ai-revision" className="rounded-[1.9rem] border border-border bg-white/82 p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">AI revision</p>
               <p className="mt-2 text-sm leading-6 text-ink-muted">
                 Need a sharper pivot? Revise one specific part without rebuilding the whole event.
@@ -348,7 +348,7 @@ export async function EventWorkspaceOverview({
         </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div data-tour-id="overview-progress-cards" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {progressCards.map((item) => (
           <Link
             key={item.label}
@@ -369,7 +369,7 @@ export async function EventWorkspaceOverview({
         ))}
       </div>
 
-      <Card className="bg-[rgba(244,247,255,0.9)]">
+      <Card data-tour-id="overview-workspace-path" className="bg-[rgba(244,247,255,0.9)]">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Workspace path</p>
           <h3 className="mt-2 text-2xl font-semibold text-ink">Go where the work actually happens</h3>

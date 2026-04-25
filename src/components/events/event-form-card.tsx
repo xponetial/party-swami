@@ -147,13 +147,13 @@ export function EventFormCard({
           </div>
         </div>
 
-        <form action={createEventAction} className="mt-6">
+        <form data-tour-id="create-event-details-form" action={createEventAction} className="mt-6">
           <input type="hidden" name="eventType" value={selectedCategory.label} />
           <input type="hidden" name="designJson" value={JSON.stringify(previewDesign)} />
 
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Choose occasion</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div data-tour-id="create-event-occasion-grid" className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {categories.map((category) => {
                 const leadTemplate = category.templates[0];
                 const active = category.key === selectedCategory.key;
@@ -281,7 +281,7 @@ export function EventFormCard({
       </Card>
 
       <div className="space-y-4">
-        <Card className="bg-[rgba(244,247,255,0.9)]">
+        <Card data-tour-id="create-event-preview" className="bg-[rgba(244,247,255,0.9)]">
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Live invitation direction</p>
           <h3 className="mt-3 text-2xl font-semibold text-ink">
             Your event setup now starts from the card family

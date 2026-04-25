@@ -286,7 +286,7 @@ export function InviteTemplateStudio({
   return (
     <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
       <div className="space-y-6">
-        <div className="rounded-[2rem] border border-border bg-white p-6">
+        <div data-tour-id="invite-template-families" className="rounded-[2rem] border border-border bg-white p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <Badge>Evite-style invitation studio</Badge>
@@ -337,7 +337,7 @@ export function InviteTemplateStudio({
             ))}
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div data-tour-id="invite-template-grid" className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {selectedCategory.templates.map((template) => (
               <button
                 key={`${template.packSlug}:${template.templateId}`}
@@ -379,7 +379,7 @@ export function InviteTemplateStudio({
           </div>
         </div>
 
-        <form action={saveInviteAction} className="rounded-[2rem] border border-border bg-white p-6">
+        <form data-tour-id="invite-editor-form" action={saveInviteAction} className="rounded-[2rem] border border-border bg-white p-6">
           <input type="hidden" name="eventId" value={event.id} />
           <input type="hidden" name="inviteId" value={invite.id} />
           <input type="hidden" name="inviteCopy" value={fullGuestMessage} />
@@ -494,7 +494,7 @@ export function InviteTemplateStudio({
             </SubmitButton>
           </div>
 
-          <div className="mt-4 rounded-[1.5rem] border border-border bg-[rgba(244,247,255,0.9)] p-4">
+          <div data-tour-id="invite-next-step" className="mt-4 rounded-[1.5rem] border border-border bg-[rgba(244,247,255,0.9)] p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Next step</p>
             <p className="text-sm leading-6 text-ink-muted">
               Once the card looks right, move into guest management to add recipients, review RSVP
@@ -508,7 +508,7 @@ export function InviteTemplateStudio({
       </div>
 
       <div className="space-y-6">
-        <div className="rounded-[2rem] border border-border bg-white p-6">
+        <div data-tour-id="invite-live-preview" className="rounded-[2rem] border border-border bg-white p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Live preview</p>
@@ -527,7 +527,7 @@ export function InviteTemplateStudio({
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
+        <div data-tour-id="invite-media-tools" className="rounded-[2rem] border border-border bg-[rgba(244,247,255,0.9)] p-6">
           <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Full guest message</p>
           <div className="mt-3 rounded-[1.5rem] border border-border bg-white/80 p-5">
             <p className="whitespace-pre-wrap text-sm leading-7 text-ink-muted">
