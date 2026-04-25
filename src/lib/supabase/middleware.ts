@@ -2,6 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { sanitizeNextPath } from "@/lib/auth/urls";
 
+function getProviderDashboardPath(user: { user_metadata?: Record<string, unknown> } | null) {
+  const membershipType = typeof user?.user_metadata?.membership_type === "string"
+    ? user.user_metadata.membership_type.toLowerCase()
+    : null;
+
+  if (membershipType === "vendor") return "/vendors/dashboard";
+  if (membershipType === "planner") return "/planners/dashboard";
+  return null;
+}
+
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({
     request,
@@ -34,7 +44,20 @@ export async function updateSession(request: NextRequest) {
   const isAuthPage =
     pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password";
   const isProtectedPage =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/events") || pathname.startsWith("/admin");
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/events") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/images") ||
+    pathname.startsWith("/vendors/dashboard") ||
+    pathname.startsWith("/planners/dashboard");
+  const providerDashboardPath = getProviderDashboardPath(user);
+  const isHostOnlyPage =
+    pathname === "/" ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/events") ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/images");
 
   if (!user && isProtectedPage) {
     const loginUrl = new URL("/login", request.url);
@@ -45,9 +68,24 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (user && providerDashboardPath) {
+    if (isHostOnlyPage) {
+      return NextResponse.redirect(new URL(providerDashboardPath, request.url));
+    }
+
+    if (providerDashboardPath === "/vendors/dashboard" && pathname.startsWith("/planners/dashboard")) {
+      return NextResponse.redirect(new URL(providerDashboardPath, request.url));
+    }
+
+    if (providerDashboardPath === "/planners/dashboard" && pathname.startsWith("/vendors/dashboard")) {
+      return NextResponse.redirect(new URL(providerDashboardPath, request.url));
+    }
+  }
+
   if (user && isAuthPage) {
     const nextPath = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
-    return NextResponse.redirect(new URL(nextPath, request.url));
+    const redirectPath = providerDashboardPath && nextPath === "/dashboard" ? providerDashboardPath : nextPath;
+    return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
   return response;

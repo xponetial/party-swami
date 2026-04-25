@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, CalendarClock, DollarSign, MapPin, ShieldCheck } from "lucide-react";
 import { createMarketplaceLeadAction, createMarketplaceReviewAction } from "@/app/marketplace/actions";
+import { AppShell } from "@/components/layout/app-shell";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,13 +43,8 @@ export default async function PlannerProfilePage({
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : null;
 
-  return (
-    <ShellFrame
-      eyebrow="Planner profile"
-      title={planner.businessName}
-      description={`Professional planning from ${planner.city}${planner.state ? `, ${planner.state}` : ""}. Consultations and full-service requests are handled as tracked leads in Phase 3.`}
-    >
-      <div className="grid gap-5 lg:grid-cols-[1fr_0.82fr]">
+  const content = (
+    <div className="grid gap-5 lg:grid-cols-[1fr_0.82fr]">
         <div className="grid gap-5">
           {(query.created || query.lead || query.error) ? (
             <Card className={query.error ? "border-brand/30 bg-brand/10" : "border-white/80 bg-white/70"}>
@@ -73,7 +70,7 @@ export default async function PlannerProfilePage({
               {planner.isVerified ? (
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-medium text-ink">
                   <ShieldCheck className="size-4 text-brand" />
-                  Verified
+                  Verified by Party Swami
                 </span>
               ) : null}
             </div>
@@ -250,11 +247,44 @@ export default async function PlannerProfilePage({
               </Button>
             ) : null}
             <Button asChild variant="ghost">
-              <Link href="/marketplace">Back to marketplace</Link>
+              <Link href="/dashboard">Back to dashboard</Link>
             </Button>
           </div>
         </Card>
-      </div>
+    </div>
+  );
+
+  if (eventDefaults) {
+    return (
+      <AppShell
+        title={planner.businessName}
+        description={`Professional planning from ${planner.city}${planner.state ? `, ${planner.state}` : ""}. Consultations and full-service requests are handled as tracked leads in Phase 3.`}
+        backHref={`/events/${eventDefaults.id}/planners`}
+        backLabel="Back to planner search"
+        eventNav={{ eventId: eventDefaults.id, eventTitle: eventDefaults.title, active: "planners" }}
+      >
+        {content}
+      </AppShell>
+    );
+  }
+
+  return (
+    <ShellFrame
+      eyebrow="Planner profile"
+      title={planner.businessName}
+      description={`Professional planning from ${planner.city}${planner.state ? `, ${planner.state}` : ""}. Consultations and full-service requests are handled as tracked leads in Phase 3.`}
+      brandVisual={
+        <Image
+          src={planner.profileImageUrl || "/party-planner-membership.png"}
+          alt={`${planner.businessName} party planner badge`}
+          width={300}
+          height={300}
+          className="h-auto w-full max-w-[300px] rounded-[1.75rem] bg-white object-contain"
+          priority
+        />
+      }
+    >
+      {content}
     </ShellFrame>
   );
 }

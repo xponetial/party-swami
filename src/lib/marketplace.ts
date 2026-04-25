@@ -1,5 +1,6 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   MarketplaceLead,
   MarketplaceLeadActivity,
@@ -285,6 +286,72 @@ function mapLead(row: LeadRow): MarketplaceLead {
   };
 }
 
+async function getOwnedVendorRows(admin: ReturnType<typeof createSupabaseAdminClient>, userId: string, email?: string | null) {
+  const { data: ownedRows } = await admin
+    .from("vendors")
+    .select("*")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false })
+    .returns<VendorRow[]>();
+
+  if ((ownedRows ?? []).length || !email?.trim()) {
+    return ownedRows ?? [];
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data: emailRows } = await admin
+    .from("vendors")
+    .select("*")
+    .ilike("contact_email", normalizedEmail)
+    .order("created_at", { ascending: false })
+    .returns<VendorRow[]>();
+
+  if (!(emailRows ?? []).length) {
+    return [];
+  }
+
+  await admin
+    .from("vendors")
+    .update({ owner_id: userId })
+    .ilike("contact_email", normalizedEmail)
+    .neq("owner_id", userId);
+
+  return (emailRows ?? []).map((row) => ({ ...row, owner_id: userId }));
+}
+
+async function getOwnedPlannerRows(admin: ReturnType<typeof createSupabaseAdminClient>, userId: string, email?: string | null) {
+  const { data: ownedRows } = await admin
+    .from("planners")
+    .select("*")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false })
+    .returns<PlannerRow[]>();
+
+  if ((ownedRows ?? []).length || !email?.trim()) {
+    return ownedRows ?? [];
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data: emailRows } = await admin
+    .from("planners")
+    .select("*")
+    .ilike("contact_email", normalizedEmail)
+    .order("created_at", { ascending: false })
+    .returns<PlannerRow[]>();
+
+  if (!(emailRows ?? []).length) {
+    return [];
+  }
+
+  await admin
+    .from("planners")
+    .update({ owner_id: userId })
+    .ilike("contact_email", normalizedEmail)
+    .neq("owner_id", userId);
+
+  return (emailRows ?? []).map((row) => ({ ...row, owner_id: userId }));
+}
+
 export async function getVendors(filters: MarketplaceFilters = {}) {
   const supabase = await createSupabaseServerClient();
   const zip = normalizeZip(filters.zip);
@@ -497,12 +564,11 @@ export async function getLeadEventDefaults(eventId?: string | null): Promise<Lea
 
 export async function getOwnedVendorDashboard(userId: string) {
   const supabase = await createSupabaseServerClient();
-  const { data: vendors } = await supabase
-    .from("vendors")
-    .select("*")
-    .eq("owner_id", userId)
-    .order("created_at", { ascending: false })
-    .returns<VendorRow[]>();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const admin = createSupabaseAdminClient();
+  const vendors = await getOwnedVendorRows(admin, userId, user?.email);
   const vendorIds = (vendors ?? []).map((vendor) => vendor.id);
 
   if (!vendorIds.length) {
@@ -534,13 +600,35 @@ export async function getOwnedVendorDashboard(userId: string) {
   };
 }
 
-export async function getOwnedVendorReviews(userId: string) {
-  const supabase = await createSupabaseServerClient();
-  const { data: vendors } = await supabase
+export async function claimPendingVendorProfilesForOwner(userId: string, email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { data: ownedProfiles } = await supabase
     .from("vendors")
     .select("id")
     .eq("owner_id", userId)
+    .limit(1)
     .returns<Array<{ id: string }>>();
+
+  if ((ownedProfiles ?? []).length) return;
+
+  await supabase
+    .from("vendors")
+    .update({ owner_id: userId })
+    .ilike("contact_email", normalizedEmail)
+    .eq("status", "pending_review")
+    .neq("owner_id", userId);
+}
+
+export async function getOwnedVendorReviews(userId: string) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const admin = createSupabaseAdminClient();
+  const vendors = await getOwnedVendorRows(admin, userId, user?.email);
   const vendorIds = (vendors ?? []).map((vendor) => vendor.id);
 
   if (!vendorIds.length) return [];
@@ -558,12 +646,11 @@ export async function getOwnedVendorReviews(userId: string) {
 
 export async function getOwnedPlannerDashboard(userId: string) {
   const supabase = await createSupabaseServerClient();
-  const { data: planners } = await supabase
-    .from("planners")
-    .select("*")
-    .eq("owner_id", userId)
-    .order("created_at", { ascending: false })
-    .returns<PlannerRow[]>();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const admin = createSupabaseAdminClient();
+  const planners = await getOwnedPlannerRows(admin, userId, user?.email);
   const plannerIds = (planners ?? []).map((planner) => planner.id);
 
   if (!plannerIds.length) {
@@ -595,13 +682,35 @@ export async function getOwnedPlannerDashboard(userId: string) {
   };
 }
 
-export async function getOwnedPlannerReviews(userId: string) {
-  const supabase = await createSupabaseServerClient();
-  const { data: planners } = await supabase
+export async function claimPendingPlannerProfilesForOwner(userId: string, email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { data: ownedProfiles } = await supabase
     .from("planners")
     .select("id")
     .eq("owner_id", userId)
+    .limit(1)
     .returns<Array<{ id: string }>>();
+
+  if ((ownedProfiles ?? []).length) return;
+
+  await supabase
+    .from("planners")
+    .update({ owner_id: userId })
+    .ilike("contact_email", normalizedEmail)
+    .eq("status", "pending_review")
+    .neq("owner_id", userId);
+}
+
+export async function getOwnedPlannerReviews(userId: string) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const admin = createSupabaseAdminClient();
+  const planners = await getOwnedPlannerRows(admin, userId, user?.email);
   const plannerIds = (planners ?? []).map((planner) => planner.id);
 
   if (!plannerIds.length) return [];
@@ -615,6 +724,24 @@ export async function getOwnedPlannerReviews(userId: string) {
     .returns<ReviewRow[]>();
 
   return (data ?? []).map(mapReview);
+}
+
+export async function getMarketplaceMembershipTier(userId: string, email?: string | null) {
+  const admin = createSupabaseAdminClient();
+  const [vendors, planners] = await Promise.all([
+    getOwnedVendorRows(admin, userId, email),
+    getOwnedPlannerRows(admin, userId, email),
+  ]);
+
+  if (vendors.some((vendor) => vendor.status === "active" || vendor.status === "pending_review" || vendor.status === "paused")) {
+    return "vendor";
+  }
+
+  if (planners.some((planner) => planner.status === "active" || planner.status === "pending_review" || planner.status === "paused")) {
+    return "professional_party_planner";
+  }
+
+  return null;
 }
 
 export async function getLeadActivity(leadIds: string[]) {

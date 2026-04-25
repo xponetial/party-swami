@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, Handshake, ShoppingBag, Sparkles, Store } from "lucide-react";
+import { ArrowRight, Handshake, ShoppingBag, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getEventContext } from "@/lib/events";
-import { getPlanners, getVendors } from "@/lib/marketplace";
+import { getPlanners } from "@/lib/marketplace";
 
 function extractZip(value: string | null) {
   return value?.match(/\b\d{5}\b/)?.[0] ?? "";
@@ -19,16 +19,13 @@ export default async function EventNextStepsPage({
   const { eventId } = await params;
   const { event, shoppingList } = await getEventContext(eventId);
   const eventZip = extractZip(event.location);
-  const [vendors, planners] = await Promise.all([
-    getVendors({ zip: eventZip || undefined }),
-    getPlanners({ zip: eventZip || undefined }),
-  ]);
-  const marketplaceQuery = eventZip ? `?zip=${eventZip}` : "";
+  const planners = await getPlanners({ zip: eventZip || undefined });
+  const topPlanners = planners.slice(0, 3);
 
   return (
     <AppShell
-      title="Post-invite next steps"
-      description="Choose the Phase 3 path after the invite: stay DIY with shopping, book quick expert help, or request direct vendor support."
+      title="Pick how you want to execute"
+      description="Choose DIY shopping, professional planner help, or both before diving into the shopping list."
       backHref={`/events/${eventId}`}
       eventNav={{ eventId, eventTitle: event.title, active: "next-steps" }}
     >
@@ -58,25 +55,25 @@ export default async function EventNextStepsPage({
           <div className="mt-5 rounded-3xl bg-white/55 p-4 text-accent">
             <Handshake className="size-7" />
           </div>
-          <h2 className="mt-5 text-2xl font-semibold text-ink">Get planner help</h2>
+          <h2 className="mt-5 text-2xl font-semibold text-ink">Professional planner help</h2>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
             Start with a consultation or ask for a full-service quote. Payment stays between host and planner in Phase 3.
           </p>
           <div className="mt-5 grid gap-2">
-            {planners.slice(0, 3).map((planner) => (
+            {topPlanners.map((planner) => (
               <Link key={planner.id} href={`/planners/${planner.slug}?eventId=${eventId}`} className="rounded-2xl border border-border bg-white/65 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/35">
                 {planner.businessName}
               </Link>
             ))}
-            {!planners.length ? (
+            {!topPlanners.length ? (
               <p className="rounded-2xl border border-border bg-white/65 px-4 py-3 text-sm text-ink-muted">
                 No local planner profiles yet.
               </p>
             ) : null}
           </div>
-          <Button asChild className="mt-5 w-full" variant="secondary">
-            <Link href={`/marketplace${marketplaceQuery}`}>
-              Browse planners
+          <Button asChild variant="secondary" className="mt-5 w-full">
+            <Link href={`/events/${eventId}/planners`}>
+              Browse all planners
               <ArrowRight className="size-4" />
             </Link>
           </Button>
@@ -85,30 +82,26 @@ export default async function EventNextStepsPage({
         <Card className="xl:col-span-1">
           <Badge>Path 3</Badge>
           <div className="mt-5 rounded-3xl bg-white/55 p-4 text-brand">
-            <Store className="size-7" />
+            <Sparkles className="size-7" />
           </div>
-          <h2 className="mt-5 text-2xl font-semibold text-ink">Book vendors direct</h2>
+          <h2 className="mt-5 text-2xl font-semibold text-ink">Both</h2>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
-            Request availability from bakers, DJs, venues, decor, catering, and rentals near the event.
+            Keep the DIY shopping list handy while a professional planner fills in the rest.
           </p>
-          <div className="mt-5 grid gap-2">
-            {vendors.slice(0, 3).map((vendor) => (
-              <Link key={vendor.id} href={`/vendors/${vendor.slug}?eventId=${eventId}`} className="rounded-2xl border border-border bg-white/65 px-4 py-3 text-sm font-medium text-ink transition hover:border-brand/35">
-                {vendor.businessName}
-              </Link>
-            ))}
-            {!vendors.length ? (
-              <p className="rounded-2xl border border-border bg-white/65 px-4 py-3 text-sm text-ink-muted">
-                No local vendor profiles yet.
-              </p>
-            ) : null}
+          <div className="mt-5 rounded-3xl border border-border bg-white/60 p-4 text-sm text-ink-muted">
+            Start with shopping, then reach out to a planner anytime for the pieces you&apos;d rather hand off.
           </div>
-          <Button asChild className="mt-5 w-full" variant="secondary">
-            <Link href={`/marketplace${marketplaceQuery}`}>
-              Browse vendors
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
+          <div className="mt-5 grid gap-2">
+            <Button asChild className="w-full">
+              <Link href={`/events/${eventId}/shopping`}>
+                Open shopping list
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" className="w-full">
+              <Link href={`/events/${eventId}/planners`}>Browse planners</Link>
+            </Button>
+          </div>
         </Card>
       </section>
 
@@ -118,7 +111,7 @@ export default async function EventNextStepsPage({
             <Badge>AI marketplace assist</Badge>
             <h2 className="mt-4 text-2xl font-semibold text-ink">Next recommendations can use event context</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
-              This screen is ready for the PRD&apos;s AI layer: recommend vendor bundles from event type,
+              This screen is ready for the PRD&apos;s AI layer: recommend planner matches from event type,
               budget, guest count, and ZIP, then hand leads to providers.
             </p>
           </div>

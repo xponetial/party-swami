@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, BadgeDollarSign, Mail, MapPin, ShieldCheck } from "lucide-react";
 import { createMarketplaceLeadAction, createMarketplaceReviewAction } from "@/app/marketplace/actions";
@@ -52,6 +53,16 @@ export default async function VendorProfilePage({
       eyebrow="Vendor storefront"
       title={vendor.businessName}
       description={`${vendor.category} serving ${vendor.city}${vendor.state ? `, ${vendor.state}` : ""} within ${vendor.serviceRadiusMiles} miles.`}
+      brandVisual={
+        <Image
+          src={vendor.profileImageUrl || "/vendor-membership.png"}
+          alt={`${vendor.businessName} vendor badge`}
+          width={300}
+          height={300}
+          className="h-auto w-full max-w-[300px] rounded-[1.75rem] bg-white object-contain"
+          priority
+        />
+      }
     >
       <div className="grid gap-5 lg:grid-cols-[1fr_0.82fr]">
         <div className="grid gap-5">
@@ -78,7 +89,7 @@ export default async function VendorProfilePage({
               {vendor.isVerified ? (
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-medium text-ink">
                   <ShieldCheck className="size-4 text-brand" />
-                  Verified
+                  Verified by Party Swami
                 </span>
               ) : null}
             </div>
@@ -247,7 +258,7 @@ export default async function VendorProfilePage({
               </Button>
             ) : null}
             <Button asChild variant="ghost">
-              <Link href="/marketplace">Back to marketplace</Link>
+              <Link href="/dashboard">Back to dashboard</Link>
             </Button>
           </div>
         </Card>
