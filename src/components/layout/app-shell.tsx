@@ -14,6 +14,7 @@ import { ImageBudgetMeter } from "@/components/layout/image-budget-meter";
 import { BrandLockup } from "@/components/layout/brand-lockup";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SupportFab } from "@/components/contact/support-fab";
+import { TourManager } from "@/components/tour/tour-manager";
 import { Button } from "@/components/ui/button";
 import { getInviteImageUsageForUser } from "@/lib/ai/usage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -129,8 +130,21 @@ export async function AppShell({
                 currentSection === section.href && "bg-white/55 text-ink shadow-[0_12px_24px_rgba(101,85,176,0.12)]",
               )}
             >
-              <section.icon className="size-4 text-brand" />
-              {section.label}
+              <span
+                data-tour-id={
+                  section.href === "/dashboard"
+                    ? "dashboard-link"
+                    : section.href === "/events/new"
+                      ? "new-event-link"
+                      : section.href === "/billing"
+                        ? "billing-link"
+                        : undefined
+                }
+                className="flex items-center gap-3"
+              >
+                <section.icon className="size-4 text-brand" />
+                {section.label}
+              </span>
             </Link>
           ))}
         </nav>
@@ -151,6 +165,7 @@ export async function AppShell({
                       "flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium text-ink-muted transition hover:bg-white/55 hover:text-ink",
                       isActive && "bg-white/70 text-ink shadow-[0_12px_24px_rgba(101,85,176,0.14)]",
                     )}
+                    data-tour-id={`event-nav-${section.key}`}
                   >
                     <span>{section.label}</span>
                     {isActive ? <span className="text-xs uppercase tracking-[0.18em] text-brand">Now</span> : null}
@@ -175,7 +190,7 @@ export async function AppShell({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col gap-6">
-          <header className="rounded-[2rem] border border-white/75 bg-[linear-gradient(135deg,rgba(255,248,255,0.9)_0%,rgba(243,233,255,0.88)_38%,rgba(236,245,255,0.9)_74%,rgba(255,247,226,0.82)_100%)] px-6 py-5 shadow-party backdrop-blur">
+          <header data-tour-id="workspace-header" className="rounded-[2rem] border border-white/75 bg-[linear-gradient(135deg,rgba(255,248,255,0.9)_0%,rgba(243,233,255,0.88)_38%,rgba(236,245,255,0.9)_74%,rgba(255,247,226,0.82)_100%)] px-6 py-5 shadow-party backdrop-blur">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 {backHref ? (
@@ -195,10 +210,11 @@ export async function AppShell({
               </div>
             </div>
           </header>
-          <main className="grid gap-4">{children}</main>
+          <main data-tour-id="page-main" className="grid gap-4">{children}</main>
           <SiteFooter contactContext={contactContext} pageLabel={title} />
         </div>
       </div>
+      {user ? <TourManager /> : null}
     </>
   );
 }

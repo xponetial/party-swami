@@ -1,6 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, CreditCard, Settings, UserCircle2 } from "lucide-react";
+import { ChevronDown, CreditCard, Settings, UserCircle2, WandSparkles } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 
 type MembershipMenuProps = {
@@ -49,6 +51,10 @@ export function MembershipMenu({ planTier, email }: MembershipMenuProps) {
   const normalizedTier = normalizeTier(planTier);
   const activeBadge = BADGES[normalizedTier];
 
+  function openTourFromMenu() {
+    window.dispatchEvent(new CustomEvent("party-swami-tour:open", { detail: { mode: "full" } }));
+  }
+
   return (
     <details className="group relative">
       <summary className="list-none inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/80 bg-[linear-gradient(135deg,rgba(255,247,255,0.92)_0%,rgba(240,232,255,0.92)_45%,rgba(236,245,255,0.92)_100%)] px-2 py-2 text-ink shadow-[0_14px_30px_rgba(101,85,176,0.12)] transition hover:border-brand/35 hover:bg-white">
@@ -82,6 +88,14 @@ export function MembershipMenu({ planTier, email }: MembershipMenuProps) {
         </div>
 
         <div className="mt-3 grid gap-2">
+          <button
+            type="button"
+            onClick={openTourFromMenu}
+            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink transition hover:border-brand/35 hover:text-brand"
+          >
+            <WandSparkles className="size-4" />
+            Start Tour
+          </button>
           <Link
             href="/billing"
             className="inline-flex items-center gap-2 rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink transition hover:border-brand/35 hover:text-brand"
