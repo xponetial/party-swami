@@ -149,6 +149,12 @@ const pageTours: Record<string, TourStep> = {
     body: "Categories, quantities, estimates, and AI regeneration help you build the party supply list from the plan.",
     selector: "[data-tour-id='event-nav-shopping']",
   },
+  planners: {
+    key: "planners-mini",
+    title: "Planner search tour",
+    body: "Planner Search lets you compare planning professionals tied to your event context and request help quickly.",
+    selector: "[data-tour-id='event-nav-planners']",
+  },
   premium: {
     key: "premium-mini",
     title: "Premium feature tour",
@@ -254,9 +260,18 @@ export function TourManager() {
       });
     };
 
+    const closeHandler = () => {
+      requestAnimationFrame(() => {
+        setIsOpen(false);
+        setIsMenuOpen(false);
+      });
+    };
+
     window.addEventListener("party-swami-tour:open", handler as EventListener);
+    window.addEventListener("party-swami-tour:close", closeHandler as EventListener);
     return () => {
       window.removeEventListener("party-swami-tour:open", handler as EventListener);
+      window.removeEventListener("party-swami-tour:close", closeHandler as EventListener);
     };
   }, [pathname]);
 

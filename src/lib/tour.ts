@@ -85,6 +85,10 @@ export function getTourPageKeyFromPath(pathname: string): string | null {
     return "shopping";
   }
 
+  if (/^\/events\/[^/]+\/planners/.test(pathname)) {
+    return "planners";
+  }
+
   if (pathname === "/billing" || pathname === "/images") {
     return "premium";
   }
