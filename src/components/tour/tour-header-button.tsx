@@ -33,7 +33,7 @@ export function TourHeaderButton() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [pathname]);
 
   async function toggleTour() {
     const nextEnabled = !enabled;

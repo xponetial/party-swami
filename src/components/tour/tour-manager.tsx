@@ -558,6 +558,7 @@ async function persistPatch(patch: Partial<TourState>) {
 export function TourManager() {
   const pathname = usePathname();
   const [tourState, setTourState] = useState<TourState>(DEFAULT_TOUR_STATE);
+  const [tourStateLoaded, setTourStateLoaded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mode, setMode] = useState<"full" | "page">("full");
@@ -592,12 +593,14 @@ export function TourManager() {
 
         const nextState = normalizeTourState(payload.tour_state);
         setTourState(nextState);
+        setTourStateLoaded(true);
       })
       .catch(() => {
         if (!isMounted) {
           return;
         }
         setTourState(DEFAULT_TOUR_STATE);
+        setTourStateLoaded(true);
       });
 
     return () => {
@@ -664,6 +667,10 @@ export function TourManager() {
   }, [pathname]);
 
   useEffect(() => {
+    if (!tourStateLoaded) {
+      return;
+    }
+
     if (!currentPageKey) {
       return;
     }
@@ -696,7 +703,7 @@ export function TourManager() {
         setIsOpen(true);
       });
     }
-  }, [currentPageKey, isOpen, tourState]);
+  }, [currentPageKey, isOpen, tourState, tourStateLoaded]);
 
   useEffect(() => {
     if (!isOpen || !activeStep?.selector) {
