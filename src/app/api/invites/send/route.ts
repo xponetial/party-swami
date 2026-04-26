@@ -10,6 +10,7 @@ import {
 import { normalizeInviteDesignData, type InviteDesignData } from "@/lib/invite-design";
 import { uploadInvitePreviewImage } from "@/lib/invite-preview-storage";
 import { getInviteFromEmail, getResendClient } from "@/lib/email/resend";
+import { guardWithTurnstile } from "@/lib/security/turnstile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
@@ -17,6 +18,7 @@ const bodySchema = z.object({
   eventId: z.string().uuid(),
   deliveryType: z.enum(["invite", "reminder"]).default("invite"),
   sendMode: z.enum(["pending_only", "all"]).optional(),
+  turnstileToken: z.string().trim().min(1),
 });
 
 type GuestInviteRecord = {
@@ -44,6 +46,16 @@ export async function POST(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  const turnstile = await guardWithTurnstile({
+    token: parsed.data.turnstileToken,
+    headers: request.headers,
+    context: "invites:send",
+  });
+
+  if (!turnstile.ok) {
+    return NextResponse.json({ ok: false, message: turnstile.message }, { status: turnstile.status });
   }
 
   const supabase = await createSupabaseServerClient();

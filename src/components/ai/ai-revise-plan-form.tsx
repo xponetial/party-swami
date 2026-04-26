@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { TurnstileGate, type TurnstileGateHandle } from "@/components/security/turnstile-gate";
 
 const revisionOptions = [
   { value: "budget_adjustment", label: "Budget adjustment" },
@@ -12,6 +13,7 @@ const revisionOptions = [
 ];
 
 export function AiRevisePlanForm({ eventId }: { eventId: string }) {
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   const [pending, setPending] = useState(false);
   const [changeType, setChangeType] = useState(revisionOptions[0]?.value ?? "budget_adjustment");
   const [instructions, setInstructions] = useState("");
@@ -29,6 +31,13 @@ export function AiRevisePlanForm({ eventId }: { eventId: string }) {
     setError(null);
 
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+
+      if (!turnstileToken) {
+        setError("Bot protection could not verify this request. Please try again.");
+        return;
+      }
+
       const response = await fetch("/api/ai/revise-plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -36,6 +45,7 @@ export function AiRevisePlanForm({ eventId }: { eventId: string }) {
           eventId,
           changeType,
           instructions: instructions.trim(),
+          turnstileToken,
         }),
       });
 
@@ -80,6 +90,8 @@ export function AiRevisePlanForm({ eventId }: { eventId: string }) {
           className="min-h-28 w-full rounded-[1.5rem] border border-border bg-white px-4 py-3 text-sm leading-6 text-ink outline-none transition focus:border-brand/50 focus:ring-4 focus:ring-brand/10"
         />
       </div>
+
+      <TurnstileGate ref={turnstileRef} />
 
       <Button disabled={pending} type="submit" variant="secondary">
         {pending ? "Revising plan..." : "Revise AI plan"}

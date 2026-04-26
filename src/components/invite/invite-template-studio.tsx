@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   clearInviteImageAction,
   saveInviteAction,
@@ -10,6 +10,7 @@ import {
 } from "@/app/events/actions";
 import { AiGenerateButton } from "@/components/ai/ai-generate-button";
 import { InviteCardCanvas } from "@/components/invite/invite-card-canvas";
+import { TurnstileGate, type TurnstileGateHandle } from "@/components/security/turnstile-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -119,6 +120,7 @@ export function InviteTemplateStudio({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [selectedLibraryImageId, setSelectedLibraryImageId] = useState<string | null>(null);
   const [isFinalizingGeneratedImage, setIsFinalizingGeneratedImage] = useState(false);
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
 
   function notifyImageUsageUpdated() {
     window.dispatchEvent(new Event("party-swami:image-usage-updated"));
@@ -159,6 +161,13 @@ export function InviteTemplateStudio({
     setIsGeneratingImage(true);
 
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+
+      if (!turnstileToken) {
+        setImageGenerationError("Bot protection could not verify this request. Please try again.");
+        return;
+      }
+
       const response = await fetch("/api/ai/generate-invite-image", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -167,6 +176,7 @@ export function InviteTemplateStudio({
           inviteId: invite.id,
           prompt: imagePrompt,
           optionCount: 3,
+          turnstileToken,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -230,6 +240,13 @@ export function InviteTemplateStudio({
     setImageGenerationMessage(null);
 
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+
+      if (!turnstileToken) {
+        setImageGenerationError("Bot protection could not verify this request. Please try again.");
+        return;
+      }
+
       const response = await fetch("/api/ai/finalize-invite-image", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -237,6 +254,7 @@ export function InviteTemplateStudio({
           eventId: event.id,
           inviteId: invite.id,
           sourcePath,
+          turnstileToken,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -646,6 +664,7 @@ export function InviteTemplateStudio({
                     placeholder="Example: Elegant garden evening with soft lights and floral bokeh"
                     value={imagePrompt}
                   />
+                  <TurnstileGate ref={turnstileRef} />
                   <Button
                     disabled={isGeneratingImage || imagePrompt.trim().length < 8}
                     onClick={handleGenerateImage}

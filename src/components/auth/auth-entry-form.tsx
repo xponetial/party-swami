@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TurnstileGate } from "@/components/security/turnstile-gate";
 
 const initialState: AuthActionState = {};
 
@@ -98,6 +99,8 @@ export function AuthEntryForm({ next = "/dashboard", showRecoveryLink = false }:
             required
           />
         </div>
+
+        <TurnstileGate autoExecute inputName="turnstileToken" />
 
         <Button className="w-full rounded-[1.5rem] py-3.5" disabled={emailPending} type="submit">
           <Mail className="size-4" />

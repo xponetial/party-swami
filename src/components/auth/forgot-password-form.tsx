@@ -5,6 +5,7 @@ import { forgotPasswordAction, type AuthActionState } from "@/app/(auth)/actions
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TurnstileGate } from "@/components/security/turnstile-gate";
 
 const initialState: AuthActionState = {};
 
@@ -23,6 +24,7 @@ export function ForgotPasswordForm() {
           required
         />
       </div>
+      <TurnstileGate autoExecute inputName="turnstileToken" />
       {state.error ? (
         <p
           className="rounded-2xl border border-brand/20 bg-brand/10 px-4 py-3 text-sm text-brand"

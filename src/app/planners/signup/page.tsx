@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CalendarClock, Handshake, MapPin } from "lucide-react";
 import { createPublicPlannerSignupAction } from "@/app/marketplace/actions";
+import { TurnstileGate } from "@/components/security/turnstile-gate";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -158,6 +159,7 @@ export default async function PlannerSignupPage({
                 <Input id="availabilityNote" name="availabilityNote" placeholder="Weekday consults, weekend events, 2-week notice preferred..." />
               </div>
             </div>
+            <TurnstileGate autoExecute inputName="turnstileToken" />
             <SubmitButton pendingLabel="Submitting planner signup...">Submit free planner signup</SubmitButton>
           </form>
         </Card>

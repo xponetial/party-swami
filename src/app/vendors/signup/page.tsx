@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Building2, DollarSign, Globe2, MapPin } from "lucide-react";
 import { createPublicVendorSignupAction } from "@/app/marketplace/actions";
+import { TurnstileGate } from "@/components/security/turnstile-gate";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -154,6 +155,7 @@ export default async function VendorSignupPage({
                 <textarea id="portfolioUrls" name="portfolioUrls" rows={3} className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-brand/50 focus:ring-4 focus:ring-brand/10" placeholder="One URL per line, or comma-separated" />
               </div>
             </div>
+            <TurnstileGate autoExecute inputName="turnstileToken" />
             <SubmitButton pendingLabel="Submitting vendor signup...">Submit free vendor signup</SubmitButton>
           </form>
         </Card>

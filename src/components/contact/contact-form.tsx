@@ -1,10 +1,10 @@
 "use client";
 
-import Script from "next/script";
-import { FormEvent, useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TurnstileGate, type TurnstileGateHandle } from "@/components/security/turnstile-gate";
 import { CONTACT_FORM_CATEGORY_OPTIONS, buildContactFormDefaults } from "@/lib/contact-form";
 import { ContactContext, ContactFormCategory } from "@/lib/contact-email";
 
@@ -18,28 +18,6 @@ type ContactFormProps = {
   initialPageUrl?: string;
 };
 
-type TurnstileRenderOptions = {
-  sitekey: string;
-  execution?: "render" | "execute";
-  appearance?: "always" | "execute" | "interaction-only";
-  callback?: (token: string) => void;
-  "error-callback"?: () => void;
-  "expired-callback"?: () => void;
-};
-
-type TurnstileApi = {
-  render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
-  execute: (target: string) => void;
-  reset: (target?: string | HTMLElement) => void;
-  remove: (target?: string | HTMLElement) => void;
-};
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileApi;
-  }
-}
-
 export function ContactForm({
   initialName,
   initialEmail,
@@ -50,13 +28,8 @@ export function ContactForm({
   initialPageUrl,
 }: ContactFormProps) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-  const turnstileContainerId = useId();
   const formRef = useRef<HTMLFormElement>(null);
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | null>(null);
-  const submitRequestedRef = useRef(false);
-  const pendingTimeoutRef = useRef<number | null>(null);
-  const [turnstileScriptReady, setTurnstileScriptReady] = useState(false);
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -71,44 +44,26 @@ export function ContactForm({
   const [subject, setSubject] = useState(initialDefaults.subject);
   const [message, setMessage] = useState(initialDefaults.message);
 
-  useEffect(() => {
-    if (!siteKey || !turnstileScriptReady || !turnstileRef.current || !window.turnstile || widgetIdRef.current) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!siteKey) {
+      setError("Turnstile is not configured yet. Add the Turnstile keys before using the contact form.");
       return;
     }
 
-    widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
-      sitekey: siteKey,
-      execution: "execute",
-      appearance: "interaction-only",
-      callback: (token) => {
-        if (submitRequestedRef.current) {
-          void submitForm(token);
-        }
-      },
-      "error-callback": () => {
-        submitRequestedRef.current = false;
-        setPending(false);
-        setError("Turnstile could not verify this request. Please try again.");
-      },
-      "expired-callback": () => {
-        submitRequestedRef.current = false;
-        setPending(false);
-      },
-    });
+    setPending(true);
+    setError(null);
+    setSuccess(null);
 
-    return () => {
-      if (pendingTimeoutRef.current) {
-        window.clearTimeout(pendingTimeoutRef.current);
-        pendingTimeoutRef.current = null;
-      }
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
-      }
-    };
-  }, [siteKey, turnstileScriptReady]);
+    const turnstileToken = await turnstileRef.current?.getToken();
 
-  const submitForm = useEffectEvent(async (turnstileToken: string) => {
+    if (!turnstileToken) {
+      setPending(false);
+      setError("Bot protection could not verify this request. Please try again.");
+      return;
+    }
+
     const form = formRef.current;
 
     if (!form) {
@@ -116,9 +71,6 @@ export function ContactForm({
       setError("The contact form is unavailable right now. Please refresh and try again.");
       return;
     }
-
-    setError(null);
-    setSuccess(null);
 
     const formData = new FormData(form);
     const payload = {
@@ -169,48 +121,8 @@ export function ContactForm({
     } catch {
       setError("Something went wrong while sending your message.");
     } finally {
-      if (pendingTimeoutRef.current) {
-        window.clearTimeout(pendingTimeoutRef.current);
-        pendingTimeoutRef.current = null;
-      }
-      submitRequestedRef.current = false;
       setPending(false);
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.reset(widgetIdRef.current);
-      }
     }
-  });
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!siteKey) {
-      setError("Turnstile is not configured yet. Add the Turnstile keys before using the contact form.");
-      return;
-    }
-
-    setPending(true);
-    setError(null);
-    setSuccess(null);
-    submitRequestedRef.current = true;
-
-    if (!widgetIdRef.current || !window.turnstile) {
-      setPending(false);
-      submitRequestedRef.current = false;
-      setError("Turnstile is still loading. Please wait a moment and try again.");
-      return;
-    }
-
-    pendingTimeoutRef.current = window.setTimeout(() => {
-      submitRequestedRef.current = false;
-      setPending(false);
-      setError("Verification took too long. Please try again.");
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.reset(widgetIdRef.current);
-      }
-    }, 12000);
-
-    window.turnstile.execute(widgetIdRef.current);
   }
 
   function handleCategoryChange(nextCategory: ContactFormCategory) {
@@ -228,12 +140,6 @@ export function ContactForm({
 
   return (
     <div className="rounded-[2rem] border border-white/75 bg-white/80 p-6 shadow-sm">
-      <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        strategy="afterInteractive"
-        onLoad={() => setTurnstileScriptReady(true)}
-      />
-
       <div className="space-y-2">
         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Structured feedback</p>
         <h2 className="text-2xl font-semibold tracking-tight text-ink">Send a routed message without leaving the app.</h2>
@@ -312,7 +218,7 @@ export function ContactForm({
         <input type="hidden" name="pagePath" value={initialPagePath ?? ""} />
         <input type="hidden" name="pageUrl" value={initialPageUrl ?? ""} />
 
-        <div ref={turnstileRef} id={turnstileContainerId} className="min-h-0" aria-hidden="true" />
+        <TurnstileGate ref={turnstileRef} />
 
         {!siteKey ? (
           <p className="rounded-2xl border border-warning/30 bg-white px-4 py-3 text-sm text-ink-muted">

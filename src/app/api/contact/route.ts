@@ -4,6 +4,7 @@ import { buildContactFormDefaults } from "@/lib/contact-form";
 import { ContactContext, ContactFormCategory, getContactEmail } from "@/lib/contact-email";
 import { getResendClient, getResendFromEmail } from "@/lib/email/resend";
 import { buildRateLimitHeaders, checkContactRateLimit } from "@/lib/security/public-rate-limits";
+import { guardWithTurnstile } from "@/lib/security/turnstile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 
@@ -27,48 +28,6 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
-}
-
-async function verifyTurnstileToken({
-  token,
-  remoteIp,
-}: {
-  token: string;
-  remoteIp: string | null;
-}) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-
-  if (!secret) {
-    throw new Error("Missing TURNSTILE_SECRET_KEY environment variable.");
-  }
-
-  const body = new URLSearchParams({
-    secret,
-    response: token,
-  });
-
-  if (remoteIp) {
-    body.set("remoteip", remoteIp);
-  }
-
-  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
-
-  if (!response.ok) {
-    throw new Error("Turnstile verification request failed.");
-  }
-
-  const result = (await response.json()) as {
-    success: boolean;
-    "error-codes"?: string[];
-  };
-
-  return result;
 }
 
 export async function POST(request: NextRequest) {
@@ -99,32 +58,15 @@ export async function POST(request: NextRequest) {
     pagePath: payload.pagePath || undefined,
     pageUrl: payload.pageUrl || undefined,
   });
-  const remoteIp = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for");
 
-  try {
-    const turnstile = await verifyTurnstileToken({
-      token: payload.turnstileToken,
-      remoteIp: remoteIp ? remoteIp.split(",")[0]?.trim() ?? null : null,
-    });
+  const turnstile = await guardWithTurnstile({
+    token: payload.turnstileToken,
+    headers: request.headers,
+    context: `contact:${payload.category}`,
+  });
 
-    if (!turnstile.success) {
-      console.warn("Contact form Turnstile verification rejected", {
-        category: payload.category,
-        context: defaults.context,
-        hostname: request.nextUrl.hostname,
-        errorCodes: turnstile["error-codes"] ?? [],
-      });
-      return NextResponse.json(
-        { error: "Turnstile could not verify this submission. Please try again." },
-        { status: 400 },
-      );
-    }
-  } catch (error) {
-    console.error("Turnstile verification failed", error);
-    return NextResponse.json(
-      { error: "Contact verification is unavailable right now. Please try again." },
-      { status: 503 },
-    );
+  if (!turnstile.ok) {
+    return NextResponse.json({ error: turnstile.message }, { status: turnstile.status });
   }
 
   const resend = getResendClient();

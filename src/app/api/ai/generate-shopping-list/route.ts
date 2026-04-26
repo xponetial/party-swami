@@ -3,11 +3,13 @@ import { z } from "zod";
 import { enforceAiLimits } from "@/lib/ai/limits";
 import { generateShoppingListForEvent } from "@/lib/ai/workflows";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
+import { guardWithTurnstile } from "@/lib/security/turnstile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
   searchTerms: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+  turnstileToken: z.string().trim().min(1),
 });
 
 export async function POST(request: Request) {
@@ -22,6 +24,16 @@ export async function POST(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  const turnstile = await guardWithTurnstile({
+    token: parsed.data.turnstileToken,
+    headers: request.headers,
+    context: "ai:generate-shopping-list",
+  });
+
+  if (!turnstile.ok) {
+    return NextResponse.json({ ok: false, message: turnstile.message }, { status: turnstile.status });
   }
 
   const supabase = await createSupabaseServerClient();
