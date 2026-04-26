@@ -1,7 +1,30 @@
 import Link from "next/link";
-import { CheckCircle2, Sparkles } from "lucide-react";
+import { CheckCircle2, RefreshCcw, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { Card } from "@/components/ui/card";
+
+const policyItems = [
+  {
+    icon: TrendingUp,
+    title: "Pricing changes",
+    body: "Plan pricing, AI allowances, and add-on packs are subject to change at any time. Material changes to a paid plan take effect on the next billing cycle, and active subscribers will be notified before the change is applied.",
+  },
+  {
+    icon: RefreshCcw,
+    title: "Subscriptions and auto-renewal",
+    body: "Paid subscriptions auto-renew at the end of each billing period at the then-current rate unless you cancel before the renewal date. You can cancel any time from the Billing page. Cancellations take effect at the end of the current period; partial-period refunds are not provided unless required by law.",
+  },
+  {
+    icon: Zap,
+    title: "AI usage and add-on packs",
+    body: "AI features are subject to monthly usage limits and per-event caps. Hosts can purchase additional AI message and image packs in the app. Heavy or automated usage that exceeds plan limits may be throttled, and additional fees may apply for premium models or top-up packs.",
+  },
+  {
+    icon: Sparkles,
+    title: "Beta and experimental features",
+    body: "Some platform features are labelled as beta or experimental and are provided as-is. Beta features may change, be paywalled, or be removed without notice and are not covered by service-level guarantees.",
+  },
+];
 
 const tiers = [
   {
@@ -57,7 +80,7 @@ export default function PricingPage() {
       description="Every account starts on Free. Upgrade to Pro from your Billing page when you need more generation power."
       contactContext="pricing"
     >
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-3" aria-label="Plan tiers">
         {tiers.map((tier) => (
           <Card
             key={tier.key}
@@ -116,6 +139,55 @@ export default function PricingPage() {
             </div>
           </Card>
         ))}
+      </section>
+
+      <section className="mt-10 space-y-4" aria-label="Pricing policy">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">Pricing policy</p>
+          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+            How billing, AI usage, and beta features work
+          </h2>
+          <p className="max-w-3xl text-sm leading-6 text-ink-muted">
+            Plain-language summary of the rules that apply to every Party Swami subscription. The
+            full legal versions live in the{" "}
+            <Link href="/terms" className="font-medium text-brand underline-offset-4 hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="font-medium text-brand underline-offset-4 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {policyItems.map((item) => (
+            <Card key={item.title} className="bg-white/85">
+              <div className="flex items-start gap-3">
+                <div className="rounded-2xl bg-accent-soft p-2.5 text-accent">
+                  <item.icon className="size-4" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold text-ink">{item.title}</h3>
+                  <p className="text-sm leading-6 text-ink-muted">{item.body}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="bg-[rgba(244,247,255,0.9)]">
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold text-ink">Refunds and disputes</h3>
+            <p className="text-sm leading-6 text-ink-muted">
+              Subscription refunds are handled between you and Party Swami under the active plan and
+              applicable law. Refunds for vendor services booked through the marketplace are handled
+              directly between you and the vendor under the vendor&apos;s own policies. Party Swami
+              does not hold funds in escrow for vendor services.
+            </p>
+          </div>
+        </Card>
       </section>
     </ShellFrame>
   );
