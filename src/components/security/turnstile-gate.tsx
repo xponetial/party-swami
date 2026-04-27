@@ -114,6 +114,29 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle, TurnstileGateProps>
       };
     }, [siteKey, scriptReady, autoExecute, handleToken, handleError]);
 
+    // Block form submission until token is ready when in autoExecute mode
+    useEffect(() => {
+      if (!autoExecute || !siteKey || !containerRef.current) return;
+
+      const form = containerRef.current.closest("form");
+      if (!form) return;
+
+      function handleSubmit(e: SubmitEvent) {
+        if (tokenRef.current) return;
+        e.preventDefault();
+        const submitter = e.submitter;
+        const pollId = setInterval(() => {
+          if (tokenRef.current) {
+            clearInterval(pollId);
+            form!.requestSubmit(submitter instanceof HTMLButtonElement ? submitter : null);
+          }
+        }, 100);
+      }
+
+      form.addEventListener("submit", handleSubmit);
+      return () => form.removeEventListener("submit", handleSubmit);
+    }, [autoExecute, siteKey]);
+
     useImperativeHandle(
       ref,
       () => ({
