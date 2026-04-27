@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; deleted?: string }>;
 }) {
   const resolved = await searchParams;
   const [{ profile }, users] = await Promise.all([
@@ -28,6 +28,11 @@ export default async function AdminUsersPage({
       description="Search users, review plan tier and usage, and spot accounts that need support."
       adminName={profile?.full_name}
     >
+      {resolved.deleted === "1" && (
+        <div className="rounded-3xl border border-green-200 bg-green-50 px-5 py-4 text-sm text-green-800">
+          Account successfully deleted. All PII has been removed and anonymized transaction records have been retained.
+        </div>
+      )}
       <DashboardPanel
         title="Directory"
         description="This first pass focuses on account lookup, plan visibility, and light operational context."

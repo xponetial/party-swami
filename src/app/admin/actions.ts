@@ -11,6 +11,7 @@ import {
   type SocialBrandProfileContext,
 } from "@/lib/ai/party-genie";
 import { requireAdminAccess } from "@/lib/admin";
+import { deleteUserData, lookupUserByEmail } from "@/lib/admin-deletion";
 import { uploadSocialMediaAsset } from "@/lib/social-media-assets";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
@@ -1862,4 +1863,58 @@ export async function updateSocialMediaPerformanceAction(formData: FormData) {
   }
 
   finalizeSocialAction(returnTo, "Saved performance metrics.", failure);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 9: User Data Deletion & Expungement
+// ---------------------------------------------------------------------------
+
+export type DeletionActionState = {
+  error?: string;
+  success?: true;
+} | null;
+
+export async function lookupUserForDeletionAction(
+  _prevState: DeletionActionState,
+  formData: FormData,
+): Promise<DeletionActionState & { user?: { id: string; email: string; fullName: string | null; createdAt: string | null } }> {
+  await requireAdminAccess();
+
+  const email = formData.get("email")?.toString().trim() ?? "";
+  if (!email) return { error: "Email is required." };
+
+  try {
+    const user = await lookupUserByEmail(email);
+    if (!user) return { error: "No account found with that email address." };
+    return { user };
+  } catch {
+    return { error: "Failed to look up user. Please try again." };
+  }
+}
+
+export async function deleteUserDataAction(
+  _prevState: DeletionActionState,
+  formData: FormData,
+): Promise<DeletionActionState> {
+  const { userId: adminId } = await requireAdminAccess();
+
+  const targetUserId = formData.get("targetUserId")?.toString().trim() ?? "";
+  const confirmEmail = formData.get("confirmEmail")?.toString().trim() ?? "";
+
+  if (!targetUserId || !confirmEmail) {
+    return { error: "Missing required fields." };
+  }
+
+  // Re-verify the user still exists and that the typed email matches
+  const user = await lookupUserByEmail(confirmEmail);
+  if (!user || user.id !== targetUserId) {
+    return { error: "Email does not match the account. Deletion aborted." };
+  }
+
+  const result = await deleteUserData(targetUserId, adminId);
+  if (!result.success) {
+    return { error: result.error ?? "Deletion failed. Please try again." };
+  }
+
+  redirect("/admin/users?deleted=1");
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminNoteAction, updateAdminUserPlanTierAction } from "@/app/admin/actions";
+import { DeleteSection } from "@/app/admin/users/[userId]/delete-section";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Button } from "@/components/ui/button";
@@ -304,6 +305,10 @@ export default async function AdminUserDetailPage({
           </div>
         </DashboardPanel>
       </div>
+
+      {detail.user.email && (
+        <DeleteSection userId={detail.user.id} userEmail={detail.user.email} />
+      )}
     </AdminShell>
   );
 }
