@@ -694,20 +694,22 @@ export const requireAdminAccess = cache(async () => {
   };
 });
 
-async function listAuthUsers() {
+async function listAuthUsers(): Promise<AuthUserLookup[]> {
   const supabase = createSupabaseAdminClient();
   const users: AuthUserLookup[] = [];
   let page = 1;
   const perPage = 200;
+  let listUsersWorked = false;
 
   while (page <= 10) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
 
     if (error) {
-      console.error("[admin] listAuthUsers failed:", error.message);
+      console.error("[admin] listAuthUsers paginated failed:", error.message);
       break;
     }
 
+    listUsersWorked = true;
     const batch =
       data?.users.map((user) => ({
         id: user.id,
@@ -722,6 +724,30 @@ async function listAuthUsers() {
     }
 
     page += 1;
+  }
+
+  if (listUsersWorked) {
+    return users;
+  }
+
+  // Fallback: GoTrue listUsers fails on some Supabase free-tier projects (500 bug).
+  // Fetch profile IDs then look up each user individually — getUserById works reliably.
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .returns<{ id: string }[]>();
+
+  if (!profiles?.length) return [];
+
+  const settled = await Promise.allSettled(
+    profiles.map((p) => supabase.auth.admin.getUserById(p.id))
+  );
+
+  for (const result of settled) {
+    if (result.status === "fulfilled" && !result.value.error && result.value.data?.user) {
+      const u = result.value.data.user;
+      users.push({ id: u.id, email: u.email ?? null, createdAt: u.created_at ?? null });
+    }
   }
 
   return users;
