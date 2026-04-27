@@ -51,26 +51,57 @@ const projectName = process.env.VERCEL_PROJECT?.trim() || "party-swami";
 console.log(`[stage-alias] branch=${stageBranch}`);
 console.log(`[stage-alias] ${sourceAlias} -> ${stageDomain}`);
 
-// Step 1: set the URL alias (makes the domain resolve to this deployment)
-const command = `vercel alias set ${sourceAlias} ${stageDomain} --scope ${vercelScope}`;
-execSync(command, { stdio: "inherit" });
-
-// Step 2: patch the project domain's gitBranch so it appears in the
-// deployment's "Domains" panel in the Vercel dashboard.
 const token = getVercelToken();
-if (token && stageBranch) {
-  const url = `https://api.vercel.com/v9/projects/${projectName}/domains/${stageDomain}?teamId=${vercelScope}`;
-  const res = await fetch(url, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ gitBranch: stageBranch }),
-  });
-  if (res.ok) {
-    const data = await res.json();
-    console.log(`[stage-alias] gitBranch updated to "${data.gitBranch ?? stageBranch}" on ${stageDomain}`);
-  } else {
-    console.warn(`[stage-alias] gitBranch patch failed (${res.status}) — dashboard link may not appear, but alias is active`);
-  }
+if (!token) {
+  // Fallback: use the CLI (won't make the domain appear in dashboard Domains panel)
+  console.warn("[stage-alias] No Vercel token found — falling back to vercel CLI alias");
+  execSync(`vercel alias set ${sourceAlias} ${stageDomain} --scope ${vercelScope}`, { stdio: "inherit" });
+  process.exit(0);
+}
+
+// Step 1: resolve the source alias URL to a deployment ID
+const sourceHost = sourceAlias.replace(/^https?:\/\//, "").replace(/\/$/, "");
+const deploymentsUrl = `https://api.vercel.com/v13/deployments?url=${encodeURIComponent(sourceHost)}&teamId=${vercelScope}&limit=1`;
+const deploymentsRes = await fetch(deploymentsUrl, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+const deploymentsData = await deploymentsRes.json();
+const deploymentId = deploymentsData.deployments?.[0]?.uid;
+
+if (!deploymentId) {
+  console.error("[stage-alias] Could not resolve deployment ID from source URL:", sourceHost);
+  console.error("[stage-alias] Response:", JSON.stringify(deploymentsData, null, 2));
+  process.exit(1);
+}
+
+console.log(`[stage-alias] Resolved deployment ID: ${deploymentId}`);
+
+// Step 2: assign the custom domain directly to the deployment so it appears
+// in the deployment's Domains panel in the Vercel dashboard
+const assignUrl = `https://api.vercel.com/v2/deployments/${deploymentId}/aliases?teamId=${vercelScope}`;
+const assignRes = await fetch(assignUrl, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  body: JSON.stringify({ alias: stageDomain }),
+});
+if (assignRes.ok) {
+  console.log(`[stage-alias] ${stageDomain} assigned to deployment ${deploymentId}`);
 } else {
-  console.warn("[stage-alias] No Vercel token found — skipping gitBranch patch");
+  const body = await assignRes.text();
+  console.warn(`[stage-alias] Alias assignment failed (${assignRes.status}): ${body}`);
+}
+
+// Step 3: update the project domain's gitBranch so future pushes to this
+// branch automatically assign the custom domain during the build step
+const patchUrl = `https://api.vercel.com/v9/projects/${projectName}/domains/${stageDomain}?teamId=${vercelScope}`;
+const patchRes = await fetch(patchUrl, {
+  method: "PATCH",
+  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  body: JSON.stringify({ gitBranch: stageBranch }),
+});
+if (patchRes.ok) {
+  const data = await patchRes.json();
+  console.log(`[stage-alias] gitBranch set to "${data.gitBranch ?? stageBranch}" on ${stageDomain}`);
+} else {
+  console.warn(`[stage-alias] gitBranch patch failed (${patchRes.status}) — future auto-assign may not work`);
 }
