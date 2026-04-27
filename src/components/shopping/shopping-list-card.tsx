@@ -318,7 +318,7 @@ export function ShoppingListCard({
         ))}
       </div>
 
-      <div className="grid gap-4 [@media(min-width:1700px)]:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid gap-4">
         <Card data-tour-id="shopping-groups" className="bg-[rgba(244,247,255,0.9)]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
