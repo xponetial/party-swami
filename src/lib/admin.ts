@@ -704,8 +704,7 @@ async function listAuthUsers() {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
 
     if (error) {
-      console.error("[admin] listAuthUsers failed:", error.message);
-      break;
+      throw new Error(`[admin] listAuthUsers failed: ${error.message} (status: ${(error as { status?: number }).status ?? "unknown"})`);
     }
 
     const batch =
