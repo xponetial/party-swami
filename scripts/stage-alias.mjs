@@ -51,15 +51,17 @@ const projectName = process.env.VERCEL_PROJECT?.trim() || "party-swami";
 console.log(`[stage-alias] branch=${stageBranch}`);
 console.log(`[stage-alias] ${sourceAlias} -> ${stageDomain}`);
 
+// Step 1: vercel alias set — updates the URL-level alias record that Vercel's
+// reconciler uses as the source of truth. Must always run first.
+execSync(`vercel alias set ${sourceAlias} ${stageDomain} --scope ${vercelScope}`, { stdio: "inherit" });
+
 const token = getVercelToken();
 if (!token) {
-  // Fallback: use the CLI (won't make the domain appear in dashboard Domains panel)
-  console.warn("[stage-alias] No Vercel token found — falling back to vercel CLI alias");
-  execSync(`vercel alias set ${sourceAlias} ${stageDomain} --scope ${vercelScope}`, { stdio: "inherit" });
+  console.warn("[stage-alias] No Vercel token found — skipping deployment-level assignment and gitBranch patch");
   process.exit(0);
 }
 
-// Step 1: resolve the source alias URL to a deployment ID via vercel inspect
+// Step 2: resolve the source alias URL to a deployment ID via vercel inspect
 // Merge stderr into stdout so the deployment ID table is captured regardless
 // of which stream the CLI writes it to.
 const sourceHost = sourceAlias.replace(/^https?:\/\//, "").replace(/\/$/, "");
@@ -82,7 +84,7 @@ if (!deploymentId) {
 
 console.log(`[stage-alias] Resolved deployment ID: ${deploymentId}`);
 
-// Step 2: assign the custom domain directly to the deployment so it appears
+// Step 3: assign the custom domain directly to the deployment so it appears
 // in the deployment's Domains panel in the Vercel dashboard
 const assignUrl = `https://api.vercel.com/v2/deployments/${deploymentId}/aliases?teamId=${vercelScope}`;
 const assignRes = await fetch(assignUrl, {
@@ -97,7 +99,7 @@ if (assignRes.ok) {
   console.warn(`[stage-alias] Alias assignment failed (${assignRes.status}): ${body}`);
 }
 
-// Step 3: update the project domain's gitBranch so future pushes to this
+// Step 4: update the project domain's gitBranch so future pushes to this
 // branch automatically assign the custom domain during the build step
 const patchUrl = `https://api.vercel.com/v9/projects/${projectName}/domains/${stageDomain}?teamId=${vercelScope}`;
 const patchRes = await fetch(patchUrl, {
