@@ -29,15 +29,28 @@ jobs:
       - name: Detect stage branch deployment
         id: detect_stage
         env:
-          DEPLOY_SHA: ${{ github.event.deployment.ref }}
+          DEPLOY_REF: ${{ github.event.deployment.ref }}
         run: |
           git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
-          if git branch -r --contains "$DEPLOY_SHA" | grep -Eq 'origin/stage/'; then
+
+          # Only proceed if the deployment is from a stage/* branch
+          if [[ ! "$DEPLOY_REF" =~ ^stage/ ]]; then
+            echo "is_stage=false" >> "$GITHUB_OUTPUT"
+            echo "Deployment ref '$DEPLOY_REF' is not a stage/* branch. Skipping."
+            exit 0
+          fi
+
+          # Find the highest-numbered stage/phase-* branch so old phases
+          # don't reclaim the domain after a new phase is deployed.
+          LATEST_STAGE=$(git branch -r | grep -Eo 'origin/stage/phase-[0-9]+' | sort -t'-' -k3 -n | tail -1 | sed 's|origin/||')
+
+          if [[ "$DEPLOY_REF" == "$LATEST_STAGE" ]]; then
             echo "is_stage=true" >> "$GITHUB_OUTPUT"
-            echo "Detected stage branch for commit $DEPLOY_SHA"
+            echo "STAGE_BRANCH=$DEPLOY_REF" >> "$GITHUB_ENV"
+            echo "Deployment from latest stage branch '$DEPLOY_REF'. Running alias."
           else
             echo "is_stage=false" >> "$GITHUB_OUTPUT"
-            echo "Commit $DEPLOY_SHA is not on a stage/* branch. Skipping alias."
+            echo "Deployment from '$DEPLOY_REF' but latest stage is '$LATEST_STAGE'. Skipping."
           fi
 
       - name: Repoint stage.partyswami.com
