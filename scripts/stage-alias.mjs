@@ -59,18 +59,24 @@ if (!token) {
   process.exit(0);
 }
 
-// Step 1: resolve the source alias URL to a deployment ID
+// Step 1: resolve the source alias URL to a deployment ID via vercel inspect
+// Merge stderr into stdout so the deployment ID table is captured regardless
+// of which stream the CLI writes it to.
 const sourceHost = sourceAlias.replace(/^https?:\/\//, "").replace(/\/$/, "");
-const deploymentsUrl = `https://api.vercel.com/v13/deployments?url=${encodeURIComponent(sourceHost)}&teamId=${vercelScope}&limit=1`;
-const deploymentsRes = await fetch(deploymentsUrl, {
-  headers: { Authorization: `Bearer ${token}` },
-});
-const deploymentsData = await deploymentsRes.json();
-const deploymentId = deploymentsData.deployments?.[0]?.uid;
+let deploymentId;
+try {
+  const inspectOut = execSync(
+    `vercel inspect ${sourceHost} --scope ${vercelScope} 2>&1`,
+    { encoding: "utf8", shell: true },
+  );
+  const match = inspectOut.match(/\b(dpl_\w+)\b/);
+  deploymentId = match?.[1] ?? null;
+} catch (e) {
+  deploymentId = null;
+}
 
 if (!deploymentId) {
   console.error("[stage-alias] Could not resolve deployment ID from source URL:", sourceHost);
-  console.error("[stage-alias] Response:", JSON.stringify(deploymentsData, null, 2));
   process.exit(1);
 }
 
