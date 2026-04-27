@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { TurnstileGate, type TurnstileGateHandle } from "@/components/security/turnstile-gate";
 
 function parseSearchTerms(value: string) {
   return value
@@ -19,6 +20,7 @@ export function ShoppingRegeneratePanel({
   eventId: string;
   initialTerms: string[];
 }) {
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTermsText, setSearchTermsText] = useState(initialTerms.join(", "));
@@ -31,12 +33,20 @@ export function ShoppingRegeneratePanel({
     setError(null);
 
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+
+      if (!turnstileToken) {
+        setError("Bot protection could not verify this request. Please try again.");
+        return;
+      }
+
       const response = await fetch("/api/ai/generate-shopping-list", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           eventId,
           searchTerms: parsedTerms,
+          turnstileToken,
         }),
       });
 
@@ -85,6 +95,8 @@ export function ShoppingRegeneratePanel({
           ))}
         </div>
       ) : null}
+
+      <TurnstileGate ref={turnstileRef} />
 
       <Button disabled={pending} type="submit" variant="secondary">
         {pending ? "Refreshing recommendations..." : "Regenerate recommendations"}

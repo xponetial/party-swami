@@ -9,6 +9,7 @@ import {
 import { generateInviteBackgroundImageOptions } from "@/lib/ai/invite-image";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { uploadInviteGeneratedImageOption } from "@/lib/invite-preview-storage";
+import { guardWithTurnstile } from "@/lib/security/turnstile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
@@ -16,6 +17,7 @@ const bodySchema = z.object({
   inviteId: z.string().uuid(),
   prompt: z.string().trim().min(8).max(500),
   optionCount: z.number().int().min(1).max(3).optional(),
+  turnstileToken: z.string().trim().min(1),
 });
 
 function monthBucket() {
@@ -314,6 +316,16 @@ export async function POST(request: Request) {
       { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid image payload." },
       { status: 400 },
     );
+  }
+
+  const turnstile = await guardWithTurnstile({
+    token: parsed.data.turnstileToken,
+    headers: request.headers,
+    context: "ai:generate-invite-image",
+  });
+
+  if (!turnstile.ok) {
+    return NextResponse.json({ ok: false, message: turnstile.message }, { status: turnstile.status });
   }
 
   const supabase = await createSupabaseServerClient();

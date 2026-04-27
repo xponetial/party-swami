@@ -3,12 +3,14 @@ import { z } from "zod";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { normalizeInviteDesignData } from "@/lib/invite-design";
 import { finalizeInviteGeneratedImageFromSource } from "@/lib/invite-preview-storage";
+import { guardWithTurnstile } from "@/lib/security/turnstile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
   inviteId: z.string().uuid(),
   sourcePath: z.string().min(1),
+  turnstileToken: z.string().trim().min(1),
 });
 
 export async function POST(request: Request) {
@@ -20,6 +22,16 @@ export async function POST(request: Request) {
       { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid finalize payload." },
       { status: 400 },
     );
+  }
+
+  const turnstile = await guardWithTurnstile({
+    token: parsed.data.turnstileToken,
+    headers: request.headers,
+    context: "ai:finalize-invite-image",
+  });
+
+  if (!turnstile.ok) {
+    return NextResponse.json({ ok: false, message: turnstile.message }, { status: turnstile.status });
   }
 
   const supabase = await createSupabaseServerClient();

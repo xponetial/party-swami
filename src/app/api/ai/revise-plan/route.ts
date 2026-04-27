@@ -3,12 +3,14 @@ import { z } from "zod";
 import { enforceAiLimits } from "@/lib/ai/limits";
 import { revisePlanForEvent } from "@/lib/ai/workflows";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
+import { guardWithTurnstile } from "@/lib/security/turnstile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
   changeType: z.string().trim().min(2),
   instructions: z.string().trim().min(5),
+  turnstileToken: z.string().trim().min(1),
 });
 
 export async function POST(request: Request) {
@@ -23,6 +25,16 @@ export async function POST(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  const turnstile = await guardWithTurnstile({
+    token: parsed.data.turnstileToken,
+    headers: request.headers,
+    context: "ai:revise-plan",
+  });
+
+  if (!turnstile.ok) {
+    return NextResponse.json({ ok: false, message: turnstile.message }, { status: turnstile.status });
   }
 
   const supabase = await createSupabaseServerClient();

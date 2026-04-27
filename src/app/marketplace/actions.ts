@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { headers } from "next/headers";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { notifyMarketplaceLead } from "@/lib/email/marketplace";
 import { getInviteFromEmail, getResendClient } from "@/lib/email/resend";
+import { extractRemoteIp, verifyTurnstileToken } from "@/lib/security/turnstile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
@@ -351,6 +353,22 @@ export async function createPublicVendorSignupAction(formData: FormData) {
     redirectWithError("/vendors/signup", parsed.error.issues[0]?.message ?? "Check your vendor details.");
   }
 
+  if (process.env.TURNSTILE_SECRET_KEY) {
+    const turnstileToken = String(formData.get("turnstileToken") ?? "").trim();
+    if (!turnstileToken) {
+      redirectWithError("/vendors/signup", "Bot protection token is missing. Please refresh and try again.");
+    }
+    try {
+      const headerStore = await headers();
+      const result = await verifyTurnstileToken({ token: turnstileToken, remoteIp: extractRemoteIp(headerStore) });
+      if (!result.success) {
+        redirectWithError("/vendors/signup", "Bot protection could not verify this request. Please try again.");
+      }
+    } catch {
+      redirectWithError("/vendors/signup", "Bot protection is unavailable right now. Please try again.");
+    }
+  }
+
   const { user } = await getOptionalUser();
   if (user) {
     const supabase = await createSupabaseServerClient();
@@ -545,6 +563,22 @@ export async function createPublicPlannerSignupAction(formData: FormData) {
 
   if (!parsed.success) {
     redirectWithError("/planners/signup", parsed.error.issues[0]?.message ?? "Check your planner details.");
+  }
+
+  if (process.env.TURNSTILE_SECRET_KEY) {
+    const turnstileToken = String(formData.get("turnstileToken") ?? "").trim();
+    if (!turnstileToken) {
+      redirectWithError("/planners/signup", "Bot protection token is missing. Please refresh and try again.");
+    }
+    try {
+      const headerStore = await headers();
+      const result = await verifyTurnstileToken({ token: turnstileToken, remoteIp: extractRemoteIp(headerStore) });
+      if (!result.success) {
+        redirectWithError("/planners/signup", "Bot protection could not verify this request. Please try again.");
+      }
+    } catch {
+      redirectWithError("/planners/signup", "Bot protection is unavailable right now. Please try again.");
+    }
   }
 
   const { user } = await getOptionalUser();

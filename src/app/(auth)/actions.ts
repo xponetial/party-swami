@@ -2,8 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { headers } from "next/headers";
 import { getAppOrigin, sanitizeNextPath } from "@/lib/auth/urls";
 import { getInviteFromEmail, getResendClient } from "@/lib/email/resend";
+import { extractRemoteIp, verifyTurnstileToken } from "@/lib/security/turnstile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -110,6 +112,24 @@ export async function sendMagicLinkAction(
     };
   }
 
+  const turnstileToken = String(formData.get("turnstileToken") ?? "").trim();
+
+  if (turnstileToken) {
+    try {
+      const headerStore = await headers();
+      const result = await verifyTurnstileToken({
+        token: turnstileToken,
+        remoteIp: extractRemoteIp(headerStore),
+      });
+
+      if (!result.success) {
+        return { error: "Bot protection could not verify this request. Please try again." };
+      }
+    } catch {
+      return { error: "Bot protection is unavailable right now. Please try again." };
+    }
+  }
+
   const origin = await getAppOrigin();
   const nextPath = sanitizeNextPath(formData.get("next"));
   const supabase = createSupabaseAdminClient();
@@ -186,6 +206,24 @@ export async function forgotPasswordAction(
     return {
       error: parsed.error.issues[0]?.message ?? "Enter a valid email address.",
     };
+  }
+
+  const turnstileToken = String(formData.get("turnstileToken") ?? "").trim();
+
+  if (turnstileToken) {
+    try {
+      const headerStore = await headers();
+      const result = await verifyTurnstileToken({
+        token: turnstileToken,
+        remoteIp: extractRemoteIp(headerStore),
+      });
+
+      if (!result.success) {
+        return { error: "Bot protection could not verify this request. Please try again." };
+      }
+    } catch {
+      return { error: "Bot protection is unavailable right now. Please try again." };
+    }
   }
 
   const origin = await getAppOrigin();

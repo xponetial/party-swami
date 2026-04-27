@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { TurnstileGate, type TurnstileGateHandle } from "@/components/security/turnstile-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ type ResetPasswordFormProps = {
 
 export function ResetPasswordForm({ message }: ResetPasswordFormProps) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   const [isRecoveryReady, setIsRecoveryReady] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,6 +116,27 @@ export function ResetPasswordForm({ message }: ResetPasswordFormProps) {
       return;
     }
 
+    const turnstileToken = await turnstileRef.current?.getToken();
+
+    if (!turnstileToken) {
+      setError("Bot protection could not verify this request. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const verifyResponse = await fetch("/api/auth/verify-turnstile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ turnstileToken }),
+    });
+
+    if (!verifyResponse.ok) {
+      const payload = await verifyResponse.json().catch(() => null);
+      setError(payload?.message ?? "Bot protection check failed. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({
       password,
     });
@@ -184,6 +207,7 @@ export function ResetPasswordForm({ message }: ResetPasswordFormProps) {
             {success}
           </p>
         ) : null}
+        <TurnstileGate ref={turnstileRef} />
         <Button className="w-full" disabled={!isRecoveryReady || isCheckingSession || isSubmitting} type="submit">
           {isSubmitting ? "Updating password..." : "Update password"}
         </Button>

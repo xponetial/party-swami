@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TurnstileGate, type TurnstileGateHandle } from "@/components/security/turnstile-gate";
 
 type InviteSendButtonProps = {
   eventId: string;
@@ -26,6 +27,7 @@ export function InviteSendButton({
   remindableGuestCount,
   emailableGuestCount,
 }: InviteSendButtonProps) {
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,13 @@ export function InviteSendButton({
     setError(null);
 
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+
+      if (!turnstileToken) {
+        setError("Bot protection could not verify this request. Please try again.");
+        return;
+      }
+
       const response = await fetch("/api/invites/send", {
         method: "POST",
         headers: {
@@ -74,6 +83,7 @@ export function InviteSendButton({
           eventId,
           deliveryType: action.deliveryType,
           sendMode: action.sendMode,
+          turnstileToken,
         }),
       });
 
@@ -95,6 +105,7 @@ export function InviteSendButton({
 
   return (
     <div className="space-y-3">
+      <TurnstileGate ref={turnstileRef} />
       <p className="rounded-2xl border border-border bg-white/70 px-4 py-3 text-sm text-ink-muted">
         Guest invite links are live automatically. Each email uses a personal RSVP link tied to that guest&apos;s token.
       </p>

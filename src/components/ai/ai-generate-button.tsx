@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TurnstileGate, type TurnstileGateHandle } from "@/components/security/turnstile-gate";
 
 export function AiGenerateButton({
   endpoint,
@@ -16,6 +17,7 @@ export function AiGenerateButton({
   pendingLabel: string;
   variant?: "primary" | "secondary" | "ghost";
 }) {
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,10 +26,17 @@ export function AiGenerateButton({
     setPending(true);
 
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+
+      if (!turnstileToken) {
+        setError("Bot protection could not verify this request. Please try again.");
+        return;
+      }
+
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ eventId }),
+        body: JSON.stringify({ eventId, turnstileToken }),
       });
 
       const payload = await response.json().catch(() => null);
@@ -48,6 +57,7 @@ export function AiGenerateButton({
       <Button disabled={pending} onClick={handleClick} type="button" variant={variant}>
         {pending ? pendingLabel : label}
       </Button>
+      <TurnstileGate ref={turnstileRef} />
       {error ? <p className="text-xs text-brand">{error}</p> : null}
     </div>
   );
