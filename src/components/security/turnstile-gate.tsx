@@ -57,11 +57,16 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle, TurnstileGateProps>
 
     const handleToken = useCallback(
       (token: string) => {
-        tokenRef.current = token;
-        setTokenForInput(token);
         const resolver = pendingResolveRef.current;
         pendingResolveRef.current = null;
-        resolver?.(token);
+        if (resolver) {
+          // Consumed immediately by a pending getToken() call — don't cache
+          resolver(token);
+        } else {
+          // Pre-fetched (autoExecute) — cache for hidden input
+          tokenRef.current = token;
+          setTokenForInput(token);
+        }
       },
       [],
     );
