@@ -1905,21 +1905,10 @@ export async function deleteUserDataAction(
     return { error: "Missing required fields." };
   }
 
-  // Re-verify the user exists. Primary path: email lookup. Fallback: the
-  // admin typed the user ID directly (happens when email is unavailable in UI).
-  let verifiedId: string | null = null;
-  if (confirmEmail.includes("@")) {
-    const user = await lookupUserByEmail(confirmEmail);
-    if (user?.id === targetUserId) verifiedId = user.id;
-  } else if (confirmEmail === targetUserId) {
-    // ID-based confirmation — verify the auth user still exists
-    const admin = (await import("@/lib/supabase/admin")).createSupabaseAdminClient();
-    const { data } = await admin.auth.admin.getUserById(targetUserId);
-    if (data?.user) verifiedId = data.user.id;
-  }
-
-  if (!verifiedId) {
-    return { error: "Confirmation does not match the account. Deletion aborted." };
+  // Re-verify the user still exists and that the typed email matches
+  const user = await lookupUserByEmail(confirmEmail);
+  if (!user || user.id !== targetUserId) {
+    return { error: "Email does not match the account. Deletion aborted." };
   }
 
   const result = await deleteUserData(targetUserId, adminId);
