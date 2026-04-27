@@ -55,6 +55,12 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle, TurnstileGateProps>
     const [scriptReady, setScriptReady] = useState(false);
     const [tokenForInput, setTokenForInput] = useState<string>("");
 
+    // If the script was already in the DOM before this component mounted
+    // (e.g. after a React hydration remount), onLoad won't fire again.
+    useEffect(() => {
+      if (window.turnstile) setScriptReady(true);
+    }, []);
+
     const handleToken = useCallback(
       (token: string) => {
         const resolver = pendingResolveRef.current;
