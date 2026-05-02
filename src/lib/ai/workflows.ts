@@ -378,14 +378,28 @@ async function syncPlanCategoryReplacement(
 async function ensureInvite(supabase: SupabaseClient, eventId: string, inviteCopy: string) {
   const { data: invite } = await supabase
     .from("invites")
-    .select("id")
+    .select("id, design_json")
     .eq("event_id", eventId)
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; design_json: InviteDesignData | null }>();
 
   if (invite) {
+    const nextDesignJson =
+      invite.design_json && typeof invite.design_json === "object"
+        ? {
+            ...invite.design_json,
+            fields: {
+              ...(invite.design_json.fields ?? {}),
+              messageText: inviteCopy,
+            },
+          }
+        : invite.design_json;
+
     await supabase
       .from("invites")
-      .update({ invite_copy: inviteCopy })
+      .update({
+        invite_copy: inviteCopy,
+        design_json: nextDesignJson,
+      })
       .eq("id", invite.id);
     return invite.id;
   }

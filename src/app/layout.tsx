@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppBackground } from "@/components/layout/app-background";
+import { InteractionFeedback } from "@/components/layout/interaction-feedback";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +35,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-canvas text-ink">
-        <AppBackground>{children}</AppBackground>
+        <AppBackground>
+          <InteractionFeedback />
+          {children}
+        </AppBackground>
       </body>
     </html>
   );

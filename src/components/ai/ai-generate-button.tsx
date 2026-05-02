@@ -11,7 +11,11 @@ export function AiGenerateButton({
   pendingLabel,
   variant = "secondary",
 }: {
-  endpoint: "/api/ai/generate-plan" | "/api/ai/generate-invite-copy" | "/api/ai/generate-shopping-list";
+  endpoint:
+    | "/api/ai/generate-plan"
+    | "/api/ai/generate-invite-copy"
+    | "/api/ai/generate-shopping-list"
+    | "/api/ai/one-click";
   eventId: string;
   label: string;
   pendingLabel: string;

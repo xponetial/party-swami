@@ -274,8 +274,28 @@ export function EventFormCard({
             </div>
           </div>
 
-          <SubmitButton className="mt-6 w-full" pendingLabel="Creating event...">
+          <SubmitButton
+            className="mt-6 w-full"
+            name="planningMode"
+            pendingLabel="Creating event..."
+            value="standard"
+          >
             Create {selectedCategory.label} event
+          </SubmitButton>
+
+          <div className="mt-4 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">or</p>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <SubmitButton
+            className="mt-4 w-full"
+            name="planningMode"
+            pendingLabel="Creating and auto-planning..."
+            value="one_click"
+          >
+            Use AI Plan My Party (1-Click) to auto-plan your party
           </SubmitButton>
         </form>
       </Card>
