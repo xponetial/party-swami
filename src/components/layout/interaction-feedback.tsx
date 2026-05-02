@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 function isInteractiveTarget(target: EventTarget | null) {
@@ -18,7 +18,6 @@ function isInteractiveTarget(target: EventTarget | null) {
 
 export function InteractionFeedback() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [visible, setVisible] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -35,7 +34,7 @@ export function InteractionFeedback() {
 
   useEffect(() => {
     setVisible(false);
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   useEffect(() => {
     function startFeedback(event: MouseEvent) {
