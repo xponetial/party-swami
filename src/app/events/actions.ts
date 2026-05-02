@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { enforceAiLimits } from "@/lib/ai/limits";
+import { generateAiBrainPlanForEvent } from "@/lib/ai/brain";
 import {
   generatePlanForEvent,
   replaceShoppingItemForEvent,
@@ -38,6 +39,7 @@ const eventSchema = z.object({
   budget: blankToNullNumber.optional(),
   theme: z.string().trim().optional(),
   designJson: z.string().optional(),
+  planningMode: z.enum(["standard", "one_click"]).default("standard"),
 });
 
 const guestSchema = z.object({
@@ -334,6 +336,7 @@ export async function createEventAction(formData: FormData) {
     budget: formData.get("budget"),
     theme: formData.get("theme") || undefined,
     designJson: formData.get("designJson")?.toString(),
+    planningMode: formData.get("planningMode") || "standard",
   });
 
   if (!parsed.success) {
@@ -427,6 +430,7 @@ export async function createEventAction(formData: FormData) {
         has_theme: Boolean(parsed.data.theme?.trim()),
         guest_target: parsed.data.guestTarget ?? null,
         budget: parsed.data.budget ?? null,
+        planning_mode: parsed.data.planningMode,
       },
     }),
     createAuditLog(supabase, {
@@ -448,7 +452,11 @@ export async function createEventAction(formData: FormData) {
     });
 
     if (limit.allowed) {
-      await generatePlanForEvent(supabase, event.id);
+      if (parsed.data.planningMode === "one_click") {
+        await generateAiBrainPlanForEvent(supabase, event.id, { forceRegenerate: true });
+      } else {
+        await generatePlanForEvent(supabase, event.id);
+      }
     }
   } catch {
     // Event creation should still succeed even if the first AI generation cannot run.

@@ -21,6 +21,7 @@ import {
 import { getInviteTemplateCatalog } from "@/lib/invite-template-catalog";
 import { findInviteTemplate } from "@/lib/invite-template-types";
 import { AiRevisePlanForm } from "@/components/ai/ai-revise-plan-form";
+import { AiGenerateButton } from "@/components/ai/ai-generate-button";
 import { InviteCardCanvas } from "@/components/invite/invite-card-canvas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -341,6 +342,14 @@ export async function EventWorkspaceOverview({
                 Need a sharper pivot? Revise one specific part without rebuilding the whole event.
               </p>
               <div className="mt-4">
+                <AiGenerateButton
+                  endpoint="/api/ai/one-click"
+                  eventId={eventId}
+                  label="Plan My Party (1-Click)"
+                  pendingLabel="Generating full plan..."
+                />
+              </div>
+              <div className="mt-4">
                 <AiRevisePlanForm eventId={eventId} />
               </div>
             </div>
@@ -393,6 +402,45 @@ export async function EventWorkspaceOverview({
             </Link>
           ))}
         </div>
+      </Card>
+
+      <Card className="bg-white/90">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Vendor matches</p>
+            <h3 className="mt-2 text-2xl font-semibold text-ink">Recommended providers</h3>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
+              Ranked using AI Brain scoring for rating, price fit, distance, and availability.
+            </p>
+          </div>
+          {plan?.complexity_score ? <Badge>Complexity: {plan.complexity_score}/100</Badge> : null}
+        </div>
+
+        {plan?.vendor_matches?.length ? (
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {plan.vendor_matches.map((vendor) => (
+              <Link
+                key={vendor.vendor_id}
+                href={`/vendors/${vendor.slug}`}
+                className="rounded-2xl border border-border bg-white px-4 py-3 transition hover:border-brand/35"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-ink">{vendor.business_name}</p>
+                  <Badge variant={vendor.recommended ? "success" : "default"}>
+                    Score {vendor.score}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs uppercase tracking-[0.14em] text-ink-muted">
+                  {vendor.category}
+                </p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-2xl border border-dashed border-border bg-white/70 px-4 py-3 text-sm text-ink-muted">
+            Run 1-click planning to generate ranked vendor recommendations.
+          </p>
+        )}
       </Card>
     </div>
   );

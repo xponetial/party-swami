@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/upstash-keepalive",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}
