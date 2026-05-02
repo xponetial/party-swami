@@ -21,7 +21,14 @@ export function SubmitButton({
   const { pending } = useFormStatus();
 
   return (
-    <Button className={className} disabled={pending} type="submit" variant={variant} {...props}>
+    <Button
+      aria-busy={pending}
+      className={pending ? `${className ?? ""} cursor-wait` : className}
+      disabled={pending}
+      type="submit"
+      variant={variant}
+      {...props}
+    >
       {pending ? pendingLabel : children}
     </Button>
   );
