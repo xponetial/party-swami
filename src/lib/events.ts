@@ -301,7 +301,9 @@ export const getEventContext = cache(async (eventId: string) => {
     : [];
 
   let resolvedShoppingItems = shoppingItems;
-  const needsImageBackfill = shoppingItems.some(
+  const allowReadTimeShoppingImageBackfill =
+    process.env.SHOPPING_IMAGE_BACKFILL_ON_READ === "true";
+  const needsImageBackfill = allowReadTimeShoppingImageBackfill && shoppingItems.some(
     (item) =>
       !item.image_url &&
       item.search_query?.trim() &&
