@@ -21,6 +21,35 @@ export type BrainAgentInvocation = {
 export type BrainEventContext = {
   eventType: string;
   location: string | null;
+  budget: number | null;
+  guestTarget: number | null;
+  theme: string | null;
+};
+
+export type BrainDecisionMode = "approve" | "full_auto";
+
+export type BrainAgentState = {
+  version: "agent-state-v1";
+  generated_at: string;
+  decision_mode: BrainDecisionMode;
+  event_context: {
+    event_type: string;
+    location: string | null;
+    has_location: boolean;
+    budget: number | null;
+    guest_target: number | null;
+    theme: string | null;
+    vendor_flow_enabled: boolean;
+  };
+  execution: {
+    invoked_agents: BrainAgentId[];
+    standby_agents: BrainAgentId[];
+  };
+  active_sections: string[];
+  constraints: {
+    deterministic_outputs: true;
+    no_invented_pricing_or_vendor_facts: true;
+  };
 };
 
 type AgentRegistryEntry = {
@@ -108,5 +137,53 @@ export function buildAgentInvocationPlan(context: BrainEventContext): BrainAgent
       wired_to: agent.wiredTo,
     };
   });
+}
+
+export function buildAgentState(
+  context: BrainEventContext,
+  invocations: BrainAgentInvocation[],
+  mode: BrainDecisionMode = "approve",
+): BrainAgentState {
+  const vendorEnabled = isEventTypeWorthVendors(context.eventType);
+  const invokedAgents = invocations
+    .filter((agent) => agent.status === "invoked")
+    .map((agent) => agent.agent_id);
+  const standbyAgents = invocations
+    .filter((agent) => agent.status === "standby")
+    .map((agent) => agent.agent_id);
+
+  const activeSections = [
+    "plan",
+    "invite",
+    "shopping",
+    "budget",
+    "timeline",
+    "rsvp",
+    ...(vendorEnabled ? ["vendors"] : []),
+  ];
+
+  return {
+    version: "agent-state-v1",
+    generated_at: new Date().toISOString(),
+    decision_mode: mode,
+    event_context: {
+      event_type: context.eventType,
+      location: context.location,
+      has_location: Boolean(context.location?.trim()),
+      budget: context.budget,
+      guest_target: context.guestTarget,
+      theme: context.theme,
+      vendor_flow_enabled: vendorEnabled,
+    },
+    execution: {
+      invoked_agents: invokedAgents,
+      standby_agents: standbyAgents,
+    },
+    active_sections: activeSections,
+    constraints: {
+      deterministic_outputs: true,
+      no_invented_pricing_or_vendor_facts: true,
+    },
+  };
 }
 

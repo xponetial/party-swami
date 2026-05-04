@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
+  budgetEnvelope: z.number().positive().optional(),
   turnstileToken: z.string().trim().min(1),
 });
 
@@ -54,6 +55,15 @@ export async function POST(request: Request) {
     const budget = allocateBudget(event);
     const vendorResult = await matchVendorsForEvent(supabase, event, budget);
     await supabase.from("party_plans").update({ vendor_matches: vendorResult.matches }).eq("event_id", parsed.data.eventId);
+    await supabase.from("ai_brain_decisions").insert({
+      event_id: parsed.data.eventId,
+      module: "vendor_budget_refinement",
+      decision: {
+        budget_envelope: parsed.data.budgetEnvelope ?? null,
+        required_categories: vendorResult.requiredCategories,
+        match_count: vendorResult.matches.length,
+      },
+    });
 
     return NextResponse.json({
       ok: true,

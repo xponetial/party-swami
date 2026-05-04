@@ -15,6 +15,7 @@ export type EventDetails = {
   budget: number | null;
   theme: string | null;
   status: "draft" | "planning" | "ready" | "completed";
+  ai_decision_mode?: "approve" | "full_auto";
 };
 
 export type InviteDetails = {
@@ -71,11 +72,57 @@ export type PartyPlanDetails = {
     ai_brain?: {
       version?: string;
       one_click_generated_at?: string;
+      replan?: {
+        trigger: "forced" | "context_change" | "none";
+        changed_fields: string[];
+        impacted_agents: string[];
+      };
+      handoffs?: Array<{
+        from: string;
+        to: string[];
+        reason: string;
+      }>;
+      agent_state?: {
+        version: "agent-state-v1";
+        generated_at: string;
+        decision_mode: "approve" | "full_auto";
+        event_context: {
+          event_type: string;
+          location: string | null;
+          has_location: boolean;
+          budget: number | null;
+          guest_target: number | null;
+          theme: string | null;
+          vendor_flow_enabled: boolean;
+        };
+        execution: {
+          invoked_agents: string[];
+          standby_agents: string[];
+        };
+        active_sections: string[];
+        constraints: {
+          deterministic_outputs: true;
+          no_invented_pricing_or_vendor_facts: true;
+        };
+      };
       agent_invocations?: Array<{
         agent_id: string;
         status: "invoked" | "standby";
         reason: string;
         wired_to: string[];
+      }>;
+      proposed_actions?: Array<{
+        target: "shopping" | "vendors";
+        reason: string;
+        impact: string;
+      }>;
+      agent_artifacts?: Record<string, unknown>;
+      agent_metrics?: Array<{
+        agent_id: string;
+        status: "invoked" | "standby";
+        latency_ms: number;
+        adjustment_count: number;
+        acceptance_signal: "auto_applied" | "pending_approval" | "standby";
       }>;
     };
   } | null;
@@ -160,7 +207,7 @@ export const getEventContext = cache(async (eventId: string) => {
   const [{ data: event, error: eventError }, { data: profile }] = await Promise.all([
     supabase
       .from("events")
-      .select("id, title, event_type, event_date, completed_at, location, guest_target, budget, theme, status")
+      .select("id, title, event_type, event_date, completed_at, location, guest_target, budget, theme, status, ai_decision_mode")
       .eq("id", eventId)
       .single<EventDetails>(),
     supabase

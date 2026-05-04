@@ -1,4 +1,4 @@
-import { restorePlanVersionAction, updateProfileAction } from "@/app/events/actions";
+import { restorePlanVersionAction, updateDecisionModeAction, updateProfileAction } from "@/app/events/actions";
 import { getAiUsageForUser } from "@/lib/ai/usage";
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 import { ProUpgradeButton } from "@/components/billing/pro-upgrade-button";
@@ -43,6 +43,8 @@ export default async function EventSettingsPage({
   const agentInvocations = plan?.raw_response?.ai_brain?.agent_invocations ?? [];
   const invokedCount = agentInvocations.filter((agent) => agent.status === "invoked").length;
   const standbyCount = agentInvocations.filter((agent) => agent.status === "standby").length;
+  const decisionMode = event.ai_decision_mode ?? "approve";
+  const agentMetrics = plan?.raw_response?.ai_brain?.agent_metrics ?? [];
 
   return (
     <AppShell
@@ -189,6 +191,17 @@ export default async function EventSettingsPage({
 
       <Card data-tour-id="settings-agent-orchestration">
         <h2 className="text-xl font-semibold text-ink">Agent orchestration</h2>
+        <form action={updateDecisionModeAction} className="mt-4 flex items-end gap-3">
+          <input type="hidden" name="eventId" value={eventId} />
+          <div className="space-y-2">
+            <Label htmlFor="decisionMode">Decision mode</Label>
+            <select id="decisionMode" name="decisionMode" defaultValue={decisionMode} className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink">
+              <option value="approve">Approve (proposed actions)</option>
+              <option value="full_auto">Full auto (apply safe actions)</option>
+            </select>
+          </div>
+          <SubmitButton pendingLabel="Saving mode..." variant="secondary">Save mode</SubmitButton>
+        </form>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-3xl border border-border bg-white/85 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Total agents</p>
@@ -203,6 +216,29 @@ export default async function EventSettingsPage({
             <p className="mt-2 text-lg font-semibold text-ink">{standbyCount}</p>
           </div>
         </div>
+        <div className="mt-5 rounded-3xl border border-border bg-white/85 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Decision mode behavior</p>
+          <p className="mt-2 text-sm text-ink-muted">
+            {decisionMode === "full_auto"
+              ? "Safe budget and vendor substitutions are auto-applied during one-click runs."
+              : "Budget and vendor substitutions are proposed and require approval before manual application."}
+          </p>
+        </div>
+        {agentMetrics.length ? (
+          <div className="mt-5 grid gap-3">
+            {agentMetrics.map((metric) => (
+              <div key={`${metric.agent_id}:${metric.status}`} className="rounded-3xl border border-border bg-white/85 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-ink">{metric.agent_id}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">{metric.acceptance_signal}</p>
+                </div>
+                <p className="mt-2 text-xs text-ink-muted">
+                  Latency: {metric.latency_ms}ms · Adjustments: {metric.adjustment_count} · Status: {metric.status}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="mt-5 grid gap-3">
           {agentInvocations.length ? (
             agentInvocations.map((agent) => (
