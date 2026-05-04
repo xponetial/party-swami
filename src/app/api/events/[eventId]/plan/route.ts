@@ -51,11 +51,57 @@ export async function GET(_request: Request, context: RouteContext) {
             ai_brain?: {
               version?: string;
               one_click_generated_at?: string;
+              replan?: {
+                trigger: "forced" | "context_change" | "none";
+                changed_fields: string[];
+                impacted_agents: string[];
+              };
+              handoffs?: Array<{
+                from: string;
+                to: string[];
+                reason: string;
+              }>;
+              agent_state?: {
+                version: "agent-state-v1";
+                generated_at: string;
+                decision_mode: "approve" | "full_auto";
+                event_context: {
+                  event_type: string;
+                  location: string | null;
+                  has_location: boolean;
+                  budget: number | null;
+                  guest_target: number | null;
+                  theme: string | null;
+                  vendor_flow_enabled: boolean;
+                };
+                execution: {
+                  invoked_agents: string[];
+                  standby_agents: string[];
+                };
+                active_sections: string[];
+                constraints: {
+                  deterministic_outputs: true;
+                  no_invented_pricing_or_vendor_facts: true;
+                };
+              };
               agent_invocations?: Array<{
                 agent_id: string;
                 status: "invoked" | "standby";
                 reason: string;
                 wired_to: string[];
+              }>;
+              proposed_actions?: Array<{
+                target: "shopping" | "vendors";
+                reason: string;
+                impact: string;
+              }>;
+              agent_artifacts?: Record<string, unknown>;
+              agent_metrics?: Array<{
+                agent_id: string;
+                status: "invoked" | "standby";
+                latency_ms: number;
+                adjustment_count: number;
+                acceptance_signal: "auto_applied" | "pending_approval" | "standby";
               }>;
             };
           }
@@ -84,7 +130,13 @@ export async function GET(_request: Request, context: RouteContext) {
   return NextResponse.json({
     ok: true,
     plan,
+    replan: plan.raw_response?.ai_brain?.replan ?? null,
+    handoffs: plan.raw_response?.ai_brain?.handoffs ?? [],
+    agent_state: plan.raw_response?.ai_brain?.agent_state ?? null,
     agent_invocations: plan.raw_response?.ai_brain?.agent_invocations ?? [],
+    proposed_actions: plan.raw_response?.ai_brain?.proposed_actions ?? [],
+    agent_artifacts: plan.raw_response?.ai_brain?.agent_artifacts ?? {},
+    agent_metrics: plan.raw_response?.ai_brain?.agent_metrics ?? [],
     versions,
   });
 }

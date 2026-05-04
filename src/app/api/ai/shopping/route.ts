@@ -9,6 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const bodySchema = z.object({
   eventId: z.string().uuid(),
   searchTerms: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+  budgetEnvelope: z.number().positive().optional(),
   turnstileToken: z.string().trim().min(1),
 });
 
@@ -57,6 +58,14 @@ export async function POST(request: Request) {
   try {
     const result = await generateShoppingListForEvent(supabase, parsed.data.eventId, {
       searchTerms: parsed.data.searchTerms ?? [],
+    });
+    await supabase.from("ai_brain_decisions").insert({
+      event_id: parsed.data.eventId,
+      module: "shopping_budget_envelope",
+      decision: {
+        budget_envelope: parsed.data.budgetEnvelope ?? null,
+        generated_categories: result.shoppingCategories.length,
+      },
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {

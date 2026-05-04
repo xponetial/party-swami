@@ -175,6 +175,10 @@ const profileSchema = z.object({
   eventId: z.string().uuid(),
   fullName: z.string().trim().min(2),
 });
+const decisionModeSchema = z.object({
+  eventId: z.string().uuid(),
+  decisionMode: z.enum(["approve", "full_auto"]),
+});
 
 const restorePlanVersionSchema = z.object({
   eventId: z.string().uuid(),
@@ -1272,6 +1276,23 @@ export async function updateProfileAction(formData: FormData) {
     .from("profiles")
     .update({ full_name: parsed.data.fullName })
     .eq("id", user.id);
+
+  revalidatePath(`/events/${parsed.data.eventId}/settings`);
+}
+
+export async function updateDecisionModeAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = decisionModeSchema.safeParse({
+    eventId: formData.get("eventId"),
+    decisionMode: formData.get("decisionMode"),
+  });
+  if (!parsed.success) return;
+
+  await supabase
+    .from("events")
+    .update({ ai_decision_mode: parsed.data.decisionMode })
+    .eq("id", parsed.data.eventId)
+    .eq("owner_id", user.id);
 
   revalidatePath(`/events/${parsed.data.eventId}/settings`);
 }

@@ -10,6 +10,7 @@ import { createAuditLog, trackAnalyticsEvent } from "@/lib/telemetry";
 const bodySchema = z.object({
   eventId: z.string().uuid(),
   forceRegenerate: z.boolean().optional(),
+  decisionMode: z.enum(["approve", "full_auto"]).optional(),
   turnstileToken: z.string().trim().min(1),
 });
 
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
   try {
     const plan = await generateAiBrainPlanForEvent(supabase, parsed.data.eventId, {
       forceRegenerate: parsed.data.forceRegenerate ?? false,
+      decisionMode: parsed.data.decisionMode,
     });
 
     await Promise.all([
