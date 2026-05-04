@@ -9,21 +9,18 @@ export function DeleteSection({
   userEmail,
 }: {
   userId: string;
-  userEmail: string | null;
+  userEmail: string;
 }) {
   const [state, action, pending] = useActionState<DeletionActionState, FormData>(
     deleteUserDataAction,
     null,
   );
 
-  const [confirmValue, setConfirmValue] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
   const [showForm, setShowForm] = useState(false);
 
-  // When email is unavailable fall back to confirming with the user ID
-  const confirmTarget = userEmail ?? userId;
-  const isEmailFallback = !userEmail;
-  const valueMatches =
-    confirmValue.trim().toLowerCase() === confirmTarget.trim().toLowerCase();
+  const emailMatches =
+    confirmEmail.trim().toLowerCase() === userEmail.trim().toLowerCase();
 
   return (
     <div className="rounded-3xl border border-red-200 bg-red-50/60 p-6">
@@ -51,27 +48,24 @@ export function DeleteSection({
             <p className="text-sm text-ink-muted">
               Type{" "}
               <span className="select-all rounded bg-canvas px-1.5 py-0.5 font-mono text-xs text-ink">
-                {confirmTarget}
+                {userEmail}
               </span>{" "}
               to confirm.
-              {isEmailFallback && (
-                <span className="ml-1 text-xs text-amber-600">(email unavailable — using user ID)</span>
-              )}
             </p>
           </div>
 
           <form action={action} className="space-y-4">
             <input type="hidden" name="targetUserId" value={userId} />
-            <input type="hidden" name="confirmEmail" value={confirmValue} />
 
             <input
               autoComplete="off"
               className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm text-ink outline-none focus:border-red-400 focus:ring-1 focus:ring-red-300"
-              placeholder={confirmTarget}
+              name="confirmEmail"
+              placeholder={userEmail}
               spellCheck={false}
-              type="text"
-              value={confirmValue}
-              onChange={(e) => setConfirmValue(e.target.value)}
+              type="email"
+              value={confirmEmail}
+              onChange={(e) => setConfirmEmail(e.target.value)}
             />
 
             {state?.error && (
@@ -83,7 +77,7 @@ export function DeleteSection({
             <div className="flex gap-3">
               <button
                 className="rounded-2xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={!valueMatches || pending}
+                disabled={!emailMatches || pending}
                 type="submit"
               >
                 {pending ? "Deleting account…" : "Permanently delete account"}
@@ -93,7 +87,7 @@ export function DeleteSection({
                 variant="secondary"
                 onClick={() => {
                   setShowForm(false);
-                  setConfirmValue("");
+                  setConfirmEmail("");
                 }}
               >
                 Cancel

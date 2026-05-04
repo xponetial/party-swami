@@ -306,7 +306,9 @@ export default async function AdminUserDetailPage({
         </DashboardPanel>
       </div>
 
-      <DeleteSection userId={detail.user.id} userEmail={detail.user.email ?? null} />
+      {detail.user.email && (
+        <DeleteSection userId={detail.user.id} userEmail={detail.user.email} />
+      )}
     </AdminShell>
   );
 }
