@@ -68,6 +68,16 @@ export type PartyPlanDetails = {
     promptVersion?: string;
     shoppingSearchTerms?: string[];
     shoppingSearchSeed?: string[];
+    ai_brain?: {
+      version?: string;
+      one_click_generated_at?: string;
+      agent_invocations?: Array<{
+        agent_id: string;
+        status: "invoked" | "standby";
+        reason: string;
+        wired_to: string[];
+      }>;
+    };
   } | null;
 };
 

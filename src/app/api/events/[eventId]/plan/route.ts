@@ -29,7 +29,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const { data: plan } = await supabase
     .from("party_plans")
     .select(
-      "id, theme, invite_copy, menu, shopping_categories, tasks, timeline, model, prompt_version, summary, generated_at",
+      "id, theme, invite_copy, menu, shopping_categories, tasks, timeline, model, prompt_version, summary, generated_at, raw_response",
     )
     .eq("event_id", eventId)
     .maybeSingle<{
@@ -46,6 +46,20 @@ export async function GET(_request: Request, context: RouteContext) {
       prompt_version: string | null;
       summary: string | null;
       generated_at: string | null;
+      raw_response:
+        | {
+            ai_brain?: {
+              version?: string;
+              one_click_generated_at?: string;
+              agent_invocations?: Array<{
+                agent_id: string;
+                status: "invoked" | "standby";
+                reason: string;
+                wired_to: string[];
+              }>;
+            };
+          }
+        | null;
     }>();
 
   if (!plan) {
@@ -70,6 +84,7 @@ export async function GET(_request: Request, context: RouteContext) {
   return NextResponse.json({
     ok: true,
     plan,
+    agent_invocations: plan.raw_response?.ai_brain?.agent_invocations ?? [],
     versions,
   });
 }

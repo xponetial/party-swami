@@ -40,6 +40,9 @@ export default async function EventSettingsPage({
   const planTier = profile?.plan_tier ?? usage?.planTier ?? "free";
   const canManageBilling =
     Boolean(profile?.stripe_customer_id) && (planTier === "pro" || planTier === "admin");
+  const agentInvocations = plan?.raw_response?.ai_brain?.agent_invocations ?? [];
+  const invokedCount = agentInvocations.filter((agent) => agent.status === "invoked").length;
+  const standbyCount = agentInvocations.filter((agent) => agent.status === "standby").length;
 
   return (
     <AppShell
@@ -183,6 +186,49 @@ export default async function EventSettingsPage({
           </div>
         </Card>
       </div>
+
+      <Card data-tour-id="settings-agent-orchestration">
+        <h2 className="text-xl font-semibold text-ink">Agent orchestration</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-3xl border border-border bg-white/85 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Total agents</p>
+            <p className="mt-2 text-lg font-semibold text-ink">{agentInvocations.length || 0}</p>
+          </div>
+          <div className="rounded-3xl border border-border bg-white/85 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Invoked</p>
+            <p className="mt-2 text-lg font-semibold text-ink">{invokedCount}</p>
+          </div>
+          <div className="rounded-3xl border border-border bg-white/85 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Standby</p>
+            <p className="mt-2 text-lg font-semibold text-ink">{standbyCount}</p>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3">
+          {agentInvocations.length ? (
+            agentInvocations.map((agent) => (
+              <div key={agent.agent_id} className="rounded-3xl border border-border bg-white/85 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-ink">{agent.agent_id}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">{agent.status}</p>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-ink-muted">{agent.reason}</p>
+                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-ink-muted">Wired to</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {agent.wired_to.map((target) => (
+                    <span key={`${agent.agent_id}:${target}`} className="rounded-full border border-border bg-canvas px-3 py-1 text-xs text-ink-muted">
+                      {target}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-3xl border border-border bg-white/85 p-4 text-sm leading-6 text-ink-muted">
+              No agent invocation metadata yet. Generate an AI plan from one-click or plan-event to populate this panel.
+            </div>
+          )}
+        </div>
+      </Card>
     </AppShell>
   );
 }

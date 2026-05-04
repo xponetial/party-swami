@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { ensureRequiredShoppingCoverage, type GeneratedShoppingItem } from "@/lib/ai/party-genie";
+import { type GeneratedShoppingItem } from "@/lib/ai/party-genie";
 import { generatePlanForEvent, generateShoppingListForEvent } from "@/lib/ai/workflows";
+import { buildAgentInvocationPlan, type BrainAgentInvocation } from "@/lib/ai/agent-orchestrator";
 
 type EventSeed = {
   id: string;
@@ -27,11 +28,6 @@ type VendorRow = {
   response_time_hours: number;
   is_verified: boolean;
   status: "active" | "paused" | "pending_review";
-};
-
-type VendorReviewAgg = {
-  vendor_id: string | null;
-  avg_rating: number | null;
 };
 
 export type BudgetAllocation = {
@@ -69,6 +65,7 @@ export type AiBrainPlan = {
   shopping_categories: Array<{ category: string; items: Array<{ name: string; quantity: number }> }>;
   vendor_matches: VendorMatch[];
   required_vendor_categories: string[];
+  agent_invocations: BrainAgentInvocation[];
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -377,6 +374,10 @@ export async function generateAiBrainPlanForEvent(
   options?: { forceRegenerate?: boolean },
 ): Promise<AiBrainPlan> {
   const event = await loadEventSeed(supabase, eventId);
+  const agentInvocations = buildAgentInvocationPlan({
+    eventType: event.event_type,
+    location: event.location,
+  });
   const complexityScore = getComplexityScore(event);
   const budgetAllocation = allocateBudget(event);
 
@@ -402,6 +403,7 @@ export async function generateAiBrainPlanForEvent(
         ai_brain: {
           version: "ai-brain-v1",
           one_click_generated_at: new Date().toISOString(),
+          agent_invocations: agentInvocations,
         },
       },
     })
@@ -435,6 +437,14 @@ export async function generateAiBrainPlanForEvent(
         budget: event.budget,
       },
     }),
+    logAiDecision(supabase, {
+      eventId,
+      module: "agent_orchestration",
+      decision: {
+        invoked_agents: agentInvocations.filter((agent) => agent.status === "invoked").map((agent) => agent.agent_id),
+        standby_agents: agentInvocations.filter((agent) => agent.status === "standby").map((agent) => agent.agent_id),
+      },
+    }),
   ]);
 
   return {
@@ -448,5 +458,6 @@ export async function generateAiBrainPlanForEvent(
     shopping_categories: shoppingResult.shoppingCategories,
     vendor_matches: matches,
     required_vendor_categories: requiredCategories,
+    agent_invocations: agentInvocations,
   };
 }

@@ -1,0 +1,13 @@
+[
+  { "id": "brain-orchestrator", "wave": "core", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/brain-orchestrator.md" },
+  { "id": "party-planning-agent", "wave": "core", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/party-planning-agent.md" },
+  { "id": "invitation-card-agent", "wave": "core", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/invitation-card-agent.md" },
+  { "id": "shopping-recommendation-agent", "wave": "core", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/shopping-recommendation-agent.md" },
+  { "id": "budget-agent", "wave": "core", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/budget-agent.md" },
+  { "id": "task-reminder-agent", "wave": "core", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/task-reminder-agent.md" },
+  { "id": "rsvp-guest-agent", "wave": "core", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/rsvp-guest-agent.md" },
+  { "id": "marketplace-vendor-agent", "wave": "marketplace", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/marketplace-vendor-agent.md" },
+  { "id": "vendor-onboarding-agent", "wave": "marketplace", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/vendor-onboarding-agent.md" },
+  { "id": "social-media-agent", "wave": "growth", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/social-media-agent.md" },
+  { "id": "admin-growth-agent", "wave": "growth", "prompt": "docs/strategy/agent-launch/agent-skill-prompts/admin-growth-agent.md" }
+]
