@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { getEventContext } from "@/lib/events";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function formatBillingStatus(value: string | null | undefined) {
@@ -34,8 +33,80 @@ export default async function EventSettingsPage({
 }) {
   const { eventId } = await params;
   const resolvedSearchParams = (await searchParams) ?? {};
-  const { event, profile, plan, planVersions } = await getEventContext(eventId);
   const supabase = await createSupabaseServerClient();
+  const [{ data: event }, { data: profile }, { data: plan }, { data: planVersions = [] }] = await Promise.all([
+    supabase
+      .from("events")
+      .select("id, title, event_type, status, budget, theme, ai_decision_mode")
+      .eq("id", eventId)
+      .single<{
+        id: string;
+        title: string;
+        event_type: string;
+        status: "draft" | "planning" | "ready" | "completed";
+        budget: number | null;
+        theme: string | null;
+        ai_decision_mode: "approve" | "full_auto" | null;
+      }>(),
+    supabase
+      .from("profiles")
+      .select("id, full_name, plan_tier, billing_status, stripe_customer_id")
+      .maybeSingle<{
+        id: string;
+        full_name: string | null;
+        plan_tier: string | null;
+        billing_status: string | null;
+        stripe_customer_id: string | null;
+      }>(),
+    supabase
+      .from("party_plans")
+      .select("id, theme, model, prompt_version, summary, generated_at, raw_response")
+      .eq("event_id", eventId)
+      .maybeSingle<{
+        id: string;
+        theme: string | null;
+        model: string | null;
+        prompt_version: string | null;
+        summary: string | null;
+        generated_at: string | null;
+        raw_response?: {
+          ai_brain?: {
+            agent_invocations?: Array<{
+              agent_id: string;
+              status: "invoked" | "standby";
+              reason: string;
+              wired_to: string[];
+            }>;
+            agent_metrics?: Array<{
+              agent_id: string;
+              status: "invoked" | "standby";
+              latency_ms: number;
+              adjustment_count: number;
+              acceptance_signal: "auto_applied" | "pending_approval" | "standby";
+            }>;
+          };
+        } | null;
+      }>(),
+    supabase
+      .from("party_plans")
+      .select("id")
+      .eq("event_id", eventId)
+      .maybeSingle<{ id: string }>()
+      .then(async ({ data: planIdentity }) => {
+        if (!planIdentity?.id) return { data: [] as Array<{ id: string; version_num: number; change_reason: string | null; created_at: string }> };
+        return supabase
+          .from("plan_versions")
+          .select("id, version_num, change_reason, created_at")
+          .eq("plan_id", planIdentity.id)
+          .order("created_at", { ascending: false })
+          .limit(5)
+          .returns<Array<{ id: string; version_num: number; change_reason: string | null; created_at: string }>>();
+      }),
+  ]);
+  if (!event) {
+    return null;
+  }
+  const planVersionsSafe = planVersions ?? [];
   const usage = profile?.id ? await getAiUsageForUser(supabase, profile.id) : null;
   const planTier = profile?.plan_tier ?? usage?.planTier ?? "free";
   const canManageBilling =
@@ -159,8 +230,8 @@ export default async function EventSettingsPage({
             </div>
           ) : null}
           <div className="mt-5 grid gap-3">
-            {planVersions.length ? (
-              planVersions.map((version) => (
+            {planVersionsSafe.length ? (
+              planVersionsSafe.map((version) => (
                 <div key={version.id} className="rounded-3xl border border-border bg-white/85 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-ink">Version {version.version_num}</p>
