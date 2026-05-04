@@ -715,10 +715,13 @@ export async function generateAiBrainPlanForEvent(
     agent_id: agent.agent_id,
     status: agent.status,
     latency_ms: agent.status === "invoked" ? Math.max(1, Math.round(totalLatency / Math.max(1, invokedAgents.length))) : 0,
-    adjustment_count:
-      agent.agent_id === "shopping-recommendation-agent" && constrainedShopping.adjusted ? 1
-        : agent.agent_id === "marketplace-vendor-agent" && constrainedVendors.adjusted ? 1
-          : 0,
+    adjustment_count: agent.status === "invoked"
+      ? agent.agent_id === "shopping-recommendation-agent" && constrainedShopping.adjusted
+        ? 1
+        : agent.agent_id === "marketplace-vendor-agent" && constrainedVendors.adjusted
+          ? 1
+          : 0
+      : 0,
     acceptance_signal: agent.status === "standby"
       ? "standby"
       : decisionMode === "full_auto"
