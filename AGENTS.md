@@ -3,6 +3,12 @@
 This repository is **Party Swami** — an AI-powered event planning + marketplace platform.
 
 ---
+This project MUST ONLY use:
+- Prakash accounts and infrastructure
+- Party Swami Vercel organization
+- Party Swami Supabase project
+
+Never use Nola Rate credentials or services.
 
 ## 🚨 HARD PROJECT BOUNDARY (CRITICAL)
 
