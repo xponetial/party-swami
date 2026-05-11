@@ -27,7 +27,7 @@ export function InviteCardCanvas({
 
   return (
     <div
-      className="relative mx-auto aspect-[2/3] w-full overflow-hidden rounded-[2rem] border border-white/60 shadow-party"
+      className="relative mx-auto aspect-[5/7] w-full overflow-hidden rounded-[2rem] border border-white/60 shadow-party"
       style={{ maxWidth }}
     >
       <div
