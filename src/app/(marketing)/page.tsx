@@ -15,6 +15,11 @@ import {
 } from "lucide-react";
 import { ShellFrame } from "@/components/layout/shell-frame";
 import { AuthSessionRedirect } from "@/components/auth/auth-session-redirect";
+import { DashboardPreviewButton } from "@/components/marketing/dashboard-preview-button";
+import {
+  HeroExplainerVideo,
+  WatchHowItWorksButton,
+} from "@/components/marketing/hero-explainer-video";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -154,6 +159,7 @@ export default function MarketingHomePage() {
                   Plan It. Shop It. Book It. Done.
                 </p>
               </div>
+              <HeroExplainerVideo className="lg:hidden" />
               <div data-tour-id="marketing-actions" className="flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg">
                   <Link href="/create-event">
@@ -167,6 +173,8 @@ export default function MarketingHomePage() {
                     <ShoppingBag className="size-4" />
                   </Link>
                 </Button>
+                <DashboardPreviewButton />
+                <WatchHowItWorksButton />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {heroBullets.map((item) => (
@@ -180,6 +188,7 @@ export default function MarketingHomePage() {
 
             <Card className="h-full border-white/60 bg-[rgba(244,247,255,0.86)] p-6 shadow-party sm:p-8">
               <Badge>From Idea to Celebration in Minutes</Badge>
+              <HeroExplainerVideo className="mt-4 hidden lg:block" />
               <div className="mt-5 grid gap-4">
                 {journeySteps.map((step) => (
                   <div key={step.title} className="rounded-3xl border border-border bg-white/85 p-4">
