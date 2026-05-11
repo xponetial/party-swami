@@ -2,7 +2,7 @@
   "pack_id": "partygenie_july4_pack_v1",
   "name": "July 4 Greeting Card Template Pack",
   "description": "Text-free patriotic invitation backgrounds for app ingestion. Generated as premium 4th of July greeting card templates with safe central areas for text overlays.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "orientation": "vertical",
   "recommended_use": [
     "invitation background",
@@ -11,28 +11,16 @@
   ],
   "files": [
     {
-      "file": "assets/july4_hero_luxury.png",
-      "template_id": "july4_hero_luxury",
-      "style": "luxury",
-      "category": "4th of July",
-      "text_safe_areas": {
-        "title": "upper_center",
-        "details": "middle_center",
-        "cta": "lower_center"
-      },
-      "overlay_recommendations": {
-        "text_colors": [
-          "#FFFFFF",
-          "#F4D27A"
-        ],
-        "font_style": "serif elegant"
-      }
-    },
-    {
       "file": "assets/july4_pack_luxury_01.png",
       "template_id": "july4_lux_01",
       "style": "elegant",
       "category": "4th of July",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "upper_center",
         "details": "middle_center",
@@ -51,6 +39,12 @@
       "template_id": "july4_modern_02",
       "style": "modern",
       "category": "4th of July",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "top_center",
         "details": "center",
@@ -69,6 +63,12 @@
       "template_id": "july4_fun_03",
       "style": "festive",
       "category": "4th of July",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "top_center",
         "details": "middle_center",

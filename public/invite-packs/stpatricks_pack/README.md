@@ -1,1 +1,1 @@
-Party Swami St. Patrick's Day Pack - 3 templates, 1024x1536, no text, Codex ready.
+Party Swami St. Patrick's Day Pack - refreshed assets, 3 templates, 1500x2100 at 300 DPI (5:7), Codex ready.

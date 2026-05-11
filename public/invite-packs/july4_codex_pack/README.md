@@ -1,11 +1,11 @@
 # July 4 Codex Ingestion Pack
 
-This zip is structured for easy import into a Codex-assisted project.
+This pack is structured for easy import into a Codex-assisted project.
 
 ## Contents
 
-- `assets/` — PNG template backgrounds with no text
-- `manifest.json` — machine-readable metadata for the templates
+- `assets/` - PNG template backgrounds with no text
+- `manifest.json` - machine-readable metadata for the templates
 
 ## Suggested usage in your app
 
@@ -15,6 +15,7 @@ This zip is structured for easy import into a Codex-assisted project.
 
 ## Notes
 
+- Refreshed assets: 3 templates at 1500x2100, 300 DPI, 5:7.
 - All assets are vertical invitation-style templates.
 - These images are intended as editable greeting card or invite backgrounds.
-- The 3 pack variants were extracted from a generated pack preview, so they are ready for prototyping and ingestion.
+- The 3 pack variants are ready for prototyping and ingestion.
