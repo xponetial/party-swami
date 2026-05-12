@@ -1,9 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { type GeneratedShoppingItem } from "@/lib/ai/party-genie";
 import { generatePlanForEvent, generateShoppingListForEvent } from "@/lib/ai/workflows";
-import { buildAiContextForEvent } from "@/lib/ai-context-builder";
-import { getShoppingSearchTermsFromIntake, getVendorCategoriesFromServices } from "@/lib/ai/intake-signals";
-import type { EventIntelligenceContext } from "@/features/event-intelligence/types";
 import {
   buildAgentInvocationPlan,
   buildAgentState,
@@ -102,11 +99,6 @@ export type AiBrainPlan = {
     reason: string;
     impact: string;
   }>;
-  intake_context_summary?: {
-    services_requested_count: number;
-    ai_help_requested_count: number;
-    missing_context_fields: string[];
-  };
 };
 
 type ReplanResult = {
@@ -517,12 +509,8 @@ export async function matchVendorsForEvent(
   supabase: SupabaseClient,
   event: Pick<EventSeed, "event_type" | "budget" | "guest_target" | "location">,
   budgetAllocation: BudgetAllocation,
-  intakeContext?: EventIntelligenceContext | null,
 ) {
-  const serviceDrivenCategories = intakeContext
-    ? getVendorCategoriesFromServices(intakeContext.servicesRequested)
-    : [];
-  const requiredCategories = [...new Set([...getRequiredVendorCategories(event.event_type), ...serviceDrivenCategories])];
+  const requiredCategories = getRequiredVendorCategories(event.event_type);
   const eventZip = extractZip(event.location);
 
   const [{ data: vendorsData }, { data: reviewsData }] = await Promise.all([
@@ -636,12 +624,6 @@ export async function generateAiBrainPlanForEvent(
   const previousAgentState = await loadPreviousAgentState(supabase, eventId);
   const replan = detectReplan(event, previousAgentState, options?.forceRegenerate ?? false);
   const handoffs = buildHandoffGraph();
-  const intakeContext = await buildAiContextForEvent(supabase, eventId).catch(() => null);
-  const missingContextFields = [
-    intakeContext?.venue?.venueType ? null : "venue_type",
-    intakeContext?.food?.served ? null : "food_served",
-    intakeContext?.servicesRequested?.length ? null : "services_requested",
-  ].filter((item): item is string => Boolean(item));
   const agentInvocations = buildAgentInvocationPlan({
     eventType: event.event_type,
     location: event.location,
@@ -684,12 +666,7 @@ export async function generateAiBrainPlanForEvent(
 
   const shoppingResult = shouldReplanShopping
     ? await generateShoppingListForEvent(supabase, eventId, {
-      searchTerms: [
-        event.event_type,
-        event.theme ?? "",
-        event.title,
-        ...(intakeContext ? getShoppingSearchTermsFromIntake(intakeContext) : []),
-      ].filter(Boolean),
+      searchTerms: [event.event_type, event.theme ?? "", event.title].filter(Boolean),
     })
     : { shoppingCategories: existingPlanSnapshot?.shopping_categories ?? [] };
 
@@ -700,7 +677,7 @@ export async function generateAiBrainPlanForEvent(
   );
 
   const vendorResult = shouldReplanVendors
-    ? await matchVendorsForEvent(supabase, event, budgetAllocation, intakeContext)
+    ? await matchVendorsForEvent(supabase, event, budgetAllocation)
     : {
       requiredCategories: existingPlanSnapshot?.required_vendor_categories ?? [],
       matches: existingPlanSnapshot?.vendor_matches ?? [],
@@ -773,13 +750,6 @@ export async function generateAiBrainPlanForEvent(
           },
           handoffs,
           proposed_actions: proposedActions,
-          intake_context_summary: intakeContext
-            ? {
-                services_requested_count: intakeContext.servicesRequested.length,
-                ai_help_requested_count: intakeContext.aiHelpRequested.length,
-                missing_context_fields: missingContextFields,
-              }
-            : null,
           agent_artifacts: agentArtifacts,
           agent_metrics: agentMetrics,
         },
@@ -853,13 +823,6 @@ export async function generateAiBrainPlanForEvent(
           budget_adjusted_shopping: constrainedShopping.adjusted,
           budget_adjusted_vendors: constrainedVendors.adjusted,
           decision_mode: decisionMode,
-          intake_summary: intakeContext
-            ? {
-                services_requested_count: intakeContext.servicesRequested.length,
-                ai_help_requested_count: intakeContext.aiHelpRequested.length,
-                missing_context_fields: missingContextFields,
-              }
-            : null,
         },
       },
     }),
@@ -898,12 +861,5 @@ export async function generateAiBrainPlanForEvent(
     },
     handoffs,
     proposed_actions: proposedActions,
-    intake_context_summary: intakeContext
-      ? {
-          services_requested_count: intakeContext.servicesRequested.length,
-          ai_help_requested_count: intakeContext.aiHelpRequested.length,
-          missing_context_fields: missingContextFields,
-        }
-      : undefined,
   };
 }

@@ -26,11 +26,11 @@ export type PublicInviteImageRecord = {
 };
 
 const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 1200;
+const CANVAS_HEIGHT = 1120;
 const CARD_X = 28;
-const CARD_Y = 64;
+const CARD_Y = 60;
 const CARD_WIDTH = 744;
-const CARD_HEIGHT = 1072;
+const CARD_HEIGHT = 1000;
 const FRAME_RADIUS = 34;
 const IMAGE_INSET = 18;
 const IMAGE_X = CARD_X + IMAGE_INSET;
@@ -143,11 +143,11 @@ function buildOverlaySvg(params: {
     ctaTop,
   } = params;
   const detailsBoxWidth = Math.round(IMAGE_WIDTH * 0.84);
-  const detailsBoxHeight = 188;
+  const detailsBoxHeight = 176;
   const detailsBoxX = Math.round((CANVAS_WIDTH - detailsBoxWidth) / 2);
   const detailsBoxY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * detailsTop) / 100 - detailsBoxHeight / 2);
   const ctaWidth = Math.round(IMAGE_WIDTH * 0.7);
-  const ctaHeight = 84;
+  const ctaHeight = 78;
   const ctaX = Math.round((CANVAS_WIDTH - ctaWidth) / 2);
   const ctaY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * ctaTop) / 100 - ctaHeight / 2);
 
@@ -365,15 +365,15 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
   const titleLines = getTitleLines(design.fields.title);
   const titleFontSize = getTitleFontSize(design.fields.title);
   const titleCenterX = IMAGE_X + IMAGE_WIDTH / 2;
-  const subtitleTop = Math.round(IMAGE_Y + (IMAGE_HEIGHT * titleTop) / 100 - 34);
-  const titleTopY = subtitleTop + 44;
+  const subtitleTop = Math.round(IMAGE_Y + (IMAGE_HEIGHT * titleTop) / 100 - 32);
+  const titleTopY = subtitleTop + 41;
   const detailsBoxWidth = Math.round(IMAGE_WIDTH * 0.84);
-  const detailsBoxHeight = 188;
+  const detailsBoxHeight = 176;
   const detailsBoxX = Math.round((CANVAS_WIDTH - detailsBoxWidth) / 2);
   const detailsBoxY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * detailsTop) / 100 - detailsBoxHeight / 2);
   const ctaWidth = Math.round(IMAGE_WIDTH * 0.7);
   const ctaX = Math.round((CANVAS_WIDTH - ctaWidth) / 2);
-  const ctaY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * ctaTop) / 100 - 42);
+  const ctaY = Math.round(IMAGE_Y + (IMAGE_HEIGHT * ctaTop) / 100 - 39);
   const eyebrowBuffer = await renderTextBuffer({
     text: design.fields.subtitle.toUpperCase(),
     width: IMAGE_WIDTH - 80,
@@ -381,7 +381,7 @@ export async function createInviteCardImagePng(invite: PublicInviteImageRecord) 
     color: titleColor,
     fontPath,
   });
-  const titleMaxHeight = Math.max(120, detailsBoxY - titleTopY - 28);
+  const titleMaxHeight = Math.max(112, detailsBoxY - titleTopY - 28);
   const titleRender = await renderFittedTextBuffer({
     text: titleLines.join("\n"),
     width: IMAGE_WIDTH - 60,

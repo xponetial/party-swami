@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "holiday": "Valentine's Day",
   "templates": [
     {
@@ -8,6 +8,12 @@
       "style": "luxury_romantic",
       "asset": "assets/valentines_premium_01.png",
       "orientation": "vertical",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "upper_center",
         "details": "middle_center",
@@ -26,6 +32,12 @@
       "style": "modern_neon",
       "asset": "assets/valentines_premium_02.png",
       "orientation": "vertical",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "upper_center",
         "details": "middle_center",
@@ -44,6 +56,12 @@
       "style": "soft_elegant",
       "asset": "assets/valentines_premium_03.png",
       "orientation": "vertical",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "upper_center",
         "details": "middle_center",

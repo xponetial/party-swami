@@ -753,6 +753,29 @@ async function listAuthUsers(): Promise<AuthUserLookup[]> {
   return users;
 }
 
+async function listAuthUsersByIds(userIds: string[]): Promise<AuthUserLookup[]> {
+  if (userIds.length === 0) return [];
+
+  const supabase = createSupabaseAdminClient();
+  const settled = await Promise.allSettled(
+    userIds.map((id) => supabase.auth.admin.getUserById(id)),
+  );
+  const users: AuthUserLookup[] = [];
+
+  for (const result of settled) {
+    if (result.status === "fulfilled" && !result.value.error && result.value.data?.user) {
+      const user = result.value.data.user;
+      users.push({
+        id: user.id,
+        email: user.email ?? null,
+        createdAt: user.created_at ?? null,
+      });
+    }
+  }
+
+  return users;
+}
+
 async function getEventTitleById(eventIds: string[]) {
   if (eventIds.length === 0) {
     return new Map<string, string>();
@@ -1149,38 +1172,54 @@ export async function getAdminAiMetrics(rangeDays: AdminRangeDays): Promise<Admi
 export async function getAdminUsers(searchQuery: string | undefined) {
   const supabase = createSupabaseAdminClient();
   const usageMonth = currentUsageMonth();
+  const normalizedQuery = searchQuery?.trim().toLowerCase() ?? "";
+  const profileLimit = normalizedQuery ? 200 : 80;
 
-  const [
-    { data: profiles = [] },
-    { data: usageRows = [] },
-    { data: eventRows = [] },
-    { data: analyticsRows = [] },
-    authUsers,
-  ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, full_name, plan_tier, phone, created_at")
-      .order("created_at", { ascending: false })
-      .returns<AdminProfile[]>(),
-    supabase
-      .from("user_usage_monthly")
-      .select("user_id, usage_month, requests_count, input_tokens, output_tokens, cached_input_tokens, estimated_cost_usd")
-      .eq("usage_month", usageMonth)
-      .returns<UsageMonthlyRow[]>(),
-    supabase
-      .from("events")
-      .select("id, owner_id, title, event_type, event_date, location, guest_target, budget, status, created_at, updated_at")
-      .returns<EventRow[]>(),
-    supabase
-      .from("analytics_events")
-      .select("id, user_id, event_id, event_name, metadata, created_at")
-      .order("created_at", { ascending: false })
-      .limit(500)
-      .returns<AnalyticsEventRow[]>(),
-    listAuthUsers(),
-  ]);
+  let profilesQuery = supabase
+    .from("profiles")
+    .select("id, full_name, plan_tier, phone, created_at")
+    .order("created_at", { ascending: false })
+    .limit(profileLimit);
 
+  // Keep search server-side so we do not load all profiles for simple lookups.
+  if (normalizedQuery) {
+    const safeQuery = normalizedQuery.replaceAll(",", " ").replaceAll("(", " ").replaceAll(")", " ");
+    profilesQuery = profilesQuery.or(
+      `full_name.ilike.%${safeQuery}%,phone.ilike.%${safeQuery}%,plan_tier.ilike.%${safeQuery}%`,
+    );
+  }
+
+  const { data: profiles } = await profilesQuery.returns<AdminProfile[]>();
   const safeProfiles = profiles ?? [];
+  const profileIds = safeProfiles.map((profile) => profile.id);
+
+  if (!profileIds.length) {
+    return [];
+  }
+
+  const [{ data: usageRows = [] }, { data: eventRows = [] }, { data: analyticsRows = [] }, authUsers] =
+    await Promise.all([
+      supabase
+        .from("user_usage_monthly")
+        .select("user_id, usage_month, requests_count, input_tokens, output_tokens, cached_input_tokens, estimated_cost_usd")
+        .eq("usage_month", usageMonth)
+        .in("user_id", profileIds)
+        .returns<UsageMonthlyRow[]>(),
+      supabase
+        .from("events")
+        .select("owner_id")
+        .in("owner_id", profileIds)
+        .returns<Array<Pick<EventRow, "owner_id">>>(),
+      supabase
+        .from("analytics_events")
+        .select("user_id, created_at")
+        .in("user_id", profileIds)
+        .order("created_at", { ascending: false })
+        .limit(1200)
+        .returns<Array<Pick<AnalyticsEventRow, "user_id" | "created_at">>>(),
+      listAuthUsersByIds(profileIds),
+    ]);
+
   const safeUsageRows = usageRows ?? [];
   const safeEventRows = eventRows ?? [];
   const safeAnalyticsRows = analyticsRows ?? [];
@@ -1195,8 +1234,6 @@ export async function getAdminUsers(searchQuery: string | undefined) {
     map.set(row.user_id, row.created_at);
     return map;
   }, new Map());
-
-  const normalizedQuery = searchQuery?.trim().toLowerCase() ?? "";
 
   return safeProfiles
     .map<AdminUserRow>((profile) => ({

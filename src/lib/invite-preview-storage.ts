@@ -3,8 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import sharp from "sharp";
 
 export const INVITE_PREVIEW_BUCKET = "invite-previews";
-const INVITE_CARD_WIDTH = 1024;
-const INVITE_CARD_HEIGHT = 1536;
+const INVITE_CARD_WIDTH = 1500;
+const INVITE_CARD_HEIGHT = 2100;
 const INVITE_EXPORT_WIDTH = 1500;
 const INVITE_EXPORT_HEIGHT = 2100;
 
@@ -141,7 +141,7 @@ export async function uploadInviteGeneratedImageOption({
     .resize(INVITE_CARD_WIDTH, INVITE_CARD_HEIGHT, { fit: "cover" })
     .png()
     .toBuffer();
-  const previewPng = await sharp(sourcePng).resize(320, 480, { fit: "cover" }).png().toBuffer();
+  const previewPng = await sharp(sourcePng).resize(320, 448, { fit: "cover" }).png().toBuffer();
 
   const { error: sourceError } = await supabase.storage.from(INVITE_PREVIEW_BUCKET).upload(
     sourcePath,
@@ -183,7 +183,7 @@ export async function uploadInviteGeneratedImageOption({
     sourceWidth: INVITE_CARD_WIDTH,
     sourceHeight: INVITE_CARD_HEIGHT,
     previewWidth: 320,
-    previewHeight: 480,
+    previewHeight: 448,
   };
 }
 

@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "holiday": "Sympathy",
   "templates": [
     {
@@ -9,9 +9,10 @@
       "asset": "assets/sympathy_premium_01.png",
       "orientation": "vertical",
       "image_spec": {
-        "width": 1024,
-        "height": 1536,
-        "aspect_ratio": "2:3"
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
       },
       "text_safe_areas": {
         "title": "upper_center",
@@ -26,9 +27,10 @@
       "asset": "assets/sympathy_premium_02.png",
       "orientation": "vertical",
       "image_spec": {
-        "width": 1024,
-        "height": 1536,
-        "aspect_ratio": "2:3"
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
       },
       "text_safe_areas": {
         "title": "upper_center",
@@ -43,9 +45,10 @@
       "asset": "assets/sympathy_premium_03.png",
       "orientation": "vertical",
       "image_spec": {
-        "width": 1024,
-        "height": 1536,
-        "aspect_ratio": "2:3"
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
       },
       "text_safe_areas": {
         "title": "upper_center",

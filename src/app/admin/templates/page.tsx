@@ -159,7 +159,7 @@ export default async function AdminTemplatesPage({
                     <div key={`${template.packSlug}:${template.templateId}`} className="rounded-2xl bg-canvas p-4">
                       <div className="grid gap-4 sm:grid-cols-[168px_1fr]">
                         <div className="overflow-hidden rounded-2xl border border-border bg-white/70">
-                          <div className="relative aspect-[3/4] w-full">
+                          <div className="relative aspect-[5/7] w-full">
                             <Image
                               alt={`${template.style} preview`}
                               className="object-cover"

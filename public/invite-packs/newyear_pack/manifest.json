@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "holiday": "New Year",
   "templates": [
     {
@@ -7,6 +7,13 @@
       "category": "New Year",
       "style": "mixed_premium",
       "asset": "assets/newyear_premium_01.png",
+      "orientation": "vertical",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "upper_center",
         "details": "middle_center",
@@ -18,6 +25,13 @@
       "category": "New Year",
       "style": "mixed_premium",
       "asset": "assets/newyear_premium_02.png",
+      "orientation": "vertical",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "upper_center",
         "details": "middle_center",
@@ -29,6 +43,31 @@
       "category": "New Year",
       "style": "mixed_premium",
       "asset": "assets/newyear_premium_03.png",
+      "orientation": "vertical",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
+      "text_safe_areas": {
+        "title": "upper_center",
+        "details": "middle_center",
+        "cta": "lower_center"
+      }
+    },
+    {
+      "template_id": "newyear_premium_04",
+      "category": "New Year",
+      "style": "mixed_premium",
+      "asset": "assets/newyear_premium_04.png",
+      "orientation": "vertical",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
       "text_safe_areas": {
         "title": "upper_center",
         "details": "middle_center",

@@ -46,7 +46,7 @@ export function buildPartySwamiInviteImagePrompt({
   return [
     "Create one Party Swami invitation background image only.",
     "Style: elegant, modern, high-end design.",
-    "Format: vertical portrait, 2:3 ratio (1024x1536).",
+    "Format: vertical portrait source image (1024x1536), with composition safe for final 5:7 output (1500x2100).",
     `Event context: "${eventTitle}" (${eventType}).`,
     "Composition: single unified scene (no collage, no split panels).",
     "Place subject elements around the edges and keep the center area uncluttered for text overlay.",
