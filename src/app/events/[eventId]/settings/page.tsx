@@ -163,6 +163,9 @@ export default async function EventSettingsPage({
             <Button asChild variant="secondary">
               <Link href="/pricing">View plans</Link>
             </Button>
+            <Button asChild variant="secondary">
+              <Link href={`/events/${eventId}/intake`}>Enhanced questions</Link>
+            </Button>
           </div>
         </Card>
 

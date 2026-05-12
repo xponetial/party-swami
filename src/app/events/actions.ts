@@ -4,12 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { enforceAiLimits } from "@/lib/ai/limits";
-import { generateAiBrainPlanForEvent } from "@/lib/ai/brain";
-import {
-  generatePlanForEvent,
-  replaceShoppingItemForEvent,
-  restorePlanVersionForEvent,
-} from "@/lib/ai/workflows";
+import { replaceShoppingItemForEvent, restorePlanVersionForEvent } from "@/lib/ai/workflows";
 import { isFeatureFlagEnabled } from "@/lib/feature-flags";
 import { inviteDesignSchema, normalizeInviteDesignData } from "@/lib/invite-design";
 import { uploadInviteEditableImage } from "@/lib/invite-preview-storage";
@@ -448,25 +443,24 @@ export async function createEventAction(formData: FormData) {
     }),
   ]);
 
-  try {
-    const limit = await enforceAiLimits(supabase, {
+  revalidatePath("/dashboard");
+  const intakeEnabled = await isFeatureFlagEnabled("event_intelligence_phase12", {
+    userId: user.id,
+    fallbackEnabled: false,
+  });
+
+  if (intakeEnabled) {
+    await trackAnalyticsEvent(supabase, {
+      eventName: "event_intake_started",
       userId: user.id,
       eventId: event.id,
-      generationType: "party_plan",
+      metadata: {
+        source: "create_event_redirect",
+      },
     });
-
-    if (limit.allowed) {
-      if (parsed.data.planningMode === "one_click") {
-        await generateAiBrainPlanForEvent(supabase, event.id, { forceRegenerate: true });
-      } else {
-        await generatePlanForEvent(supabase, event.id);
-      }
-    }
-  } catch {
-    // Event creation should still succeed even if the first AI generation cannot run.
+    redirect(`/events/${event.id}/intake`);
   }
 
-  revalidatePath("/dashboard");
   redirect(`/events/${event.id}/invite`);
 }
 
