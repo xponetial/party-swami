@@ -105,6 +105,28 @@ npm run build
 npm run test:e2e
 ```
 
+## Branch Promotion Workflow
+
+Use this branch flow for all new work:
+
+1. Start implementation on `dev` or a Party Swami worktree feature branch.
+2. Promote QA-ready changes to a `stage/*` branch.
+3. Repoint stage to the latest `stage/*` deployment:
+
+```bash
+npm run stage:alias
+```
+
+4. After QA signoff, merge to `main` for production.
+
+To enforce this locally, install repo hooks once:
+
+```bash
+npm run hooks:install
+```
+
+This enables a pre-commit policy that blocks direct commits on `main`.
+
 ## Stage Domain Alias
 
 After deploying preview builds from any `stage/*` branch, repoint the stage domain to the latest stage preview:

@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "hooks:install": "git config core.hooksPath .githooks && git config --get core.hooksPath",
+    "branch:check": "node scripts/enforce-branch-policy.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc -p tsconfig.typecheck.json --noEmit --incremental false",
     "test:e2e": "playwright test",
