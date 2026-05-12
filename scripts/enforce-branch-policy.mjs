@@ -31,7 +31,8 @@ if (stagedFileCount === 0) {
   process.exit(0);
 }
 
-const isStageBranch = branch === "stage" || branch.startsWith("stage/");
+const isStageBranch = branch === "stage";
+const isLegacyStageBranch = branch.startsWith("stage/");
 const isMergeCommitInProgress = existsSync(".git/MERGE_HEAD");
 
 if (branch === "main" && !isMergeCommitInProgress) {
@@ -49,6 +50,16 @@ if (isStageBranch && !isMergeCommitInProgress) {
     [
       `Direct commits to "${branch}" are blocked.`,
       'Promote changes by merging from "dev" into your stage branch.',
+      "Suggested next step: git checkout dev",
+    ].join("\n"),
+  );
+}
+
+if (isLegacyStageBranch && !isMergeCommitInProgress) {
+  fail(
+    [
+      `Direct commits to legacy branch "${branch}" are blocked.`,
+      'Use "stage" as the only staging branch.',
       "Suggested next step: git checkout dev",
     ].join("\n"),
   );

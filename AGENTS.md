@@ -80,13 +80,13 @@ Always heed deprecation warnings.
 After any stage preview build intended for QA:
 
 You MUST repoint the staging domain:
-stage.partyswami.com → latest stage/* deployment
+stage.partyswami.com → latest stage deployment
 
 ### Command:
 npm run stage:alias
 
 ### Defaults:
-- Source: current `stage/*` branch
+- Source: current `stage` branch
 - Target: `stage.partyswami.com`
 
 ### Optional overrides:

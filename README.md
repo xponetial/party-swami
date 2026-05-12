@@ -124,24 +124,24 @@ Standard stage promotion:
 ```bash
 git checkout dev
 git push origin dev
-git checkout stage/your-stage-branch
+git checkout stage
 git merge dev
-git push origin stage/your-stage-branch
+git push origin stage
 git checkout dev
 ```
 
 Standard production promotion:
 
 ```bash
-git checkout stage/your-stage-branch
-git pull origin stage/your-stage-branch
+git checkout stage
+git pull origin stage
 git checkout main
-git merge stage/your-stage-branch
+git merge stage
 git push origin main
 git checkout dev
 ```
 
-After deploying preview builds from a `stage/*` branch, repoint stage:
+After deploying preview builds from `stage`, repoint stage:
 
 ```bash
 npm run stage:alias
@@ -155,12 +155,12 @@ npm run hooks:install
 
 This enables:
 
-- `pre-commit`: blocks direct commits on `stage`/`stage/*` and `main`
+- `pre-commit`: blocks direct commits on `stage` and `main`
 - `pre-push`: enforces `dev -> stage -> main` promotion order
 
 ## Stage Domain Alias
 
-After deploying preview builds from any `stage/*` branch, repoint the stage domain to the latest stage preview:
+After deploying preview builds from `stage`, repoint the stage domain to the latest stage preview:
 
 ```bash
 npm run stage:alias
@@ -168,7 +168,7 @@ npm run stage:alias
 
 Optional overrides:
 
-- `STAGE_BRANCH` to choose which `stage/*` branch alias to point from
+- `STAGE_BRANCH` to override the source branch (default: current branch, expected `stage`)
 - `STAGE_SOURCE_ALIAS` to override source deployment/alias URL
 - `STAGE_DOMAIN` to override target domain (default: `stage.partyswami.com`)
 - `VERCEL_SCOPE` to override Vercel scope/team (default: `xponetials-projects`)

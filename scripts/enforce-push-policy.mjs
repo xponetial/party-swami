@@ -26,11 +26,11 @@ function branchNameFromRef(ref) {
 }
 
 function isStageBranch(branch) {
-  return branch === "stage" || branch.startsWith("stage/");
+  return branch === "stage";
 }
 
 function listRemoteStageRefs() {
-  const output = run("git for-each-ref --format='%(refname)' refs/remotes/origin/stage refs/remotes/origin/stage/*");
+  const output = run("git for-each-ref --format='%(refname)' refs/remotes/origin/stage");
   if (!output) {
     return [];
   }
@@ -110,6 +110,15 @@ for (const line of pushSpec) {
       "refs/remotes/origin/dev",
       localSha,
       `Push to "${remoteBranch}" is blocked because origin/dev is not an ancestor. Merge dev into stage first.`,
+    );
+  }
+
+  if (remoteBranch.startsWith("stage/")) {
+    fail(
+      [
+        `Push to legacy branch "${remoteBranch}" is blocked.`,
+        'Use the single "stage" branch for staging promotion.',
+      ].join("\n"),
     );
   }
 }

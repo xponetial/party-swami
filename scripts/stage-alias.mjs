@@ -34,9 +34,9 @@ function getVercelToken() {
 
 const stageBranch = process.env.STAGE_BRANCH?.trim() || getCurrentBranch();
 const sourceAlias = process.env.STAGE_SOURCE_ALIAS?.trim() || (() => {
-  if (!stageBranch.startsWith("stage/")) {
+  if (stageBranch !== "stage") {
     throw new Error(
-      `stage:alias requires STAGE_SOURCE_ALIAS outside stage/* branches. Received branch "${stageBranch || "(unknown)"}"`,
+      `stage:alias expects branch "stage" unless STAGE_SOURCE_ALIAS is provided. Received branch "${stageBranch || "(unknown)"}"`,
     );
   }
 
