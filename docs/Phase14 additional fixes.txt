@@ -1,0 +1,13 @@
+1. Today when we create and event it is saved, but there is no way to edit the event.  Can we create a page that allows us to edit the event.  Can we add that Edit Event navigation to the Current Event Bar on left of webpage.
+2. Our steps for creating and event/party should be in this order.
+	1. Create Event Step 1.
+	2. Extended Questions Step 2.
+	3. Invite Generation Step 3.
+	4. Guest Management Step 4.
+	5. Pick Your Path Step 5.
+	6. Shopping Step 6.
+	7. Vendor Recommendations Step 7. (if needed from Extended Questions section)
+	8. Planner Search Step 8. (if needed form Extended Questions Section)
+	9. Timeline Step 9.
+3. We need to fix the Overview page to reflect the above steps in that order.
+4. On overview page the continue logic should use the above step order when a user is going through their planning, so it picks up where they left off at.

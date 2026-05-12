@@ -1,7 +1,13 @@
 import Link from "next/link";
+import type { ComponentType } from "react";
 import {
   ArrowRight,
+  CalendarCheck2,
   ClipboardList,
+  FileText,
+  Handshake,
+  ListChecks,
+  MapPinned,
   ShoppingBag,
   Sparkles,
   Users,
@@ -20,12 +26,14 @@ import {
 } from "@/lib/invite-design";
 import { getInviteTemplateCatalog } from "@/lib/invite-template-catalog";
 import { findInviteTemplate } from "@/lib/invite-template-types";
+import { loadEventAnswers } from "@/features/event-intelligence/services/event-intelligence";
 import { AiRevisePlanForm } from "@/components/ai/ai-revise-plan-form";
 import { AiGenerateButton } from "@/components/ai/ai-generate-button";
 import { InviteCardCanvas } from "@/components/invite/invite-card-canvas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type EventWorkspaceOverviewProps = {
   eventId: string;
@@ -37,11 +45,14 @@ type EventWorkspaceOverviewProps = {
   tasks: TaskDetails[];
 };
 
-type HubStep = {
+type WorkflowStep = {
+  id: string;
   href: string;
   label: string;
   detail: string;
-  step: string;
+  stepNumber: number;
+  done: boolean;
+  icon: ComponentType<{ className?: string }>;
 };
 
 function slugify(value: string) {
@@ -108,63 +119,6 @@ function buildInvitePreviewDesign(
     : fallback;
 }
 
-function getPrimaryStep({
-  eventId,
-  invite,
-  guests,
-  shoppingItems,
-  tasks,
-}: {
-  eventId: string;
-  invite: InviteDetails | null;
-  guests: GuestDetails[];
-  shoppingItems: ShoppingItemDetails[];
-  tasks: TaskDetails[];
-}): HubStep {
-  if (!invite?.invite_copy?.trim()) {
-    return {
-      href: `/events/${eventId}/invite`,
-      label: "Finish the invite",
-      detail: "Tighten the wording and make sure the card looks ready to send.",
-      step: "Step 1 of 4",
-    };
-  }
-
-  if (guests.length === 0) {
-    return {
-      href: `/events/${eventId}/guests/add`,
-      label: "Add your guests",
-      detail: "Bring in attendees so RSVP tracking and invite delivery can begin.",
-      step: "Step 2 of 4",
-    };
-  }
-
-  if (shoppingItems.length === 0) {
-    return {
-      href: `/events/${eventId}/next-steps`,
-      label: "Pick your path",
-      detail: "Decide between DIY shopping, professional planner help, or both before diving in.",
-      step: "Step 3 of 4",
-    };
-  }
-
-  if (tasks.length === 0) {
-    return {
-      href: `/events/${eventId}/timeline`,
-      label: "Build the timeline",
-      detail: "Add tasks and timing so the event can move from planning into execution.",
-      step: "Step 4 of 4",
-    };
-  }
-
-  return {
-    href: `/events/${eventId}/guests/add`,
-    label: "Run the final host check",
-    detail: "Review guests, shopping, and timing one last time before the event goes live.",
-    step: "Ready to host",
-  };
-}
-
 function formatSentState(invite: InviteDetails | null) {
   if (!invite?.sent_at) {
     return "Not sent yet";
@@ -182,9 +136,136 @@ export async function EventWorkspaceOverview({
   shoppingItems,
   tasks,
 }: EventWorkspaceOverviewProps) {
+  const supabase = await createSupabaseServerClient();
+  const intakeAnswers = await loadEventAnswers(supabase, eventId).catch(() => []);
+  const intakeByKey = Object.fromEntries(intakeAnswers.map((answer) => [answer.question_key, answer.answer]));
+  const servicesRequested = Array.isArray(intakeByKey.services_requested)
+    ? intakeByKey.services_requested.filter((item): item is string => typeof item === "string")
+    : [];
+  const aiHelpRequested = Array.isArray(intakeByKey.ai_help_requested)
+    ? intakeByKey.ai_help_requested.filter((item): item is string => typeof item === "string")
+    : [];
+  const servicesText = servicesRequested.map((item) => item.toLowerCase());
+  const aiHelpText = aiHelpRequested.map((item) => item.toLowerCase());
+  const needsVendorStep =
+    servicesText.length > 0 ||
+    aiHelpText.some((item) => item.includes("vendor"));
+  const needsPlannerStep =
+    servicesText.some((item) => item.includes("planner")) ||
+    aiHelpText.some((item) => item.includes("full event planning"));
+
   const completedTasks = tasks.filter((task) => task.status === "completed").length;
   const pendingGuests = guests.filter((guest) => guest.status === "pending").length;
-  const primaryStep = getPrimaryStep({ eventId, invite, guests, shoppingItems, tasks });
+  const hasInviteDraft = Boolean(invite?.invite_copy?.trim());
+  const hasIntakeAnswers = intakeAnswers.length > 0;
+  const hasPathSelectionSignal =
+    shoppingItems.length > 0 ||
+    tasks.length > 0 ||
+    Boolean(plan?.required_vendor_categories?.length) ||
+    Boolean(plan?.vendor_matches?.length);
+  const vendorReady = Boolean(plan?.vendor_matches?.length);
+  const plannerReady = false;
+  const workflowSteps: WorkflowStep[] = [
+    {
+      id: "create-event",
+      href: `/events/${eventId}/edit`,
+      label: "Create Event",
+      detail: "Keep the title, date, budget, and event setup details current.",
+      stepNumber: 1,
+      done: true,
+      icon: CalendarCheck2,
+    },
+    {
+      id: "extended-questions",
+      href: `/events/${eventId}/intake`,
+      label: "Extended Questions",
+      detail: "Capture intent and service needs so Party Swami can personalize the workflow.",
+      stepNumber: 2,
+      done: hasIntakeAnswers,
+      icon: FileText,
+    },
+    {
+      id: "invite-generation",
+      href: `/events/${eventId}/invite`,
+      label: "Invite Generation",
+      detail: "Generate and polish invite copy and card design before outreach.",
+      stepNumber: 3,
+      done: hasInviteDraft,
+      icon: Sparkles,
+    },
+    {
+      id: "guest-management",
+      href: `/events/${eventId}/guests/add`,
+      label: "Guest Management",
+      detail: "Build your guest list and set up RSVP tracking.",
+      stepNumber: 4,
+      done: guests.length > 0,
+      icon: Users,
+    },
+    {
+      id: "pick-your-path",
+      href: `/events/${eventId}/next-steps`,
+      label: "Pick Your Path",
+      detail: "Choose the planning path before shopping and provider matching.",
+      stepNumber: 5,
+      done: hasPathSelectionSignal,
+      icon: ListChecks,
+    },
+    {
+      id: "shopping",
+      href: `/events/${eventId}/shopping`,
+      label: "Shopping",
+      detail: "Review recommendations and track event spending.",
+      stepNumber: 6,
+      done: shoppingItems.length > 0,
+      icon: ShoppingBag,
+    },
+    {
+      id: "vendor-recommendations",
+      href: `/events/${eventId}/vendors`,
+      label: "Vendor Recommendations",
+      detail: "Compare and save marketplace vendor matches.",
+      stepNumber: 7,
+      done: vendorReady,
+      icon: Handshake,
+    },
+    {
+      id: "planner-search",
+      href: `/events/${eventId}/planners`,
+      label: "Planner Search",
+      detail: "Review planners if extended questions indicate extra planning support.",
+      stepNumber: 8,
+      done: plannerReady,
+      icon: MapPinned,
+    },
+    {
+      id: "timeline",
+      href: `/events/${eventId}/timeline`,
+      label: "Timeline",
+      detail: "Turn planning into an execution-ready run-of-show.",
+      stepNumber: 9,
+      done: tasks.length > 0,
+      icon: ClipboardList,
+    },
+  ].filter((step) => {
+    if (step.id === "vendor-recommendations") return needsVendorStep;
+    if (step.id === "planner-search") return needsPlannerStep;
+    return true;
+  });
+  const nextStep = workflowSteps.find((step) => !step.done) ?? null;
+  const primaryStep = nextStep
+    ? {
+        href: nextStep.href,
+        label: nextStep.label,
+        detail: nextStep.detail,
+        step: `Step ${nextStep.stepNumber} of 9`,
+      }
+    : {
+        href: `/events/${eventId}/timeline`,
+        label: "Timeline review",
+        detail: "Everything is set. Do one final timeline check before go time.",
+        step: "Ready to host",
+      };
   const themeLabel = plan?.theme ?? event.theme ?? `${event.event_type} celebration`;
   const templateCategories = invite ? await getInviteTemplateCatalog() : [];
   const invitePreviewDesign =
@@ -232,36 +313,14 @@ export async function EventWorkspaceOverview({
     },
   ];
 
-  const actionCards = [
-    {
-      href: `/events/${eventId}/invite`,
-      eyebrow: "Step 1",
-      label: "Invitation generator",
-      detail: "Edit the card, tighten the wording, and keep the RSVP experience send-ready.",
-      stat: invite?.sent_at ? "Invite delivered" : "Invite draft ready",
-    },
-    {
-      href: `/events/${eventId}/guests/add`,
-      eyebrow: "Step 2",
-      label: "Guest management",
-      detail: "Add attendees, track RSVPs, and handle outreach without leaving the event flow.",
-      stat: `${guests.length} guest${guests.length === 1 ? "" : "s"}`,
-    },
-    {
-      href: `/events/${eventId}/shopping`,
-      eyebrow: "Step 3",
-      label: "Shopping recommendations",
-      detail: "Review items, spend, and retailer choices based on the event plan.",
-      stat: `${shoppingItems.length} item${shoppingItems.length === 1 ? "" : "s"}`,
-    },
-    {
-      href: `/events/${eventId}/timeline`,
-      eyebrow: "Step 4",
-      label: "Timeline and tasks",
-      detail: "Turn the plan into a real run-of-show with execution-ready next actions.",
-      stat: `${completedTasks}/${tasks.length || 0} completed`,
-    },
-  ];
+  const actionCards = workflowSteps.map((step) => ({
+    href: step.href,
+    eyebrow: `Step ${step.stepNumber}`,
+    label: step.label,
+    detail: step.detail,
+    stat: step.done ? "Complete" : "Next up",
+    icon: step.icon,
+  }));
 
   const quickSummary = [
     guests.length === 0
@@ -383,7 +442,7 @@ export async function EventWorkspaceOverview({
           <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Workspace path</p>
           <h3 className="mt-2 text-2xl font-semibold text-ink">Go where the work actually happens</h3>
         </div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {actionCards.map((item) => (
             <Link
               key={item.href}
@@ -391,7 +450,10 @@ export async function EventWorkspaceOverview({
               className="rounded-[1.75rem] border border-border bg-white/85 p-5 transition hover:-translate-y-0.5"
             >
               <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">{item.eyebrow}</p>
-              <p className="mt-3 text-lg font-semibold text-ink">{item.label}</p>
+              <div className="mt-3 flex items-center gap-2">
+                <item.icon className="size-4 text-brand" />
+                <p className="text-lg font-semibold text-ink">{item.label}</p>
+              </div>
               <p className="mt-2 text-sm leading-6 text-ink-muted">{item.detail}</p>
               <div className="mt-4 flex items-center justify-between gap-3">
                 <span className="text-xs uppercase tracking-[0.18em] text-ink-muted">

@@ -53,6 +53,14 @@ export type PartyPlanDetails = {
         category: string;
         score: number;
         recommended: boolean;
+        location?: string;
+        starting_price?: number | null;
+        rationale?: {
+          rating: number;
+          price_fit: number;
+          distance: number;
+          availability: number;
+        };
       }>
     | null;
   required_vendor_categories: string[] | null;

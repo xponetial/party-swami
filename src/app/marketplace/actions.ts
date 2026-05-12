@@ -115,6 +115,12 @@ const providerReviewResponseSchema = z.object({
   returnTo: z.string().startsWith("/"),
 });
 
+const savedVendorSchema = z.object({
+  vendorId: z.string().uuid(),
+  eventId: z.string().uuid(),
+  returnTo: z.string().startsWith("/"),
+});
+
 function createSlug(name: string) {
   const base = name
     .toLowerCase()
@@ -1233,4 +1239,102 @@ export async function updateProviderReviewResponseAction(formData: FormData) {
   revalidatePath(parsed.data.returnTo);
   revalidatePath("/marketplace");
   redirect(`${parsed.data.returnTo}?review=response_saved`);
+}
+
+export async function saveVendorForEventAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = savedVendorSchema.safeParse({
+    vendorId: formData.get("vendorId"),
+    eventId: formData.get("eventId"),
+    returnTo: formData.get("returnTo") || "/marketplace",
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/marketplace", parsed.error.issues[0]?.message ?? "Could not save vendor.");
+  }
+
+  const [{ data: event }, { data: vendor }] = await Promise.all([
+    supabase
+      .from("events")
+      .select("id")
+      .eq("id", parsed.data.eventId)
+      .eq("owner_id", user.id)
+      .maybeSingle<{ id: string }>(),
+    supabase
+      .from("vendors")
+      .select("id, status")
+      .eq("id", parsed.data.vendorId)
+      .maybeSingle<{ id: string; status: string }>(),
+  ]);
+
+  if (!event) {
+    redirectWithError(parsed.data.returnTo, "Event not found.");
+  }
+
+  if (!vendor || vendor.status !== "active") {
+    redirectWithError(parsed.data.returnTo, "Vendor is not available.");
+  }
+
+  const { error } = await supabase
+    .from("marketplace_saved_vendors")
+    .upsert(
+      {
+        user_id: user.id,
+        event_id: parsed.data.eventId,
+        vendor_id: parsed.data.vendorId,
+      },
+      { onConflict: "user_id,event_id,vendor_id", ignoreDuplicates: true },
+    );
+
+  if (error) {
+    redirectWithError(parsed.data.returnTo, error.message);
+  }
+
+  await trackAnalyticsEvent(supabase, {
+    eventName: "marketplace_vendor_saved",
+    userId: user.id,
+    eventId: parsed.data.eventId,
+    metadata: {
+      vendor_id: parsed.data.vendorId,
+    },
+  });
+
+  revalidatePath(`/events/${parsed.data.eventId}/vendors`);
+  redirect(`${parsed.data.returnTo}?saved=1`);
+}
+
+export async function removeSavedVendorForEventAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = savedVendorSchema.safeParse({
+    vendorId: formData.get("vendorId"),
+    eventId: formData.get("eventId"),
+    returnTo: formData.get("returnTo") || "/marketplace",
+  });
+
+  if (!parsed.success) {
+    redirectWithError("/marketplace", parsed.error.issues[0]?.message ?? "Could not remove saved vendor.");
+  }
+
+  const { error } = await supabase
+    .from("marketplace_saved_vendors")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("event_id", parsed.data.eventId)
+    .eq("vendor_id", parsed.data.vendorId);
+
+  if (error) {
+    redirectWithError(parsed.data.returnTo, error.message);
+  }
+
+  await trackAnalyticsEvent(supabase, {
+    eventName: "marketplace_vendor_unsaved",
+    userId: user.id,
+    eventId: parsed.data.eventId,
+    metadata: {
+      vendor_id: parsed.data.vendorId,
+    },
+  });
+
+  revalidatePath(`/events/${parsed.data.eventId}/vendors`);
+  redirect(`${parsed.data.returnTo}?saved=0`);
 }

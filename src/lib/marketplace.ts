@@ -400,6 +400,24 @@ export async function getVendors(filters: MarketplaceFilters = {}) {
     .slice(0, 24);
 }
 
+export async function getVendorsByIds(ids: string[]) {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (!uniqueIds.length) {
+    return [];
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("vendors")
+    .select("*")
+    .in("id", uniqueIds)
+    .eq("status", "active")
+    .returns<VendorRow[]>();
+
+  const byId = new Map((data ?? []).map((row) => [row.id, mapVendor(row)] as const));
+  return uniqueIds.map((id) => byId.get(id)).filter((vendor): vendor is VendorProfile => Boolean(vendor));
+}
+
 export async function getPlanners(filters: MarketplaceFilters = {}) {
   const supabase = await createSupabaseServerClient();
   const zip = normalizeZip(filters.zip);

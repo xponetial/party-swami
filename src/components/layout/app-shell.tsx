@@ -34,10 +34,12 @@ const sections = [
 const eventSections = [
   { key: "overview", href: "", label: "Overview" },
   { key: "intake", href: "/intake", label: "Extended Questions" },
+  { key: "edit", href: "/edit", label: "Edit Event" },
   { key: "invite", href: "/invite", label: "Invite" },
   { key: "guests", href: "/guests/add", label: "Guests" },
   { key: "next-steps", href: "/next-steps", label: "Pick Your Path" },
   { key: "shopping", href: "/shopping", label: "Shopping" },
+  { key: "vendors", href: "/vendors", label: "Vendors" },
   { key: "planners", href: "/planners", label: "Planner Search" },
   { key: "timeline", href: "/timeline", label: "Timeline" },
   { key: "settings", href: "/settings", label: "Settings" },

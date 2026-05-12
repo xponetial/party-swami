@@ -26,4 +26,6 @@ export const ANALYTICS_EVENTS = [
   "marketplace_provider_package_created",
   "marketplace_review_submitted",
   "marketplace_review_response_updated",
+  "marketplace_vendor_saved",
+  "marketplace_vendor_unsaved",
 ] as const;

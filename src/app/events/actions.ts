@@ -97,6 +97,10 @@ const updateEventStatusSchema = z.object({
   nextStatus: z.enum(["draft", "planning", "ready", "completed"]),
 });
 
+const updateEventDetailsSchema = eventSchema.extend({
+  eventId: z.string().uuid(),
+});
+
 const inviteSchema = z.object({
   eventId: z.string().uuid(),
   inviteId: z.string().uuid(),
@@ -733,6 +737,78 @@ export async function updateEventStatusAction(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath(`/events/${parsed.data.eventId}`);
+}
+
+export async function updateEventDetailsAction(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = updateEventDetailsSchema.safeParse({
+    eventId: formData.get("eventId"),
+    title: formData.get("title"),
+    eventType: formData.get("eventType"),
+    eventDate: formData.get("eventDate") || undefined,
+    eventTime: formData.get("eventTime") || undefined,
+    location: formData.get("location") || undefined,
+    guestTarget: formData.get("guestTarget"),
+    budget: formData.get("budget"),
+    theme: formData.get("theme") || undefined,
+    planningMode: formData.get("planningMode") || "standard",
+  });
+
+  if (!parsed.success) {
+    redirect(
+      `/events/${formData.get("eventId")}/edit?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? "Invalid event details.")}`,
+    );
+  }
+
+  const eventDate = parseDateTime(parsed.data.eventDate, parsed.data.eventTime);
+  const normalizedTheme = parsed.data.theme?.trim() || `${parsed.data.eventType} celebration`;
+
+  const { error } = await supabase
+    .from("events")
+    .update({
+      title: parsed.data.title,
+      event_type: parsed.data.eventType,
+      event_date: eventDate,
+      location: parsed.data.location?.trim() || null,
+      guest_target: parsed.data.guestTarget ?? null,
+      budget: parsed.data.budget ?? null,
+      theme: parsed.data.theme?.trim() || null,
+    })
+    .eq("id", parsed.data.eventId)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    redirect(`/events/${parsed.data.eventId}/edit?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await Promise.all([
+    supabase
+      .from("party_plans")
+      .update({
+        theme: normalizedTheme,
+      })
+      .eq("event_id", parsed.data.eventId),
+    createAuditLog(supabase, {
+      action: "event_updated",
+      userId: user.id,
+      eventId: parsed.data.eventId,
+      metadata: {
+        event_type: parsed.data.eventType,
+        location: parsed.data.location?.trim() || null,
+        budget: parsed.data.budget ?? null,
+      },
+    }),
+  ]);
+
+  [
+    "/dashboard",
+    `/events/${parsed.data.eventId}`,
+    `/events/${parsed.data.eventId}/edit`,
+    `/events/${parsed.data.eventId}/intake`,
+    `/events/${parsed.data.eventId}/invite`,
+  ].forEach((path) => revalidatePath(path));
+
+  redirect(`/events/${parsed.data.eventId}/edit?success=1`);
 }
 
 export async function markInviteSentAction(formData: FormData) {
