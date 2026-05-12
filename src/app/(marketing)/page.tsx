@@ -134,7 +134,7 @@ export default function MarketingHomePage() {
               width={1120}
               height={768}
               priority
-              className="h-auto w-full max-w-[520px] object-cover"
+              className="block h-auto w-full object-cover"
             />
           </Link>
         }
