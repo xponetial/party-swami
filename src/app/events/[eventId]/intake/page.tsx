@@ -44,7 +44,7 @@ export default async function EventIntakePage({
         title="Enhanced party questions"
         description="This experience is currently behind a feature flag."
         backHref={`/events/${eventId}`}
-        eventNav={{ eventId, eventTitle: event.title, active: "settings" }}
+        eventNav={{ eventId, eventTitle: event.title, active: "intake" }}
       >
         <div className="rounded-3xl border border-border bg-white p-6 text-sm text-ink-muted">
           Ask an admin to enable the <code>event_intelligence_phase12</code> feature flag.
@@ -64,7 +64,7 @@ export default async function EventIntakePage({
       title="Enhanced party questions"
       description="Give Party Swami richer context so AI planning and marketplace recommendations are sharper."
       backHref={`/events/${eventId}`}
-      eventNav={{ eventId, eventTitle: event.title, active: "settings" }}
+      eventNav={{ eventId, eventTitle: event.title, active: "intake" }}
     >
       <EventIntakeForm eventId={eventId} sections={sections} initialAnswers={initialAnswers} />
     </AppShell>
