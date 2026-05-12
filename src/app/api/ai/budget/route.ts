@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   eventId: z.string().uuid(),
+  decisionMode: z.enum(["approve", "full_auto"]).optional(),
   turnstileToken: z.string().trim().min(1),
 });
 
@@ -51,7 +52,27 @@ export async function POST(request: Request) {
   }
 
   const budgetAllocation = allocateBudget(event);
-  await supabase.from("party_plans").update({ budget_allocation: budgetAllocation }).eq("event_id", parsed.data.eventId);
+  const { data: existingPlan } = await supabase
+    .from("party_plans")
+    .select("raw_response")
+    .eq("event_id", parsed.data.eventId)
+    .maybeSingle<{ raw_response?: Record<string, unknown> | null }>();
+  const currentRaw = (existingPlan?.raw_response ?? {}) as Record<string, unknown>;
+  const currentAiBrain = ((currentRaw.ai_brain ?? {}) as Record<string, unknown>);
+  await supabase.from("party_plans").update({
+    budget_allocation: budgetAllocation,
+    raw_response: {
+      ...currentRaw,
+      ai_brain: {
+        ...currentAiBrain,
+        budget_rationale: {
+          decision_mode: parsed.data.decisionMode ?? "approve",
+          event_budget: event.budget,
+          allocation: budgetAllocation,
+        },
+      },
+    },
+  }).eq("event_id", parsed.data.eventId);
 
   return NextResponse.json({ ok: true, event_id: parsed.data.eventId, budget_allocation: budgetAllocation });
 }

@@ -1,0 +1,117 @@
+version: 1
+updated_for: party-swami
+brain_orchestrator_skill: brain-orchestrator
+
+agents:
+  - id: party-planning-agent
+    skills:
+      - event-planning
+      - theme-generation
+      - timeline-creation
+      - checklist-generation
+  - id: invitation-card-agent
+    skills:
+      - copywriting
+      - rsvp-wording
+      - card-content
+      - tone-adjustment
+      - image-prompt
+      - layout-formatting
+      - theme-styling
+  - id: shopping-recommendation-agent
+    skills:
+      - product-recommendation
+      - category-mapping
+      - quantity-estimation
+      - affiliate-link-formatting
+  - id: budget-agent
+    skills:
+      - cost-estimation
+      - budget-allocation
+      - savings-optimization
+  - id: task-reminder-agent
+    skills:
+      - task-breakdown
+      - deadline-calculation
+      - priority-assignment
+  - id: rsvp-guest-agent
+    skills:
+      - rsvp-tracking
+      - guest-segmentation
+      - guest-communication
+  - id: marketplace-vendor-agent
+    skills:
+      - vendor-matching
+      - lead-generation
+      - vendor-comparison
+  - id: vendor-onboarding-agent
+    skills:
+      - profile-optimization
+      - package-normalization
+      - listing-quality-audit
+  - id: social-media-agent
+    skills:
+      - social-content
+      - campaign-strategy
+  - id: admin-growth-agent
+    skills:
+      - trend-analysis
+      - monetization-strategy
+      - opportunity-scoring
+
+skills:
+  planning:
+    - event-planning
+    - theme-generation
+    - timeline-creation
+    - checklist-generation
+  content:
+    - copywriting
+    - rsvp-wording
+    - card-content
+    - tone-adjustment
+  design:
+    - image-prompt
+    - layout-formatting
+    - theme-styling
+  commerce:
+    - product-recommendation
+    - category-mapping
+    - quantity-estimation
+    - affiliate-link-formatting
+  financial:
+    - cost-estimation
+    - budget-allocation
+    - savings-optimization
+  task:
+    - task-breakdown
+    - deadline-calculation
+    - priority-assignment
+  guest:
+    - rsvp-tracking
+    - guest-segmentation
+    - guest-communication
+  marketplace:
+    - vendor-matching
+    - lead-generation
+    - vendor-comparison
+    - profile-optimization
+    - package-normalization
+    - listing-quality-audit
+  growth:
+    - trend-analysis
+    - social-content
+    - campaign-strategy
+    - monetization-strategy
+    - opportunity-scoring
+
+wiring_targets:
+  plan_event: src/app/api/ai/plan-event/route.ts
+  one_click: src/app/api/ai/one-click/route.ts
+  shopping: src/app/api/ai/shopping/route.ts
+  generate_shopping_list: src/app/api/ai/generate-shopping-list/route.ts
+  vendors: src/app/api/ai/vendors/route.ts
+  budget: src/app/api/ai/budget/route.ts
+  brain_core: src/lib/ai/brain.ts
+  workflows: src/lib/ai/workflows.ts
+

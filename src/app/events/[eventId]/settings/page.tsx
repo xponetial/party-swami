@@ -1,4 +1,4 @@
-import { restorePlanVersionAction, updateProfileAction } from "@/app/events/actions";
+import { restorePlanVersionAction, updateDecisionModeAction, updateProfileAction } from "@/app/events/actions";
 import { getAiUsageForUser } from "@/lib/ai/usage";
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 import { ProUpgradeButton } from "@/components/billing/pro-upgrade-button";
@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { getEventContext } from "@/lib/events";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function formatBillingStatus(value: string | null | undefined) {
@@ -34,12 +33,89 @@ export default async function EventSettingsPage({
 }) {
   const { eventId } = await params;
   const resolvedSearchParams = (await searchParams) ?? {};
-  const { event, profile, plan, planVersions } = await getEventContext(eventId);
   const supabase = await createSupabaseServerClient();
+  const [{ data: event }, { data: profile }, { data: plan }, { data: planVersions = [] }] = await Promise.all([
+    supabase
+      .from("events")
+      .select("id, title, event_type, status, budget, theme, ai_decision_mode")
+      .eq("id", eventId)
+      .single<{
+        id: string;
+        title: string;
+        event_type: string;
+        status: "draft" | "planning" | "ready" | "completed";
+        budget: number | null;
+        theme: string | null;
+        ai_decision_mode: "approve" | "full_auto" | null;
+      }>(),
+    supabase
+      .from("profiles")
+      .select("id, full_name, plan_tier, billing_status, stripe_customer_id")
+      .maybeSingle<{
+        id: string;
+        full_name: string | null;
+        plan_tier: string | null;
+        billing_status: string | null;
+        stripe_customer_id: string | null;
+      }>(),
+    supabase
+      .from("party_plans")
+      .select("id, theme, model, prompt_version, summary, generated_at, raw_response")
+      .eq("event_id", eventId)
+      .maybeSingle<{
+        id: string;
+        theme: string | null;
+        model: string | null;
+        prompt_version: string | null;
+        summary: string | null;
+        generated_at: string | null;
+        raw_response?: {
+          ai_brain?: {
+            agent_invocations?: Array<{
+              agent_id: string;
+              status: "invoked" | "standby";
+              reason: string;
+              wired_to: string[];
+            }>;
+            agent_metrics?: Array<{
+              agent_id: string;
+              status: "invoked" | "standby";
+              latency_ms: number;
+              adjustment_count: number;
+              acceptance_signal: "auto_applied" | "pending_approval" | "standby";
+            }>;
+          };
+        } | null;
+      }>(),
+    supabase
+      .from("party_plans")
+      .select("id")
+      .eq("event_id", eventId)
+      .maybeSingle<{ id: string }>()
+      .then(async ({ data: planIdentity }) => {
+        if (!planIdentity?.id) return { data: [] as Array<{ id: string; version_num: number; change_reason: string | null; created_at: string }> };
+        return supabase
+          .from("plan_versions")
+          .select("id, version_num, change_reason, created_at")
+          .eq("plan_id", planIdentity.id)
+          .order("created_at", { ascending: false })
+          .limit(5)
+          .returns<Array<{ id: string; version_num: number; change_reason: string | null; created_at: string }>>();
+      }),
+  ]);
+  if (!event) {
+    return null;
+  }
+  const planVersionsSafe = planVersions ?? [];
   const usage = profile?.id ? await getAiUsageForUser(supabase, profile.id) : null;
   const planTier = profile?.plan_tier ?? usage?.planTier ?? "free";
   const canManageBilling =
     Boolean(profile?.stripe_customer_id) && (planTier === "pro" || planTier === "admin");
+  const agentInvocations = plan?.raw_response?.ai_brain?.agent_invocations ?? [];
+  const invokedCount = agentInvocations.filter((agent) => agent.status === "invoked").length;
+  const standbyCount = agentInvocations.filter((agent) => agent.status === "standby").length;
+  const decisionMode = event.ai_decision_mode ?? "approve";
+  const agentMetrics = plan?.raw_response?.ai_brain?.agent_metrics ?? [];
 
   return (
     <AppShell
@@ -86,6 +162,9 @@ export default async function EventSettingsPage({
             {canManageBilling ? <ManageBillingButton /> : <ProUpgradeButton />}
             <Button asChild variant="secondary">
               <Link href="/pricing">View plans</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href={`/events/${eventId}/intake`}>Enhanced questions</Link>
             </Button>
           </div>
         </Card>
@@ -154,8 +233,8 @@ export default async function EventSettingsPage({
             </div>
           ) : null}
           <div className="mt-5 grid gap-3">
-            {planVersions.length ? (
-              planVersions.map((version) => (
+            {planVersionsSafe.length ? (
+              planVersionsSafe.map((version) => (
                 <div key={version.id} className="rounded-3xl border border-border bg-white/85 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-ink">Version {version.version_num}</p>
@@ -183,6 +262,83 @@ export default async function EventSettingsPage({
           </div>
         </Card>
       </div>
+
+      <Card data-tour-id="settings-agent-orchestration">
+        <h2 className="text-xl font-semibold text-ink">Agent orchestration</h2>
+        <form action={updateDecisionModeAction} className="mt-4 flex items-end gap-3">
+          <input type="hidden" name="eventId" value={eventId} />
+          <div className="space-y-2">
+            <Label htmlFor="decisionMode">Decision mode</Label>
+            <select id="decisionMode" name="decisionMode" defaultValue={decisionMode} className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-ink">
+              <option value="approve">Approve (proposed actions)</option>
+              <option value="full_auto">Full auto (apply safe actions)</option>
+            </select>
+          </div>
+          <SubmitButton pendingLabel="Saving mode..." variant="secondary">Save mode</SubmitButton>
+        </form>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-3xl border border-border bg-white/85 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Total agents</p>
+            <p className="mt-2 text-lg font-semibold text-ink">{agentInvocations.length || 0}</p>
+          </div>
+          <div className="rounded-3xl border border-border bg-white/85 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Invoked</p>
+            <p className="mt-2 text-lg font-semibold text-ink">{invokedCount}</p>
+          </div>
+          <div className="rounded-3xl border border-border bg-white/85 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Standby</p>
+            <p className="mt-2 text-lg font-semibold text-ink">{standbyCount}</p>
+          </div>
+        </div>
+        <div className="mt-5 rounded-3xl border border-border bg-white/85 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Decision mode behavior</p>
+          <p className="mt-2 text-sm text-ink-muted">
+            {decisionMode === "full_auto"
+              ? "Safe budget and vendor substitutions are auto-applied during one-click runs."
+              : "Budget and vendor substitutions are proposed and require approval before manual application."}
+          </p>
+        </div>
+        {agentMetrics.length ? (
+          <div className="mt-5 grid gap-3">
+            {agentMetrics.map((metric) => (
+              <div key={`${metric.agent_id}:${metric.status}`} className="rounded-3xl border border-border bg-white/85 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-ink">{metric.agent_id}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">{metric.acceptance_signal}</p>
+                </div>
+                <p className="mt-2 text-xs text-ink-muted">
+                  Latency: {metric.latency_ms}ms · Adjustments: {metric.adjustment_count} · Status: {metric.status}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className="mt-5 grid gap-3">
+          {agentInvocations.length ? (
+            agentInvocations.map((agent) => (
+              <div key={agent.agent_id} className="rounded-3xl border border-border bg-white/85 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-ink">{agent.agent_id}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">{agent.status}</p>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-ink-muted">{agent.reason}</p>
+                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-ink-muted">Wired to</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {agent.wired_to.map((target) => (
+                    <span key={`${agent.agent_id}:${target}`} className="rounded-full border border-border bg-canvas px-3 py-1 text-xs text-ink-muted">
+                      {target}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-3xl border border-border bg-white/85 p-4 text-sm leading-6 text-ink-muted">
+              No agent invocation metadata yet. Generate an AI plan from one-click or plan-event to populate this panel.
+            </div>
+          )}
+        </div>
+      </Card>
     </AppShell>
   );
 }

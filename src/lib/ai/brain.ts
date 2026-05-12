@@ -1,6 +1,16 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { ensureRequiredShoppingCoverage, type GeneratedShoppingItem } from "@/lib/ai/party-genie";
+import { type GeneratedShoppingItem } from "@/lib/ai/party-genie";
 import { generatePlanForEvent, generateShoppingListForEvent } from "@/lib/ai/workflows";
+import { buildAiContextForEvent } from "@/lib/ai-context-builder";
+import { getShoppingSearchTermsFromIntake, getVendorCategoriesFromServices } from "@/lib/ai/intake-signals";
+import type { EventIntelligenceContext } from "@/features/event-intelligence/types";
+import {
+  buildAgentInvocationPlan,
+  buildAgentState,
+  type BrainAgentInvocation,
+  type BrainDecisionMode,
+  type BrainAgentState,
+} from "@/lib/ai/agent-orchestrator";
 
 type EventSeed = {
   id: string;
@@ -12,6 +22,17 @@ type EventSeed = {
   guest_target: number | null;
   budget: number | null;
   theme: string | null;
+  ai_decision_mode: BrainDecisionMode | null;
+};
+
+type PersistedAgentState = {
+  event_context?: {
+    event_type?: string;
+    location?: string | null;
+    budget?: number | null;
+    guest_target?: number | null;
+    theme?: string | null;
+  };
 };
 
 type VendorRow = {
@@ -27,11 +48,6 @@ type VendorRow = {
   response_time_hours: number;
   is_verified: boolean;
   status: "active" | "paused" | "pending_review";
-};
-
-type VendorReviewAgg = {
-  vendor_id: string | null;
-  avg_rating: number | null;
 };
 
 export type BudgetAllocation = {
@@ -69,7 +85,240 @@ export type AiBrainPlan = {
   shopping_categories: Array<{ category: string; items: Array<{ name: string; quantity: number }> }>;
   vendor_matches: VendorMatch[];
   required_vendor_categories: string[];
+  agent_invocations: BrainAgentInvocation[];
+  agent_state: BrainAgentState;
+  replan: {
+    trigger: "forced" | "context_change" | "none";
+    changed_fields: string[];
+    impacted_agents: string[];
+  };
+  handoffs: Array<{
+    from: string;
+    to: string[];
+    reason: string;
+  }>;
+  proposed_actions?: Array<{
+    target: "shopping" | "vendors";
+    reason: string;
+    impact: string;
+  }>;
+  intake_context_summary?: {
+    services_requested_count: number;
+    ai_help_requested_count: number;
+    missing_context_fields: string[];
+  };
 };
+
+type ReplanResult = {
+  trigger: "forced" | "context_change" | "none";
+  changedFields: string[];
+  impactedAgents: string[];
+};
+
+async function loadPreviousAgentState(supabase: SupabaseClient, eventId: string) {
+  const { data } = await supabase
+    .from("party_plans")
+    .select("raw_response")
+    .eq("event_id", eventId)
+    .maybeSingle<{ raw_response?: { ai_brain?: { agent_state?: PersistedAgentState } } | null }>();
+  return data?.raw_response?.ai_brain?.agent_state ?? null;
+}
+
+export function detectReplan(
+  event: EventSeed,
+  previousState: PersistedAgentState | null,
+  forceRegenerate: boolean,
+): ReplanResult {
+  if (forceRegenerate) {
+    return {
+      trigger: "forced",
+      changedFields: ["manual_force_regenerate"],
+      impactedAgents: [
+        "party-planning-agent",
+        "invitation-card-agent",
+        "shopping-recommendation-agent",
+        "budget-agent",
+        "task-reminder-agent",
+        "rsvp-guest-agent",
+        "marketplace-vendor-agent",
+      ],
+    };
+  }
+
+  if (!previousState?.event_context) {
+    return {
+      trigger: "context_change",
+      changedFields: ["first_run_no_previous_state"],
+      impactedAgents: [
+        "party-planning-agent",
+        "invitation-card-agent",
+        "shopping-recommendation-agent",
+        "budget-agent",
+        "task-reminder-agent",
+        "rsvp-guest-agent",
+        "marketplace-vendor-agent",
+      ],
+    };
+  }
+
+  const prev = previousState.event_context;
+  const changedFields: string[] = [];
+
+  if ((prev.event_type ?? "").toLowerCase() !== event.event_type.toLowerCase()) changedFields.push("event_type");
+  if ((prev.location ?? "").trim() !== (event.location ?? "").trim()) changedFields.push("location");
+  if ((prev.budget ?? null) !== (event.budget ?? null)) changedFields.push("budget");
+  if ((prev.guest_target ?? null) !== (event.guest_target ?? null)) changedFields.push("guest_target");
+  if ((prev.theme ?? "").trim().toLowerCase() !== (event.theme ?? "").trim().toLowerCase()) changedFields.push("theme");
+
+  if (!changedFields.length) {
+    return {
+      trigger: "none",
+      changedFields: [],
+      impactedAgents: [],
+    };
+  }
+
+  const impacted = new Set<string>();
+  for (const field of changedFields) {
+    if (field === "event_type") {
+      impacted.add("party-planning-agent");
+      impacted.add("shopping-recommendation-agent");
+      impacted.add("marketplace-vendor-agent");
+      impacted.add("invitation-card-agent");
+      impacted.add("task-reminder-agent");
+    }
+    if (field === "location") {
+      impacted.add("marketplace-vendor-agent");
+      impacted.add("task-reminder-agent");
+    }
+    if (field === "budget") {
+      impacted.add("budget-agent");
+      impacted.add("shopping-recommendation-agent");
+      impacted.add("marketplace-vendor-agent");
+    }
+    if (field === "guest_target") {
+      impacted.add("party-planning-agent");
+      impacted.add("shopping-recommendation-agent");
+      impacted.add("task-reminder-agent");
+    }
+    if (field === "theme") {
+      impacted.add("party-planning-agent");
+      impacted.add("invitation-card-agent");
+      impacted.add("shopping-recommendation-agent");
+    }
+  }
+
+  return {
+    trigger: "context_change",
+    changedFields,
+    impactedAgents: [...impacted],
+  };
+}
+
+function buildHandoffGraph() {
+  return [
+    {
+      from: "brain-orchestrator",
+      to: ["party-planning-agent"],
+      reason: "Build baseline event plan context first.",
+    },
+    {
+      from: "party-planning-agent",
+      to: [
+        "budget-agent",
+        "shopping-recommendation-agent",
+        "task-reminder-agent",
+        "invitation-card-agent",
+      ],
+      reason: "Run core execution agents in parallel from shared plan context.",
+    },
+    {
+      from: "budget-agent",
+      to: ["shopping-recommendation-agent", "marketplace-vendor-agent"],
+      reason: "Budget constraints refine shopping and vendor selections.",
+    },
+    {
+      from: "shopping-recommendation-agent",
+      to: ["marketplace-vendor-agent"],
+      reason: "Shopping scope informs vendor category needs.",
+    },
+    {
+      from: "marketplace-vendor-agent",
+      to: ["vendor-onboarding-agent"],
+      reason: "Vendor demand signals can drive supply-side onboarding actions.",
+    },
+    {
+      from: "invitation-card-agent",
+      to: ["rsvp-guest-agent"],
+      reason: "Invite assets and RSVP wording feed guest communication workflows.",
+    },
+  ];
+}
+
+function estimateShoppingTotal(items: GeneratedShoppingItem[]) {
+  return items.reduce((sum, item) => sum + (item.estimated_price ?? 0) * item.quantity, 0);
+}
+
+export function applyBudgetConstraintsToShopping(
+  items: GeneratedShoppingItem[],
+  budget: number | null,
+  budgetAllocation: BudgetAllocation,
+) {
+  const budgetCap = budget ?? budgetAllocation.decor + budgetAllocation.food + budgetAllocation.entertainment + budgetAllocation.misc;
+  if (!budgetCap || budgetCap <= 0) {
+    return { items, adjusted: false, total: estimateShoppingTotal(items) };
+  }
+
+  const target = budgetCap * 0.65;
+  const next = items.map((item) => ({ ...item }));
+  let total = estimateShoppingTotal(next);
+
+  if (total <= target) {
+    return { items: next, adjusted: false, total };
+  }
+
+  const ranked = [...next]
+    .map((item, index) => ({ index, unit: item.estimated_price ?? 0 }))
+    .sort((a, b) => b.unit - a.unit);
+
+  for (const candidate of ranked) {
+    const item = next[candidate.index];
+    if ((item.estimated_price ?? 0) <= 0) continue;
+    while (item.quantity > 1 && total > target) {
+      item.quantity -= 1;
+      total -= item.estimated_price ?? 0;
+    }
+    if (total <= target) break;
+  }
+
+  return { items: next, adjusted: true, total };
+}
+
+export function applyBudgetConstraintsToVendors(
+  matches: VendorMatch[],
+  budgetAllocation: BudgetAllocation,
+) {
+  const vendorCap = (budgetAllocation.entertainment + budgetAllocation.misc) * 1.25;
+  if (vendorCap <= 0) {
+    return { matches, adjusted: false };
+  }
+
+  const affordable = matches.filter((vendor) => {
+    if (vendor.starting_price == null) return true;
+    return vendor.starting_price <= vendorCap;
+  });
+
+  if (!affordable.length) {
+    return { matches, adjusted: false };
+  }
+
+  const reordered = [
+    ...affordable,
+    ...matches.filter((vendor) => !affordable.some((a) => a.vendor_id === vendor.vendor_id)),
+  ].slice(0, 6);
+
+  return { matches: reordered, adjusted: true };
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -133,6 +382,7 @@ export function allocateBudget(event: Pick<EventSeed, "budget" | "event_type" | 
     guest_target: event.guest_target,
     budget: event.budget,
     theme: null,
+    ai_decision_mode: null,
   });
   if (venueType === "outdoor") {
     weights.misc += 0.05;
@@ -211,7 +461,7 @@ async function loadEventSeed(supabase: SupabaseClient, eventId: string) {
   const [{ data: event, error: eventError }, { count: guestCount }] = await Promise.all([
     supabase
       .from("events")
-      .select("id, owner_id, title, event_type, event_date, location, guest_target, budget, theme")
+      .select("id, owner_id, title, event_type, event_date, location, guest_target, budget, theme, ai_decision_mode")
       .eq("id", eventId)
       .single<EventSeed>(),
     supabase.from("guests").select("*", { count: "exact", head: true }).eq("event_id", eventId),
@@ -267,8 +517,12 @@ export async function matchVendorsForEvent(
   supabase: SupabaseClient,
   event: Pick<EventSeed, "event_type" | "budget" | "guest_target" | "location">,
   budgetAllocation: BudgetAllocation,
+  intakeContext?: EventIntelligenceContext | null,
 ) {
-  const requiredCategories = getRequiredVendorCategories(event.event_type);
+  const serviceDrivenCategories = intakeContext
+    ? getVendorCategoriesFromServices(intakeContext.servicesRequested)
+    : [];
+  const requiredCategories = [...new Set([...getRequiredVendorCategories(event.event_type), ...serviceDrivenCategories])];
   const eventZip = extractZip(event.location);
 
   const [{ data: vendorsData }, { data: reviewsData }] = await Promise.all([
@@ -374,21 +628,129 @@ async function logAiDecision(
 export async function generateAiBrainPlanForEvent(
   supabase: SupabaseClient,
   eventId: string,
-  options?: { forceRegenerate?: boolean },
+  options?: { forceRegenerate?: boolean; decisionMode?: BrainDecisionMode },
 ): Promise<AiBrainPlan> {
+  const runStartedAt = Date.now();
   const event = await loadEventSeed(supabase, eventId);
+  const decisionMode: BrainDecisionMode = options?.decisionMode ?? event.ai_decision_mode ?? "approve";
+  const previousAgentState = await loadPreviousAgentState(supabase, eventId);
+  const replan = detectReplan(event, previousAgentState, options?.forceRegenerate ?? false);
+  const handoffs = buildHandoffGraph();
+  const intakeContext = await buildAiContextForEvent(supabase, eventId).catch(() => null);
+  const missingContextFields = [
+    intakeContext?.venue?.venueType ? null : "venue_type",
+    intakeContext?.food?.served ? null : "food_served",
+    intakeContext?.servicesRequested?.length ? null : "services_requested",
+  ].filter((item): item is string => Boolean(item));
+  const agentInvocations = buildAgentInvocationPlan({
+    eventType: event.event_type,
+    location: event.location,
+    budget: event.budget,
+    guestTarget: event.guest_target,
+    theme: event.theme,
+  });
+  const agentState = buildAgentState(
+    {
+      eventType: event.event_type,
+      location: event.location,
+      budget: event.budget,
+      guestTarget: event.guest_target,
+      theme: event.theme,
+    },
+    agentInvocations,
+    decisionMode,
+  );
   const complexityScore = getComplexityScore(event);
   const budgetAllocation = allocateBudget(event);
+  const { data: existingPlanSnapshot } = await supabase
+    .from("party_plans")
+    .select("shopping_categories, vendor_matches, required_vendor_categories")
+    .eq("event_id", eventId)
+    .maybeSingle<{
+      shopping_categories: Array<{ category: string; items: Array<{ name: string; quantity: number }> }> | null;
+      vendor_matches: VendorMatch[] | null;
+      required_vendor_categories: string[] | null;
+    }>();
+  const shouldReplanCore =
+    (options?.forceRegenerate ?? false) ||
+    replan.trigger === "context_change" ||
+    replan.impactedAgents.includes("party-planning-agent");
+  const shouldReplanShopping = shouldReplanCore || replan.impactedAgents.includes("shopping-recommendation-agent");
+  const shouldReplanVendors = shouldReplanCore || replan.impactedAgents.includes("marketplace-vendor-agent");
 
   const plan = await generatePlanForEvent(supabase, eventId, {
-    forceRegenerate: options?.forceRegenerate ?? false,
+    forceRegenerate: shouldReplanCore,
   });
 
-  const shoppingResult = await generateShoppingListForEvent(supabase, eventId, {
-    searchTerms: [event.event_type, event.theme ?? "", event.title].filter(Boolean),
-  });
+  const shoppingResult = shouldReplanShopping
+    ? await generateShoppingListForEvent(supabase, eventId, {
+      searchTerms: [
+        event.event_type,
+        event.theme ?? "",
+        event.title,
+        ...(intakeContext ? getShoppingSearchTermsFromIntake(intakeContext) : []),
+      ].filter(Boolean),
+    })
+    : { shoppingCategories: existingPlanSnapshot?.shopping_categories ?? [] };
 
-  const { matches, requiredCategories } = await matchVendorsForEvent(supabase, event, budgetAllocation);
+  const constrainedShopping = applyBudgetConstraintsToShopping(
+    (plan as { shoppingItems?: GeneratedShoppingItem[] }).shoppingItems ?? [],
+    event.budget,
+    budgetAllocation,
+  );
+
+  const vendorResult = shouldReplanVendors
+    ? await matchVendorsForEvent(supabase, event, budgetAllocation, intakeContext)
+    : {
+      requiredCategories: existingPlanSnapshot?.required_vendor_categories ?? [],
+      matches: existingPlanSnapshot?.vendor_matches ?? [],
+    };
+  const constrainedVendors = applyBudgetConstraintsToVendors(vendorResult.matches, budgetAllocation);
+  const matches = decisionMode === "full_auto" ? constrainedVendors.matches : vendorResult.matches;
+  const requiredCategories = vendorResult.requiredCategories;
+  const effectiveShopping = decisionMode === "full_auto" ? constrainedShopping.items : ((plan as { shoppingItems?: GeneratedShoppingItem[] }).shoppingItems ?? []);
+  const proposedActions = decisionMode === "approve"
+    ? [
+      ...(constrainedShopping.adjusted ? [{ target: "shopping" as const, reason: "Projected shopping spend exceeds target envelope.", impact: "Reduce quantities in highest-cost items first." }] : []),
+      ...(constrainedVendors.adjusted ? [{ target: "vendors" as const, reason: "Vendor starting prices exceed budget target.", impact: "Prioritize lower-cost vendor options." }] : []),
+    ]
+    : [];
+  const agentArtifacts = {
+    "vendor-onboarding-agent": {
+      status: agentInvocations.some((a) => a.agent_id === "vendor-onboarding-agent" && a.status === "invoked") ? "generated" : "standby",
+      recommendations: requiredCategories.map((category: string) => ({
+        category,
+        onboarding_priority: "high",
+      })),
+    },
+    "social-media-agent": {
+      status: "generated",
+      campaign_brief: `${event.event_type} momentum content mapped from event plan sections.`,
+    },
+    "admin-growth-agent": {
+      status: "generated",
+      insight: `Event complexity ${complexityScore} with ${matches.length} vendor options and ${effectiveShopping.length} shopping items.`,
+    },
+  };
+  const totalLatency = Date.now() - runStartedAt;
+  const invokedAgents = agentInvocations.filter((a) => a.status === "invoked");
+  const agentMetrics = agentInvocations.map((agent) => ({
+    agent_id: agent.agent_id,
+    status: agent.status,
+    latency_ms: agent.status === "invoked" ? Math.max(1, Math.round(totalLatency / Math.max(1, invokedAgents.length))) : 0,
+    adjustment_count: agent.status === "invoked"
+      ? agent.agent_id === "shopping-recommendation-agent" && constrainedShopping.adjusted
+        ? 1
+        : agent.agent_id === "marketplace-vendor-agent" && constrainedVendors.adjusted
+          ? 1
+          : 0
+      : 0,
+    acceptance_signal: agent.status === "standby"
+      ? "standby"
+      : decisionMode === "full_auto"
+        ? "auto_applied"
+        : "pending_approval",
+  }));
 
   await supabase
     .from("party_plans")
@@ -402,6 +764,24 @@ export async function generateAiBrainPlanForEvent(
         ai_brain: {
           version: "ai-brain-v1",
           one_click_generated_at: new Date().toISOString(),
+          agent_invocations: agentInvocations,
+          agent_state: agentState,
+          replan: {
+            trigger: replan.trigger,
+            changed_fields: replan.changedFields,
+            impacted_agents: replan.impactedAgents,
+          },
+          handoffs,
+          proposed_actions: proposedActions,
+          intake_context_summary: intakeContext
+            ? {
+                services_requested_count: intakeContext.servicesRequested.length,
+                ai_help_requested_count: intakeContext.aiHelpRequested.length,
+                missing_context_fields: missingContextFields,
+              }
+            : null,
+          agent_artifacts: agentArtifacts,
+          agent_metrics: agentMetrics,
         },
       },
     })
@@ -423,7 +803,7 @@ export async function generateAiBrainPlanForEvent(
       module: "vendor_matching",
       decision: {
         required_categories: requiredCategories,
-        top_vendor_ids: matches.map((item) => item.vendor_id),
+        top_vendor_ids: matches.map((item: VendorMatch) => item.vendor_id),
       },
     }),
     logAiDecision(supabase, {
@@ -435,6 +815,67 @@ export async function generateAiBrainPlanForEvent(
         budget: event.budget,
       },
     }),
+    logAiDecision(supabase, {
+      eventId,
+      module: "agent_orchestration",
+      decision: {
+        invoked_agents: agentInvocations.filter((agent) => agent.status === "invoked").map((agent) => agent.agent_id),
+        standby_agents: agentInvocations.filter((agent) => agent.status === "standby").map((agent) => agent.agent_id),
+        agent_state: agentState,
+        replan: {
+          trigger: replan.trigger,
+          changed_fields: replan.changedFields,
+          impacted_agents: replan.impactedAgents,
+        },
+        handoffs,
+        decision_mode: decisionMode,
+      },
+    }),
+    logAiDecision(supabase, {
+      eventId,
+      module: "handoff_snapshots",
+      decision: {
+        handoff_graph: handoffs,
+        input_snapshot: {
+          event_type: event.event_type,
+          budget: event.budget,
+          guest_target: event.guest_target,
+          location: event.location,
+          theme: event.theme,
+          replan_trigger: replan.trigger,
+          changed_fields: replan.changedFields,
+        },
+        output_snapshot: {
+          complexity_score: complexityScore,
+          vendor_count: matches.length,
+          shopping_items: constrainedShopping.items.length,
+          shopping_estimated_total: constrainedShopping.total,
+          budget_adjusted_shopping: constrainedShopping.adjusted,
+          budget_adjusted_vendors: constrainedVendors.adjusted,
+          decision_mode: decisionMode,
+          intake_summary: intakeContext
+            ? {
+                services_requested_count: intakeContext.servicesRequested.length,
+                ai_help_requested_count: intakeContext.aiHelpRequested.length,
+                missing_context_fields: missingContextFields,
+              }
+            : null,
+        },
+      },
+    }),
+    logAiDecision(supabase, {
+      eventId,
+      module: "agent_quality_metrics",
+      decision: {
+        metrics: agentMetrics,
+        total_latency_ms: totalLatency,
+      },
+    }),
+    logAiDecision(supabase, {
+      eventId,
+      module: "agent_artifacts",
+      decision: agentArtifacts as Record<string, unknown>,
+    }),
   ]);
 
   return {
@@ -444,9 +885,25 @@ export async function generateAiBrainPlanForEvent(
     complexity_score: complexityScore,
     budget_allocation: budgetAllocation,
     timeline: plan.timeline,
-    shopping_list: (plan as { shoppingItems?: GeneratedShoppingItem[] }).shoppingItems ?? [],
+    shopping_list: effectiveShopping,
     shopping_categories: shoppingResult.shoppingCategories,
     vendor_matches: matches,
     required_vendor_categories: requiredCategories,
+    agent_invocations: agentInvocations,
+    agent_state: agentState,
+    replan: {
+      trigger: replan.trigger,
+      changed_fields: replan.changedFields,
+      impacted_agents: replan.impactedAgents,
+    },
+    handoffs,
+    proposed_actions: proposedActions,
+    intake_context_summary: intakeContext
+      ? {
+          services_requested_count: intakeContext.servicesRequested.length,
+          ai_help_requested_count: intakeContext.aiHelpRequested.length,
+          missing_context_fields: missingContextFields,
+        }
+      : undefined,
   };
 }

@@ -167,6 +167,22 @@ const socialMediaPerformanceSchema = z.object({
   performanceNotes: z.string().trim().max(2000).optional(),
 });
 
+const eventQuestionAdminSchema = z.object({
+  questionId: z.string().uuid(),
+  label: z.string().trim().min(2),
+  description: z.string().trim().max(500).optional(),
+  displayOrder: z.coerce.number().int().min(0).max(10_000),
+  conditionalParent: z.string().trim().max(120).optional(),
+  conditionalValue: z.string().trim().max(120).optional(),
+  required: z.coerce.boolean(),
+  isActive: z.coerce.boolean(),
+});
+
+const eventQuestionSetOrderSchema = z.object({
+  setId: z.string().uuid(),
+  displayOrder: z.coerce.number().int().min(0).max(10_000),
+});
+
 function revalidateSocialMediaPaths() {
   revalidatePath("/admin");
   revalidatePath("/admin/social-media");
@@ -1917,4 +1933,66 @@ export async function deleteUserDataAction(
   }
 
   redirect("/admin/users?deleted=1");
+}
+
+export async function updateEventQuestionAdminAction(formData: FormData) {
+  await requireAdminAccess();
+  const parsed = eventQuestionAdminSchema.safeParse({
+    questionId: formData.get("questionId"),
+    label: formData.get("label"),
+    description: formData.get("description") || "",
+    displayOrder: formData.get("displayOrder"),
+    conditionalParent: formData.get("conditionalParent") || "",
+    conditionalValue: formData.get("conditionalValue") || "",
+    required: formData.get("required") === "on",
+    isActive: formData.get("isActive") === "on",
+  });
+
+  if (!parsed.success) {
+    redirect(`/admin/ai/event-intelligence?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? "Invalid question update.")}`);
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("event_questions")
+    .update({
+      label: parsed.data.label,
+      description: parsed.data.description?.trim() || null,
+      display_order: parsed.data.displayOrder,
+      conditional_parent: parsed.data.conditionalParent?.trim() || null,
+      conditional_value: parsed.data.conditionalValue?.trim() || null,
+      required: parsed.data.required,
+      is_active: parsed.data.isActive,
+    })
+    .eq("id", parsed.data.questionId);
+
+  if (error) {
+    redirect(`/admin/ai/event-intelligence?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/admin/ai/event-intelligence");
+}
+
+export async function updateEventQuestionSetOrderAction(formData: FormData) {
+  await requireAdminAccess();
+  const parsed = eventQuestionSetOrderSchema.safeParse({
+    setId: formData.get("setId"),
+    displayOrder: formData.get("displayOrder"),
+  });
+
+  if (!parsed.success) {
+    redirect(`/admin/ai/event-intelligence?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? "Invalid set update.")}`);
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("event_question_sets")
+    .update({ display_order: parsed.data.displayOrder })
+    .eq("id", parsed.data.setId);
+
+  if (error) {
+    redirect(`/admin/ai/event-intelligence?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/admin/ai/event-intelligence");
 }

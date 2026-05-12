@@ -40,6 +40,9 @@ export default async function AdminAiPage({
       adminName={profile?.full_name}
       actions={
         <div className="flex flex-wrap gap-2">
+          <Button asChild variant="secondary">
+            <Link href="/admin/ai/event-intelligence">Event intake admin</Link>
+          </Button>
           {rangeOptions.map((option) => (
             <Button
               key={option.value}
