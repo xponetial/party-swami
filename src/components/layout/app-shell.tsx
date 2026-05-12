@@ -33,6 +33,7 @@ const sections = [
 
 const eventSections = [
   { key: "overview", href: "", label: "Overview" },
+  { key: "intake", href: "/intake", label: "Extended Questions" },
   { key: "invite", href: "/invite", label: "Invite" },
   { key: "guests", href: "/guests/add", label: "Guests" },
   { key: "next-steps", href: "/next-steps", label: "Pick Your Path" },

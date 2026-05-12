@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import sharp from "sharp";
 
+// OpenAI image API does not currently support 1500x2100 directly.
+// We generate at supported portrait size and normalize to 5:7 downstream.
 const INVITE_IMAGE_SIZE = "1024x1536";
 const TEXT_CHECK_MODEL = process.env.OPENAI_IMAGE_TEXT_CHECK_MODEL?.trim() || "gpt-4.1-mini";
 const MAX_GENERATION_ATTEMPTS = 4;
@@ -36,7 +38,7 @@ async function normalizeInviteBrightness(png: Buffer) {
 function buildInviteBackgroundPrompt(userPrompt: string) {
   return [
     "Generate a single invitation background image (one scene only).",
-    "Vertical 2:3 format (1024x1536).",
+    "Vertical portrait source format (1024x1536), composed safely for final 5:7 output.",
     "Elegant, modern, high-end art direction.",
     "Composition: no collage and no split panels.",
     "Keep center and lower-middle zones clean and readable for overlay text.",

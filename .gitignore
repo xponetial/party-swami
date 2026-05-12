@@ -26,6 +26,7 @@
 .claude/
 *.pem
 /tmp/
+/backups/
 /supabase/.temp/
 
 # debug

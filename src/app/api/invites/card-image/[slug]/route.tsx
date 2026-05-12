@@ -8,6 +8,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 const HIGH_RES_WIDTH = 1500;
 const HIGH_RES_HEIGHT = 2100;
+// Print exports should be edge-to-edge artwork without the decorative outer frame.
+// These crop bounds match the inner image region from invite-card-image composer.
+const PRINT_CROP = {
+  left: 46,
+  top: 78,
+  width: 708,
+  height: 964,
+} as const;
 
 type PublicInviteRecord = {
   event_id: string;
@@ -120,8 +128,10 @@ export async function GET(
 
   if (preset === "print") {
     png = await sharp(png)
-      .resize(1600, 2400, { fit: "cover" })
-      .png()
+      .extract(PRINT_CROP)
+      .resize(HIGH_RES_WIDTH, HIGH_RES_HEIGHT, { fit: "cover" })
+      .withMetadata({ density: 300 })
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
       .toBuffer();
   }
 

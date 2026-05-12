@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "holiday": "Custom Event",
+  "templates": [
+    {
+      "template_id": "custom_event_01",
+      "category": "Custom Event",
+      "style": "custom_celebration",
+      "asset": "assets/custom_event.png",
+      "orientation": "vertical",
+      "image_spec": {
+        "width": 1500,
+        "height": 2100,
+        "dpi": 300,
+        "aspect_ratio": "5:7"
+      },
+      "text_safe_areas": {
+        "title": "upper_center",
+        "details": "middle_center",
+        "cta": "lower_center"
+      }
+    }
+  ]
+}
+

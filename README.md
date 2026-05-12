@@ -105,6 +105,28 @@ npm run build
 npm run test:e2e
 ```
 
+## Branch Promotion Workflow
+
+Use this branch flow for all new work:
+
+1. Start implementation on `dev` or a Party Swami worktree feature branch.
+2. Promote QA-ready changes to a `stage/*` branch.
+3. Repoint stage to the latest `stage/*` deployment:
+
+```bash
+npm run stage:alias
+```
+
+4. After QA signoff, merge to `main` for production.
+
+To enforce this locally, install repo hooks once:
+
+```bash
+npm run hooks:install
+```
+
+This enables a pre-commit policy that blocks direct commits on `main`.
+
 ## Stage Domain Alias
 
 After deploying preview builds from any `stage/*` branch, repoint the stage domain to the latest stage preview:
@@ -149,3 +171,38 @@ AI generation metadata, request fingerprints, version history, and monthly usage
 The automated suite focuses on deterministic smoke coverage for public routes, unauthenticated API protections, and general app health.
 
 Full automated browser-authenticated signup flows are intentionally limited because hosted auth confirmation and provider rate limits can make those flows flaky in unattended CI.
+
+## Remote E2E (Stage + Production)
+
+This repo includes a reusable remote Playwright suite for authenticated end-to-end checks on:
+
+- `https://stage.partyswami.com`
+- `https://partyswami.com`
+
+It captures:
+
+- pass/fail status by test
+- observed request timings
+- slow request counts (threshold default `4000ms`)
+- browser runtime errors (request failures, page errors, console errors)
+
+Run:
+
+```bash
+npm run test:e2e:remote:stage
+npm run test:e2e:remote:prod
+# or both
+npm run test:e2e:remote
+```
+
+One-time auth bootstrapping per environment:
+
+1. The setup project opens `/login` and clicks **Continue with Google**.
+2. Complete Google auth manually using your Party Swami account.
+3. On successful redirect to `/dashboard`, Playwright saves session state:
+   - `playwright/.auth/stage-user.json`
+   - `playwright/.auth/prod-user.json`
+
+Generated report:
+
+- `test-results/remote-e2e-summary.md`
