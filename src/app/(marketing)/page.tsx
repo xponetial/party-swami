@@ -131,7 +131,7 @@ export default function MarketingHomePage() {
         brandVisual={
           <Link
             href="/"
-            className="inline-block w-full max-w-[520px] overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080c24] shadow-[0_24px_70px_rgba(7,11,34,0.32)]"
+            className="block overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080c24] shadow-[0_24px_70px_rgba(7,11,34,0.32)]"
           >
             <Image
               src="/party-swami-banner.png"

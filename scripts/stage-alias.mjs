@@ -22,22 +22,14 @@ function getCurrentBranch() {
 
 function getVercelToken() {
   if (process.env.VERCEL_TOKEN) return process.env.VERCEL_TOKEN;
-  const appData = process.env.APPDATA || "";
-  const home = process.env.HOME || process.env.USERPROFILE || "~";
-  const authPaths = [
-    join(appData, "xdg.data", "com.vercel.cli", "auth.json"),
-    join(appData, "com.vercel.cli", "Data", "auth.json"),
-    join(home, ".config", "com.vercel.cli", "auth.json"),
-  ];
-  for (const authPath of authPaths) {
-    try {
-      const auth = JSON.parse(readFileSync(authPath, "utf8"));
-      if (auth?.token) return auth.token;
-    } catch {
-      // Keep trying known locations.
-    }
+  const appData = process.env.APPDATA || join(process.env.HOME || "~", ".config");
+  const authPath = join(appData, "com.vercel.cli", "Data", "auth.json");
+  try {
+    const auth = JSON.parse(readFileSync(authPath, "utf8"));
+    return auth.token ?? null;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 const stageBranch = process.env.STAGE_BRANCH?.trim() || getCurrentBranch();
