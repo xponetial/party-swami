@@ -107,17 +107,45 @@ npm run test:e2e
 
 ## Branch Promotion Workflow
 
-Use this branch flow for all new work:
+Git branch hierarchy:
 
-1. Start implementation on `dev` or a Party Swami worktree feature branch.
-2. Promote QA-ready changes to a `stage/*` branch.
-3. Repoint stage to the latest `stage/*` deployment:
+`main (production) <- stage <- dev <- worktrees`
+
+Rules:
+
+1. Default branch is always `dev` for new code and fixes.
+2. Worktrees are created from `dev` and merged back into `dev` only.
+3. Never merge worktrees directly into `stage` or `main`.
+4. Never push directly to `main`; promote through a tested stage branch.
+5. After stage or production promotion, always return to `dev`.
+
+Standard stage promotion:
+
+```bash
+git checkout dev
+git push origin dev
+git checkout stage/your-stage-branch
+git merge dev
+git push origin stage/your-stage-branch
+git checkout dev
+```
+
+Standard production promotion:
+
+```bash
+git checkout stage/your-stage-branch
+git pull origin stage/your-stage-branch
+git checkout main
+git merge stage/your-stage-branch
+git push origin main
+git checkout dev
+```
+
+After deploying preview builds from a `stage/*` branch, repoint stage:
 
 ```bash
 npm run stage:alias
 ```
-
-4. After QA signoff, merge to `main` for production.
 
 To enforce this locally, install repo hooks once:
 
@@ -125,7 +153,10 @@ To enforce this locally, install repo hooks once:
 npm run hooks:install
 ```
 
-This enables a pre-commit policy that blocks direct commits on `main`.
+This enables:
+
+- `pre-commit`: blocks direct commits on `stage`/`stage/*` and `main`
+- `pre-push`: enforces `dev -> stage -> main` promotion order
 
 ## Stage Domain Alias
 

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+node scripts/enforce-push-policy.mjs
