@@ -5,6 +5,12 @@ export const EVENT_STATUSES = ["draft", "planning", "ready", "completed"] as con
 export const ANALYTICS_EVENTS = [
   "account_created",
   "event_created",
+  "event_intake_started",
+  "event_intake_section_completed",
+  "event_intake_completed",
+  "event_intake_abandoned",
+  "event_service_intent_selected",
+  "event_ai_help_selected",
   "ai_plan_generated",
   "invite_sent",
   "rsvp_received",
