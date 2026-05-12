@@ -280,23 +280,11 @@ export function EventFormCard({
             pendingLabel="Creating event..."
             value="standard"
           >
-            Create {selectedCategory.label} event
+            Continue to Enhanced Questions
           </SubmitButton>
-
-          <div className="mt-4 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">or</p>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <SubmitButton
-            className="mt-4 w-full"
-            name="planningMode"
-            pendingLabel="Creating and auto-planning..."
-            value="one_click"
-          >
-            Use AI Plan My Party (1-Click) to auto-plan your party
-          </SubmitButton>
+          <p className="mt-3 text-center text-xs text-ink-muted">
+            Next step: enrich your event with adaptive questions before running AI planning.
+          </p>
         </form>
       </Card>
 
